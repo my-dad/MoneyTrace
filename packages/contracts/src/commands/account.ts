@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { currencyCode, documentId, epochMs, nonNegativeMinorAmount } from "../primitives";
+import { currencyCode, documentId, epochMs, minorAmount } from "../primitives";
 import { accountName, strictObject } from "./shared";
 
 export const bootstrapUserRequest = strictObject({});
@@ -12,10 +12,10 @@ export const createAccountRequest = strictObject({
 });
 export const createAccountResponse = strictObject({ accountId: documentId });
 
-/** A dated position. For a liability the amount is the balance owed. */
+/** A dated position, signed. Positive asset: funds held. Positive liability: amount owed. Negative flips each. */
 export const recordOpeningBalanceRequest = strictObject({
   accountId: documentId,
-  amountMinor: nonNegativeMinorAmount,
+  amountMinor: minorAmount,
   currency: currencyCode,
   effectiveAtMs: epochMs,
 });

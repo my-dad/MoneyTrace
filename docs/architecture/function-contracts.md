@@ -2,7 +2,18 @@
 
 Schemas live in `packages/contracts/src/commands/` and `packages/contracts/src/triggers.ts`. Every request and response is a strict Zod object, so unknown fields are rejected. No request carries `ownerId`: the owner always comes from the verified Auth token, and a body that includes one fails as `invalidArgument`. Money is integer minor units plus a currency code (BDT only). Amounts that are floats, strings, `NaN` or outside the safe integer range are rejected before any write.
 
-Common error codes for every command: `unauthenticated` (no verified token), `invalidArgument` (schema failure), `notFound` (missing or owned by someone else, indistinguishable by design). A command that takes an `idempotencyKey` returns `idempotencyConflict` when the key was used with a different payload. Handlers ship in the listed phase. The contract exists from Phase 0.
+## Wire mapping
+
+Every handler maps failures to Firebase callable codes exactly like this:
+
+- No verified Auth token: `unauthenticated`.
+- Request schema failure: `invalid-argument`.
+- `DomainError('accountInvalid')`: `not-found`. A missing account and another user's account are indistinguishable by design.
+- Any other `DomainError`: `failed-precondition`, carrying the domain code only.
+- `idempotencyConflict`: `already-exists`.
+- Anything else: `internal`, with no detail.
+
+Per-command `Errors:` lines below name the domain-level cause, in the same vocabulary. Any command whose use case derives or accepts an idempotency key returns `idempotencyConflict` when that key meets a different payload. Handlers ship in the listed phase. The contract exists from Phase 0.
 
 ## Commands
 
@@ -34,11 +45,11 @@ Use case: CreateAccount
 
 Phase: 0
 
-Request: `{ accountId, amountMinor, currency, effectiveAtMs }`. `amountMinor` is a non-negative safe integer.
+Request: `{ accountId, amountMinor, currency, effectiveAtMs }`. `amountMinor` is a signed safe integer, zero allowed. Positive asset means the account holds funds, positive liability means the amount owed, and negative flips each (overdraft, or a card in credit).
 
 Response: `{ transactionId, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound (account missing or not owned), openingBalanceConflict (different amount or date for an account that already has one)
+Errors: unauthenticated, invalidArgument, notFound (accountInvalid), idempotencyConflict (a different amount or date for an account that already has an opening balance; the use case derives its own key, so the first stands and the correction path is explicit)
 
 Use case: RecordOpeningBalance
 
@@ -158,7 +169,7 @@ Request: `{ idempotencyKey, transactionId, replacement?, rationale }`. Omitting 
 
 Response: `{ reversalTransactionId, replacementTransactionId?, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound, idempotencyConflict, alreadyReversed
+Errors: unauthenticated, invalidArgument, notFound, idempotencyConflict
 
 Use case: CorrectTransaction (reversal plus replacement, atomic)
 
@@ -206,7 +217,7 @@ Request: `{ uploadId, idempotencyKey }`
 
 Response: `{ sourceEventId, duplicate }`
 
-Errors: unauthenticated, notFound, idempotencyConflict, consentRequired
+Errors: unauthenticated, notFound, idempotencyConflict
 
 Use case: FinalizeUpload
 

@@ -71,6 +71,37 @@ function validRequest(name: string): Record<string, unknown> {
   return example as Record<string, unknown>;
 }
 
+const RESPONSES: Record<CommandName, Record<string, unknown>> = {
+  bootstrapUser: { created: true },
+  createAccount: { accountId: "a" },
+  recordOpeningBalance: { transactionId: "t", status: "recorded" },
+  createPaymentInstrument: { instrumentId: "i" },
+  updateSettings: { updated: true },
+  submitEvidence: { sourceEventId: "s", status: "received", duplicate: false },
+  sendChatMessage: { messageId: "m", status: "accepted" },
+  confirmCandidate: { status: "recorded", transactionId: "t" },
+  resolveFollowUp: { state: "resolved" },
+  snoozeFollowUp: { state: "snoozed" },
+  retrySourceEvent: { status: "received" },
+  cancelSourceEvent: { status: "cancelled" },
+  correctTransaction: { reversalTransactionId: "r", status: "recorded" },
+  recordCustodyTransfer: { transactionId: "t", status: "recorded" },
+  upsertCashAllocation: { allocationId: "a" },
+  createUploadSession: { uploadId: "u", uploadPath: "p", expiresAtMs: 1 },
+  finalizeUpload: { sourceEventId: "s", duplicate: false },
+  setOcrConsent: { granted: true },
+  recordReconciliation: { reconciliationId: "r", differenceMinor: -5 },
+  recordAdjustment: { transactionId: "t", status: "recorded" },
+  requestExport: { requestId: "r" },
+  requestAccountDeletion: { requestId: "r" },
+};
+
+function validResponse(name: string): Record<string, unknown> {
+  const example = (RESPONSES as Record<string, Record<string, unknown>>)[name];
+  if (example === undefined) throw new Error(`no valid response example for command ${name}`);
+  return example;
+}
+
 function docHeadings(): string[] {
   const path = fileURLToPath(
     new URL("../../../../docs/architecture/function-contracts.md", import.meta.url),
@@ -92,6 +123,9 @@ describe("COMMANDS", () => {
   it("every command has strict request and response schemas", () => {
     for (const [name, c] of Object.entries(COMMANDS)) {
       expect(c.request.safeParse({ ...validRequest(name), injected: 1 }).success, name).toBe(false);
+      const res = validResponse(name);
+      expect(c.response.safeParse(res).success, `${name} valid response`).toBe(true);
+      expect(c.response.safeParse({ ...res, injected: 1 }).success, `${name} response`).toBe(false);
     }
   });
   it.each(names)("%s has no ownerId in its request", (name) => {
@@ -106,6 +140,11 @@ describe("COMMANDS", () => {
       ).toBe(false);
     },
   );
+  it.each([-5000, 0])("recordOpeningBalance accepts signed amount %s", (amountMinor) => {
+    expect(
+      COMMANDS.recordOpeningBalance.request.safeParse({ ...validOpening, amountMinor }).success,
+    ).toBe(true);
+  });
   it("rejects malformed amounts on every other money-bearing command", () => {
     const moneyFields: Array<[CommandName, string]> = [
       ["recordCustodyTransfer", "amountMinor"],
