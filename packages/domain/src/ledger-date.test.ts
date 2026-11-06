@@ -16,6 +16,24 @@ describe("LedgerDate", () => {
     );
   });
 
+  it.each([
+    "2024-01-01T06:00:00",
+    "2024",
+    "1",
+    "March 5, 2024",
+    "2024-01-01",
+    "2024-02-30T00:00:00Z",
+    "2023-02-29T00:00:00Z",
+    "2024-13-01T00:00:00Z",
+    "2024-01-01T24:00:00Z",
+  ])("rejects non-strict or impossible ISO %j", (bad) => {
+    expect(() => LedgerDate.fromIso(bad)).toThrow(code("invalidDate"));
+  });
+
+  it("accepts a leap day", () => {
+    expect(LedgerDate.fromIso("2024-02-29T00:00:00Z").toIso()).toBe("2024-02-29T00:00:00.000Z");
+  });
+
   it("compares with isAfter", () => {
     const a = LedgerDate.fromEpochMs(1);
     const b = LedgerDate.fromEpochMs(2);

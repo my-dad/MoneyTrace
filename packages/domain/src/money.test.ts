@@ -70,6 +70,11 @@ describe("Money.allocate", () => {
   it("respects weights", () => {
     expect(
       bdt(10)
+        .allocate([1, 2])
+        .map((m) => m.minor),
+    ).toEqual([3, 7]);
+    expect(
+      bdt(10)
         .allocate([3, 1])
         .map((m) => m.minor),
     ).toEqual([8, 2]);
