@@ -1,7 +1,6 @@
 import {
   DomainError,
   LedgerDate,
-  defaultPostingPolicy,
   type IdempotencyKey,
   type OwnerId,
   type PostingIntent,
@@ -11,16 +10,23 @@ import {
 import type { AccountRepository } from "../ports/account-repository";
 import type { Clock } from "../ports/clock";
 import type { Hasher } from "../ports/hasher";
-import type { TransactionRecord } from "../ports/ledger-reader";
+import type { LedgerReader, TransactionRecord } from "../ports/ledger-reader";
 import {
   canonicalPayload,
   type LedgerCommitResult,
   type LedgerWriter,
 } from "../ports/ledger-writer";
 import { assertAccountsUsable } from "./account-validation";
-import { auditDetailsOf } from "./audit-details";
+import { resolveIntent } from "./resolve-intent";
+import { auditDetailsOf, auditJson } from "./audit-details";
 
-type Deps = { writer: LedgerWriter; accounts: AccountRepository; hasher: Hasher; clock: Clock };
+type Deps = {
+  writer: LedgerWriter;
+  reader: LedgerReader;
+  accounts: AccountRepository;
+  hasher: Hasher;
+  clock: Clock;
+};
 
 export class PostTransaction {
   private readonly deps: Deps;
@@ -42,13 +48,20 @@ export class PostTransaction {
     if (intent.type === "openingBalance") {
       throw new DomainError("invalidIntent", "opening balances go through RecordOpeningBalance");
     }
+    if (input.actor.trim() === "")
+      throw new DomainError("invalidIntent", "actor must not be blank");
     LedgerDate.fromEpochMs(input.occurredAtMs);
-    const entries = defaultPostingPolicy.toEntries(intent);
+    const { intent: resolved, entries } = await resolveIntent(
+      this.deps.reader,
+      ownerId,
+      intent,
+      input.occurredAtMs,
+    );
     const first = entries[0];
     if (first === undefined) throw new DomainError("invalidIntent", "intent produced no entries");
     await assertAccountsUsable(this.deps.accounts, ownerId, entries);
 
-    const audit = auditDetailsOf(intent);
+    const audit = auditDetailsOf(resolved);
     const transaction: TransactionRecord = {
       id: input.transactionId,
       state: "posted",
@@ -65,6 +78,9 @@ export class PostTransaction {
         transactionId: input.transactionId,
         intentType: intent.type,
         sourceEventIds: [...input.sourceEventIds],
+        actor: input.actor,
+        audit: auditJson(audit),
+        occurredAt: resolved.type === "historicalImport" ? resolved.occurredAt.epochMs : null,
       }),
     );
     return this.deps.writer.commit(ownerId, {

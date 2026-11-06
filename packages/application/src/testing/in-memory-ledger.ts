@@ -1,8 +1,10 @@
 import {
   DomainError,
+  LedgerDate,
   assertBalanced,
   assertTransition,
   type AccountId,
+  type CutoverMarker,
   type EntryDraft,
   type OwnerId,
   type TransactionId,
@@ -38,6 +40,23 @@ function atomically<T>(body: () => T): Promise<T> {
     return Promise.resolve(body());
   } catch (e) {
     return Promise.reject(e instanceof Error ? e : new Error(String(e)));
+  }
+}
+
+/** The reversal must be the stored entries with every side flipped, as a multiset. */
+function assertMirrors(stored: readonly EntryRecord[], reversal: readonly EntryDraft[]): void {
+  const key = (account: string, side: string, minor: number, currency: string): string =>
+    `${account}|${side}|${String(minor)}|${currency}`;
+  const want = stored
+    .map((e) =>
+      key(e.accountId, e.side === "debit" ? "credit" : "debit", e.amountMinor, e.currency),
+    )
+    .sort();
+  const got = reversal
+    .map((e) => key(e.account.id, e.side, e.amount.minor, e.amount.currency))
+    .sort();
+  if (want.length !== got.length || want.some((k, i) => k !== got[i])) {
+    throw new DomainError("invalidIntent", "reversal entries must mirror the stored entries");
   }
 }
 
@@ -104,13 +123,17 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       }
       assertTransition(s.transactions.get(c.transaction.id)?.state ?? null, "posted");
       if (c.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(c.entries);
-      if (c.cutoverMarker && s.markers.has(c.cutoverMarker.accountId)) {
-        return { status: "idempotencyConflict" };
+      if (c.cutoverMarker) {
+        if (c.cutoverMarker.effectiveAt.epochMs !== c.transaction.occurredAtMs) {
+          throw new DomainError("invalidIntent", "marker date must equal the transaction date");
+        }
+        if (s.markers.has(c.cutoverMarker.accountId)) return { status: "idempotencyConflict" };
       }
 
       InMemoryLedger.write(s, c.transaction, c.entries);
-      if (c.cutoverMarker)
+      if (c.cutoverMarker) {
         s.markers.set(c.cutoverMarker.accountId, c.cutoverMarker.effectiveAt.epochMs);
+      }
       s.idempotency.set(c.idempotencyKey, {
         payloadHash: c.payloadHash,
         transactionId: c.transaction.id,
@@ -128,11 +151,43 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       const original = s.transactions.get(c.originalTransactionId);
       assertTransition(original?.state ?? null, "reversed");
       if (original === undefined) throw new DomainError("invalidTransition", "original not found");
+      if (original.correctionOf !== undefined) {
+        const parent = s.transactions.get(original.correctionOf);
+        if (parent?.reversedBy === original.id) {
+          throw new DomainError("invalidTransition", "a reversal cannot itself be reversed");
+        }
+      }
+      if (c.reversal.state !== "posted" || c.reversal.correctionOf !== original.id) {
+        throw new DomainError("invalidIntent", "reversal must be posted and link to the original");
+      }
       assertTransition(s.transactions.get(c.reversal.id)?.state ?? null, "posted");
-      assertBalanced(c.reversalEntries);
+      const stored = s.entries.get(original.id) ?? [];
+      assertMirrors(stored, c.reversalEntries);
+      if (c.reversalEntries.length > 0) assertBalanced(c.reversalEntries);
+
+      const isOpening = original.intentType === "openingBalance";
+      if (isOpening !== (c.cutoverMarker !== undefined)) {
+        throw new DomainError("invalidIntent", "only an opening correction carries a marker");
+      }
+      if (c.cutoverMarker) {
+        const r = c.replacement;
+        if (r === undefined || r.transaction.occurredAtMs !== c.cutoverMarker.effectiveAt.epochMs) {
+          throw new DomainError("invalidIntent", "an opening correction needs a dated replacement");
+        }
+        if (!s.markers.has(c.cutoverMarker.accountId)) {
+          throw new DomainError("invalidIntent", "no marker to replace");
+        }
+      }
       if (c.replacement) {
-        assertTransition(s.transactions.get(c.replacement.transaction.id)?.state ?? null, "posted");
-        assertBalanced(c.replacement.entries);
+        const r = c.replacement;
+        if ((r.transaction.intentType === "openingBalance") !== isOpening) {
+          throw new DomainError("invalidIntent", "replacement kind does not match the original");
+        }
+        if (r.transaction.state !== "posted") {
+          throw new DomainError("invalidIntent", "replacement must be posted");
+        }
+        assertTransition(s.transactions.get(r.transaction.id)?.state ?? null, "posted");
+        if (r.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(r.entries);
       }
 
       s.transactions.set(original.id, {
@@ -142,6 +197,9 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       });
       InMemoryLedger.write(s, c.reversal, c.reversalEntries);
       if (c.replacement) InMemoryLedger.write(s, c.replacement.transaction, c.replacement.entries);
+      if (c.cutoverMarker) {
+        s.markers.set(c.cutoverMarker.accountId, c.cutoverMarker.effectiveAt.epochMs);
+      }
       s.idempotency.set(c.idempotencyKey, {
         payloadHash: c.payloadHash,
         transactionId: c.reversal.id,
@@ -173,6 +231,18 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
 
   getBalance(ownerId: OwnerId, accountId: AccountId): Promise<number> {
     return atomically(() => this.of(ownerId).balances.get(accountId) ?? 0);
+  }
+
+  getCutoverMarkers(ownerId: OwnerId, accountIds: readonly AccountId[]): Promise<CutoverMarker[]> {
+    return atomically(() => {
+      const found: CutoverMarker[] = [];
+      for (const id of new Set(accountIds)) {
+        const ms = this.of(ownerId).markers.get(id);
+        if (ms !== undefined)
+          found.push({ accountId: id, effectiveAt: LedgerDate.fromEpochMs(ms) });
+      }
+      return found;
+    });
   }
 
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number> {

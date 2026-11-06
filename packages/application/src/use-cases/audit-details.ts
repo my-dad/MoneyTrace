@@ -1,5 +1,6 @@
 import type { PostingIntent } from "@moneytrace/domain";
 import type { TransactionRecord } from "../ports/ledger-reader";
+import type { Json } from "../ports/ledger-writer";
 
 /** Cause and authorizer of an adjustment, and the holder of a custody transfer (PRD section 7). */
 export function auditDetailsOf(intent: PostingIntent): TransactionRecord["auditDetails"] {
@@ -13,4 +14,14 @@ export function auditDetailsOf(intent: PostingIntent): TransactionRecord["auditD
     default:
       return undefined;
   }
+}
+
+/** Audit details as hashable JSON, with absent fields as null. */
+export function auditJson(audit: TransactionRecord["auditDetails"]): Json {
+  if (audit === undefined) return null;
+  return {
+    cause: audit.cause ?? null,
+    authorizedBy: audit.authorizedBy ?? null,
+    holderName: audit.holderName ?? null,
+  };
 }

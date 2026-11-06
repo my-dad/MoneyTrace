@@ -11,6 +11,7 @@ import {
 import type { AccountRepository } from "../ports/account-repository";
 import type { Clock } from "../ports/clock";
 import type { Hasher } from "../ports/hasher";
+import type { LedgerReader } from "../ports/ledger-reader";
 import {
   canonicalPayload,
   type LedgerCommitResult,
@@ -18,7 +19,13 @@ import {
 } from "../ports/ledger-writer";
 import { assertAccountsUsable } from "./account-validation";
 
-type Deps = { writer: LedgerWriter; accounts: AccountRepository; hasher: Hasher; clock: Clock };
+type Deps = {
+  writer: LedgerWriter;
+  reader: LedgerReader;
+  accounts: AccountRepository;
+  hasher: Hasher;
+  clock: Clock;
+};
 
 export class RecordOpeningBalance {
   private readonly deps: Deps;
@@ -35,6 +42,8 @@ export class RecordOpeningBalance {
     actor: string;
   }): Promise<LedgerCommitResult> {
     const { ownerId, accountId, amount } = input;
+    if (input.actor.trim() === "")
+      throw new DomainError("invalidIntent", "actor must not be blank");
     const effectiveAt = LedgerDate.fromEpochMs(input.effectiveAtMs);
     const [record] = await this.deps.accounts.getMany(ownerId, [accountId]);
     if (record === undefined) throw new DomainError("accountInvalid", "account not found");
@@ -58,13 +67,15 @@ export class RecordOpeningBalance {
         accountId,
         amountMinor: amount.minor,
         currency: amount.currency,
+        actor: input.actor,
       }),
     );
-    return this.deps.writer.commit(ownerId, {
+    const transactionId = asTransactionId(`opening-${accountId}`);
+    const result = await this.deps.writer.commit(ownerId, {
       idempotencyKey: asIdempotencyKey(`opening:${accountId}`),
       payloadHash,
       transaction: {
-        id: asTransactionId(`opening-${accountId}`),
+        id: transactionId,
         state: "posted",
         intentType: "openingBalance",
         occurredAtMs: input.effectiveAtMs,
@@ -76,5 +87,12 @@ export class RecordOpeningBalance {
       entries,
       cutoverMarker: { accountId, effectiveAt },
     });
+    // After a correction the opening is no longer the effective one; corrections go through
+    // ReverseAndReplace, so a replay must not read as success.
+    if (result.status === "duplicate") {
+      const stored = await this.deps.reader.getTransaction(ownerId, transactionId);
+      if (stored?.state === "reversed") return { status: "idempotencyConflict" };
+    }
+    return result;
   }
 }

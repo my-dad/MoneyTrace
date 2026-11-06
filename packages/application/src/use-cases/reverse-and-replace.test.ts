@@ -47,7 +47,13 @@ const correct = (key: string, replacement: PostingIntent | null, rationale = "wr
 
 beforeEach(async () => {
   w = createWorld();
-  const deps = { writer: w.ledger, accounts: w.accounts, hasher: w.hasher, clock: w.clock };
+  const deps = {
+    writer: w.ledger,
+    reader: w.ledger,
+    accounts: w.accounts,
+    hasher: w.hasher,
+    clock: w.clock,
+  };
   reverse = new ReverseAndReplace({ ...deps, reader: w.ledger });
   for (const a of [bank, cash]) {
     await w.accounts.create(alice, {

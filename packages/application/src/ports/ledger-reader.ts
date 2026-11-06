@@ -7,6 +7,7 @@ import type {
   TransactionId,
   TransactionState,
   AccountKind,
+  CutoverMarker,
 } from "@moneytrace/domain";
 
 /** Mirrors the `transactions` schema in `@moneytrace/contracts`. */
@@ -45,4 +46,6 @@ export type LedgerReader = {
   getBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
   /** The same figure summed from entries; used to prove the projection. */
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
+  /** The stored cutover markers for the given accounts; accounts without one are omitted. */
+  getCutoverMarkers(ownerId: OwnerId, accountIds: readonly AccountId[]): Promise<CutoverMarker[]>;
 };

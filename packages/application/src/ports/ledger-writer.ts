@@ -22,6 +22,8 @@ export type CorrectionCommit = {
   reversal: TransactionRecord;
   reversalEntries: readonly EntryDraft[];
   replacement?: { transaction: TransactionRecord; entries: readonly EntryDraft[] };
+  /** Present exactly when the original is an opening balance: replaces the account's marker. */
+  cutoverMarker?: CutoverMarker;
 };
 
 export type LedgerCommitResult =
@@ -36,8 +38,15 @@ export type LedgerCommitResult =
  * with a cutover marker). The transition into `posted` is checked against the stored state.
  * At most one cutover marker exists per account: a second one is `idempotencyConflict`.
  *
- * commitCorrection: the original must be `posted` (else DomainError `invalidTransition`). It
- * becomes `reversed`, and the reversal and optional replacement are written in the same step.
+ * A marker's effective date must equal its transaction's occurredAtMs.
+ *
+ * commitCorrection: the original must be `posted` and not itself a reversal (else DomainError
+ * `invalidTransition`). The reversal must be `posted`, link back through `correctionOf`, and
+ * mirror the stored entries exactly (else `invalidIntent`). The original becomes `reversed`, and
+ * the reversal and optional replacement are written in the same step. Opening balances are
+ * corrected only with a replacement and a `cutoverMarker` that atomically replaces the
+ * account's marker; no other transaction may carry one. Entry sets may be empty only for an
+ * opening balance that has no entries.
  */
 export type LedgerWriter = {
   commit(ownerId: OwnerId, c: LedgerCommit): Promise<LedgerCommitResult>;

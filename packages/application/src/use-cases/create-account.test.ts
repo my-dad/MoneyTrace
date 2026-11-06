@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asOwnerId } from "@moneytrace/domain";
+import { asAccountId, asOwnerId } from "@moneytrace/domain";
 import { createWorld } from "../testing/world";
 import { CreateAccount } from "./create-account";
 
@@ -34,6 +34,6 @@ describe("CreateAccount", () => {
     await expect(
       useCase.execute({ ownerId: owner, kind: "cash", name: "   ", currency: "BDT" }),
     ).rejects.toThrow(expect.objectContaining({ code: "invalidIntent" }) as Error);
-    expect(await w.accounts.getMany(owner, [])).toEqual([]);
+    expect(await w.accounts.getMany(owner, [asAccountId("id-1")])).toEqual([]);
   });
 });
