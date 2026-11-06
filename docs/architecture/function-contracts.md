@@ -1,6 +1,6 @@
 # Function contracts
 
-Schemas live in `packages/contracts/src/commands/` and `packages/contracts/src/triggers.ts`. Every request and response is a strict Zod object, so unknown fields are rejected. No request carries `ownerId`: the owner always comes from the verified Auth token, and a body that includes one fails as `invalidArgument`. Money is integer minor units plus a currency code (BDT only). Amounts that are floats, strings, `NaN` or outside the safe integer range are rejected before any write.
+Schemas live in `packages/contracts/src/commands/` and `packages/contracts/src/triggers.ts`. Every request and response is a strict Zod object, so unknown fields are rejected. No request carries `ownerId`: the owner always comes from the verified Auth token, and a body that includes one fails as `invalid-argument`. Money is integer minor units plus a currency code (BDT only). Amounts that are floats, strings, `NaN` or outside the safe integer range are rejected before any write.
 
 ## Wire mapping
 
@@ -13,7 +13,9 @@ Every handler maps failures to Firebase callable codes exactly like this:
 - `idempotencyConflict`: `already-exists`.
 - Anything else: `internal`, with no detail.
 
-Per-command `Errors:` lines below name the domain-level cause, in the same vocabulary. Any command whose use case derives or accepts an idempotency key returns `idempotencyConflict` when that key meets a different payload. Handlers ship in the listed phase. The contract exists from Phase 0.
+Commands with a missing non-account resource (transaction, follow-up, upload, source event) arrive in later phases. The phase that first needs it adds a `resourceNotFound` domain code mapped to `not-found`.
+
+Per-command `Errors:` lines use these wire codes, with the domain code in parentheses where one exists today. Any command whose use case derives or accepts an idempotency key returns `idempotencyConflict` when that key meets a different payload. Handlers ship in the listed phase. The contract exists from Phase 0.
 
 ## Commands
 
@@ -37,7 +39,7 @@ Request: `{ kind: bank|cash|familyCash|creditLiability, name, currency }`
 
 Response: `{ accountId }`
 
-Errors: unauthenticated, invalidArgument
+Errors: unauthenticated, invalid-argument
 
 Use case: CreateAccount
 
@@ -49,7 +51,7 @@ Request: `{ accountId, amountMinor, currency, effectiveAtMs }`. `amountMinor` is
 
 Response: `{ transactionId, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound (accountInvalid), idempotencyConflict (a different amount or date for an account that already has an opening balance; the use case derives its own key, so the first stands and the correction path is explicit)
+Errors: unauthenticated, invalid-argument, not-found (accountInvalid), already-exists (idempotencyConflict; a different amount or date for an account that already has an opening balance; the use case derives its own key, so the first stands and the correction path is explicit)
 
 Use case: RecordOpeningBalance
 
@@ -61,7 +63,7 @@ Request: `{ accountId, maskedIdentifier, type: debitCard|creditCard }`
 
 Response: `{ instrumentId }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: CreatePaymentInstrument
 
@@ -73,7 +75,7 @@ Request: `{ reportingCycle?, reminders?, aiBudget? }`
 
 Response: `{ updated }`
 
-Errors: unauthenticated, invalidArgument
+Errors: unauthenticated, invalid-argument
 
 Use case: UpdateSettings
 
@@ -85,7 +87,7 @@ Request: `{ idempotencyKey, text }`. `text` is 1 to 10,000 characters.
 
 Response: `{ sourceEventId, status, duplicate }`
 
-Errors: unauthenticated, invalidArgument, idempotencyConflict
+Errors: unauthenticated, invalid-argument, already-exists (idempotencyConflict)
 
 Use case: SubmitEvidence
 
@@ -97,7 +99,7 @@ Request: `{ conversationId, text }`. `text` is 1 to 10,000 characters.
 
 Response: `{ messageId, status: accepted|pending }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: SendChatMessage
 
@@ -109,7 +111,7 @@ Request: `{ sourceEventId, decision: confirm|reject, overrides? }`
 
 Response: `{ status: recorded|rejected|pending, transactionId? }`
 
-Errors: unauthenticated, invalidArgument, notFound, invalidTransition
+Errors: unauthenticated, invalid-argument, not-found, failed-precondition (invalidTransition)
 
 Use case: ConfirmCandidate
 
@@ -121,7 +123,7 @@ Request: `{ followUpId, resolution: {kind: answer, text} | {kind: dismiss} }`
 
 Response: `{ state: resolved|dismissed }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: ResolveFollowUp
 
@@ -133,7 +135,7 @@ Request: `{ followUpId, untilMs }`
 
 Response: `{ state: snoozed }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: SnoozeFollowUp
 
@@ -145,7 +147,7 @@ Request: `{ sourceEventId }`. An explicit user retry, the only way to re-send a 
 
 Response: `{ status }`
 
-Errors: unauthenticated, notFound, invalidTransition
+Errors: unauthenticated, not-found, failed-precondition (invalidTransition)
 
 Use case: RetrySourceEvent
 
@@ -157,7 +159,7 @@ Request: `{ sourceEventId }`
 
 Response: `{ status }`
 
-Errors: unauthenticated, notFound, invalidTransition
+Errors: unauthenticated, not-found, failed-precondition (invalidTransition)
 
 Use case: CancelSourceEvent
 
@@ -169,7 +171,7 @@ Request: `{ idempotencyKey, transactionId, replacement?, rationale }`. Omitting 
 
 Response: `{ reversalTransactionId, replacementTransactionId?, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound, idempotencyConflict
+Errors: unauthenticated, invalid-argument, not-found, already-exists (idempotencyConflict)
 
 Use case: CorrectTransaction (reversal plus replacement, atomic)
 
@@ -181,7 +183,7 @@ Request: `{ idempotencyKey, fromAccountId, toAccountId, amountMinor, currency, h
 
 Response: `{ transactionId, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound, idempotencyConflict
+Errors: unauthenticated, invalid-argument, not-found, already-exists (idempotencyConflict)
 
 Use case: RecordCustodyTransfer
 
@@ -193,7 +195,7 @@ Request: `{ walletId, purpose, amountMinor, currency }`
 
 Response: `{ allocationId }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: UpsertCashAllocation
 
@@ -205,7 +207,7 @@ Request: `{ mimeType, sizeBytes }`. MIME is image/jpeg, image/png, image/webp or
 
 Response: `{ uploadId, uploadPath, expiresAtMs }`
 
-Errors: unauthenticated, invalidArgument
+Errors: unauthenticated, invalid-argument
 
 Use case: CreateUploadSession
 
@@ -217,7 +219,7 @@ Request: `{ uploadId, idempotencyKey }`
 
 Response: `{ sourceEventId, duplicate }`
 
-Errors: unauthenticated, notFound, idempotencyConflict
+Errors: unauthenticated, not-found, already-exists (idempotencyConflict)
 
 Use case: FinalizeUpload
 
@@ -229,7 +231,7 @@ Request: `{ consentVersion, granted }`
 
 Response: `{ granted }`
 
-Errors: unauthenticated, invalidArgument
+Errors: unauthenticated, invalid-argument
 
 Use case: SetOcrConsent
 
@@ -241,7 +243,7 @@ Request: `{ accountId, countedMinor, currency, countedAtMs }`. A difference is n
 
 Response: `{ reconciliationId, differenceMinor }`
 
-Errors: unauthenticated, invalidArgument, notFound
+Errors: unauthenticated, invalid-argument, not-found
 
 Use case: RecordReconciliation
 
@@ -253,7 +255,7 @@ Request: `{ idempotencyKey, accountId, direction: increase|decrease, amountMinor
 
 Response: `{ transactionId, status: recorded|alreadyRecorded }`
 
-Errors: unauthenticated, invalidArgument, notFound, idempotencyConflict
+Errors: unauthenticated, invalid-argument, not-found, already-exists (idempotencyConflict)
 
 Use case: RecordAdjustment
 
@@ -277,7 +279,7 @@ Request: `{ confirmation: "DELETE MY ACCOUNT" }`
 
 Response: `{ requestId }`
 
-Errors: unauthenticated, invalidArgument
+Errors: unauthenticated, invalid-argument
 
 Use case: RequestAccountDeletion
 
