@@ -1,0 +1,9 @@
+{
+  "name": "@moneytrace/application",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@moneytrace/contracts": "workspace:*", "@moneytrace/domain": "workspace:*" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" }
+}
