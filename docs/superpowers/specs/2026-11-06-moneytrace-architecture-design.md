@@ -88,7 +88,9 @@ Cutover: a `CutoverMarker` (account, effective timestamp) is written with each `
 
 ## 5. Ingestion pipeline (SMS, AI, OCR)
 
-Every input becomes a `SourceEvent` first (hash and idempotency key stored before processing). The user gets an immediate acknowledgment; all later stages are asynchronous.
+Every input becomes a `SourceEvent` first (owner-scoped source hash and idempotency key stored before processing).
+
+Tenant scoping: all idempotency and deduplication uniqueness is owner-scoped, as `(ownerId, idempotencyKey)` and `(ownerId, sourceHash)`. All data lives under `users/{ownerId}/...`, so document IDs cannot collide across users and security rules are path-scoped. `MatchingService` and every repository query are bound to a single `ownerId` and cannot read outside that owner's subtree. The ports take `ownerId` as a required argument, and a test submits identical SMS text and the same idempotency key as two different owners and asserts that both are accepted independently. The user gets an immediate acknowledgment; all later stages are asynchronous.
 
 Stages (each an idempotent use case triggered by a `SourceEvent` status change, keyed on `(sourceEventId, stage)`):
 
@@ -104,7 +106,13 @@ Concurrency and claim protocol (Firestore triggers are at-least-once and may run
 - Each `SourceEvent` carries `status`, `stageAttempt`, `claim { workerId, stage, leaseExpiresAt }` and `version`.
 - A worker claims a stage in one Firestore transaction: read the event, proceed only if `status` equals the stage's expected input state and there is no live claim, then write `claim` with a lease and increment `version`. Losing the race means exiting silently.
 - Side effects are written under the claim: the stage output, the next `status` and the claim release are committed together in one transaction that re-checks `version`. Stage outputs use deterministic document IDs derived from `(sourceEventId, stage)` (for example the `FollowUp` and `DecisionRecord`), so a duplicate worker cannot create a second copy.
-- External calls (AI, OCR) are made after claiming and before committing. If a lease expires, a scheduled recovery job re-opens the stage with a higher `stageAttempt`. A late worker's commit fails the `version` check and is discarded. AI usage is reserved against quota before the call and reconciled afterward, so a discarded attempt cannot be billed twice in app-side accounting.
+- External calls (AI, OCR) go through a durable `ProviderCall` record so a retry never repeats a call whose outcome is already known:
+  1. After claiming, the worker get-or-creates `ProviderCall` with deterministic ID `(ownerId, sourceEventId, stage)` and fields `state` (`started | succeeded | failed | abandoned`), `requestKey`, `attemptCount`, `quotaReservation`, `result`. `requestKey` is derived from `(ownerId, sourceEventId, stage, attemptCount)`.
+  2. If `state` is `succeeded`, the worker reuses the stored `result` and never calls the provider. A failed Firestore stage commit after provider success therefore costs nothing on retry.
+  3. The call runs under a hard timeout that is strictly shorter than the lease (`timeout + margin < leaseDuration`), and a heartbeat extends the lease while the call is in flight. Recovery reopens a stage only after lease expiry, so by construction the original call has ended or been aborted.
+  4. The provider result is written to `ProviderCall` (`state = succeeded`) in its own write immediately after the response, before the stage commit. Results are stored in minimized form and follow the retention policy in section 7.
+  5. Adapters declare `supportsIdempotencyKey`. Where the provider honors an idempotency header, the adapter sends `requestKey`. Where it does not, a timed-out call may still be billed by the provider; this residual cost is bounded by `maxAttempts` and by charging the quota reservation for every attempt, and is reconciled against provider-reported usage when available. The spec does not claim zero duplicate billing for such providers.
+  6. If a lease expires, a scheduled recovery job re-opens the stage with a higher `stageAttempt`. A late worker's commit fails the `version` check and is discarded.
 - `PostTransaction` is additionally protected by its own idempotency record inside the ledger transaction, so even a claim failure cannot double-post.
 - Attempts are bounded; after the limit the event moves to the dead-letter review state.
 
@@ -167,6 +175,12 @@ Release-gate traceability (every gate has one owning implementation boundary and
 | n/a (PRD §7) | Pending authorization and final posting counted once | `domain`: `PendingAuthorization` rules, `MatchingService` | Domain unit; application test |
 | n/a (PRD §7) | Family cash custody is not spending | `domain`: `CashCustodyTransfer` strategy | Domain unit; report-level test |
 | n/a (§5) | Concurrent duplicate stage processing | `application`: claim protocol; `infrastructure`: `SourceEventRepository` | Emulator integration with parallel workers |
+| n/a (§5) | Provider call not repeated after lease expiry or lost commit | `application`: `ProviderCall` get-or-create flow; adapter `supportsIdempotencyKey` | Application test with fake provider and injected commit failure; emulator integration for lease expiry |
+| n/a (§5) | Keys and matching are owner-scoped | `application` and `infrastructure`: `ownerId` on every port; path-scoped rules | Two-owner emulator test (same SMS, same key); rules unit tests |
+| n/a (PRD §10) | Export, deletion and retention | `application`: `ExportUserData`, `RequestAccountDeletion`, `RetentionPolicy` | Phase 4 emulator acceptance tests (full export; deletion verified and retried) |
+| n/a (PRD §10) | Backup and restore | `infrastructure`: backup configuration and deletion-log replay | Phase 0 staging restore drill, repeated before the pilot |
+
+Mandatory gates: the emulator integration and application tests in this table (receipt deletion, card partial repayment, cross-user isolation, claim and provider-call tests, retention and restore) are required CI and release gates that block merge and release. They are not optional coverage. E2E stays deliberately limited to the two critical paths because the lower layers own correctness.
 
 Security:
 - Firestore and Storage rules are deny-by-default and owner-scoped. Ledger collections are read-only to clients.
@@ -174,6 +188,13 @@ Security:
 - Secrets in Secret Manager. PII redacted before logging or AI calls. The AI receives only a scoped `authorizedFinancialContext`.
 
 Observability: `Logger` port with structured JSON and a correlation ID carried through every pipeline stage; `AIUsage` records drive cost dashboards and alerts; job status and deletion confirmations are recorded.
+
+Retention, backup, export and deletion (`application` use cases, `infrastructure` adapters):
+- A versioned `RetentionPolicy` configuration defines each data class: temporary uploads (deadline from the cleanup sweeper), extracted evidence and audit history (kept per the disclosed policy), `ProviderCall` results and conversation messages (bounded retention window), and logs (short retention, no raw financial content). The policy version is shown to the user in Settings.
+- `ExportUserData` produces a complete export of the owner's records (accounts, transactions, entries, evidence, audit) in a documented format.
+- `RequestAccountDeletion` creates a `DeletionJob` that removes the owner's entire subtree and Storage objects, verifies the result and retries failures. The user's deletion right takes precedence over ledger immutability, and only a minimal tombstone with no financial content remains as proof of deletion.
+- Backups: Firestore managed backups with point-in-time recovery and a defined retention period, disclosed to the user. Deletion does not reach backups; the disclosure says so (PRD §10). A deletion log is replayed after any restore so deleted data is not resurrected.
+- A restore drill runs in staging and is repeated before the pilot. Provider-side copies (managed OCR, AI) follow the provider profile and consent rules in section 5.
 
 CI/CD and standards:
 - GitHub Actions per PR: lint, typecheck, boundary check, unit, emulator integration, build. Deploy to staging first.
@@ -190,7 +211,8 @@ This spec fixes boundaries, rules and protocols. The concrete artifacts below ar
 - Callable and trigger contracts (`contracts` package) for every command.
 - Firestore and Storage Security Rules, with cross-user emulator tests.
 - Initial `ConfidencePolicy` rule set and configuration schema (threshold values themselves are tuned in Phase 1 against fixtures).
-- The claim-protocol implementation and its concurrency tests.
+- The claim-protocol and `ProviderCall` implementation with their concurrency and failure-injection tests.
+- The `RetentionPolicy` schema, backup configuration and the first staging restore drill (Phase 0); `ExportUserData` and `RequestAccountDeletion` are delivered and tested in Phase 4.
 - ADRs for the boundary-lint tool, and for the OCR provider after the Phase 2 benchmark.
 
 Each PRD phase gets its own plan; the first plan covers Phase 0 (Foundations) only.
