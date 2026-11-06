@@ -1,0 +1,48 @@
+import type {
+  AccountId,
+  CurrencyCode,
+  OwnerId,
+  PostingIntent,
+  SourceEventId,
+  TransactionId,
+  TransactionState,
+  AccountKind,
+} from "@moneytrace/domain";
+
+/** Mirrors the `transactions` schema in `@moneytrace/contracts`. */
+export type TransactionRecord = {
+  id: TransactionId;
+  state: TransactionState;
+  intentType: PostingIntent["type"];
+  occurredAtMs: number;
+  currency: CurrencyCode;
+  sourceEventIds: readonly SourceEventId[];
+  actor: string;
+  rationale?: string;
+  correctionOf?: TransactionId;
+  reversedBy?: TransactionId;
+  auditDetails?: { cause?: string; authorizedBy?: string; holderName?: string };
+  committedAtMs: number;
+};
+
+/** Mirrors the `ledgerEntries` schema in `@moneytrace/contracts`. */
+export type EntryRecord = {
+  /** `<transactionId>:<seq>`, seq starting at 1. */
+  id: string;
+  transactionId: TransactionId;
+  accountId: AccountId;
+  accountKind: AccountKind;
+  side: "debit" | "credit";
+  amountMinor: number;
+  currency: CurrencyCode;
+  occurredAtMs: number;
+};
+
+export type LedgerReader = {
+  getTransaction(ownerId: OwnerId, id: TransactionId): Promise<TransactionRecord | null>;
+  getEntries(ownerId: OwnerId, txId: TransactionId): Promise<EntryRecord[]>;
+  /** The stored projection: debits minus credits. */
+  getBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
+  /** The same figure summed from entries; used to prove the projection. */
+  recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
+};
