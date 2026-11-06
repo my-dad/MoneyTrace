@@ -463,8 +463,10 @@ export function describeLedgerContract(
     it("an opening correction needs a marker and a replacement, and only openings carry one", async () => {
       await writer.commit(alice, openingCommit(100_000));
       const good = openingCorrection("fix1", "opening-cash-1", 100_000, 120_000, EFFECTIVE + 1000);
-      const { cutoverMarker: _m, ...noMarker } = good;
-      const { replacement: _r, ...noReplacement } = good;
+      const noMarker: CorrectionCommit = { ...good };
+      delete noMarker.cutoverMarker;
+      const noReplacement: CorrectionCommit = { ...good };
+      delete noReplacement.replacement;
       await expect(writer.commitCorrection(alice, noMarker)).rejects.toThrow(code("invalidIntent"));
       await expect(writer.commitCorrection(alice, noReplacement)).rejects.toThrow(
         code("invalidIntent"),

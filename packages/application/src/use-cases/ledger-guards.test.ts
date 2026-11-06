@@ -194,7 +194,9 @@ describe("historical imports use stored markers (gate 36)", () => {
     await expect(
       postIntent(
         {
-          ...historical(effective + DAY),
+          type: "historicalImport",
+          occurredAt: LedgerDate.fromEpochMs(effective + DAY),
+          cutovers: [],
           inner: { type: "purchase", funding: cash, category: "food", amount: bdt(3) },
         },
         { occurredAtMs: effective + DAY },
