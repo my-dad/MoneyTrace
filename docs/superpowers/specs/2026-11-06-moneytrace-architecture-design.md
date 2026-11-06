@@ -207,7 +207,7 @@ Retention, backup, export and deletion (`application` use cases, `infrastructure
   - The export carries a manifest file with per-collection counts and the exclusion list above. If any included collection fails to export, the whole export is reported as failed and is never presented as complete.
 - `RequestAccountDeletion` creates a `DeletionJob` that removes the owner's entire subtree and Storage objects, verifies the result and retries failures. The user's deletion right takes precedence over ledger immutability, and only a minimal tombstone with no financial content remains as proof of deletion.
 - Backups: Firestore managed backups with point-in-time recovery and a defined retention period, disclosed to the user. Deletion does not reach backups; the disclosure says so (PRD §10). A deletion log is replayed after any restore so deleted data is not resurrected.
-- A restore drill runs in staging and is repeated before the pilot. Provider-side copies (managed OCR, AI) follow the provider profile and consent rules in section 5.
+- A restore drill runs in staging and is repeated before the pilot. It seeds and verifies every collection in `OwnerDataRegistry`, the user profile and the deletion log, with per-collection counts and hashes. Firestore backups do not include Auth or Storage: Auth UIDs are checked through an export, and Storage originals are deliberately not restored. Provider-side copies (managed OCR, AI) follow the provider profile and consent rules in section 5.
 
 CI/CD and standards:
 - GitHub Actions per PR: lint, typecheck, boundary check, unit, emulator integration, build. Deploy to staging first.

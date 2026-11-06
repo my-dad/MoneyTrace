@@ -44,7 +44,7 @@ Most likely first. Each has a named test in its owning task.
 | SMS parsers, `AIProvider`, `AIGateway`, DeepSeek adapter, `ResumeQuotaBlockedEvents`, `MatchingService` and `PendingAuthorization` matching, `FollowUp` and `CashAllocation` aggregates and handlers, deployed pipeline triggers and recovery schedule, delivery of 80% quota warnings to the user, the Settings disclosure that OCR, Firestore, Functions, Storage and egress costs are separate from the AI budget, a screen for AI usage metrics, `ui-kit`, Storybook, axe checks, TanStack Query, `ReadModelGateway`, PWA shell, Playwright | Phase 1 |
 | `OCRProvider`, Storage upload flow, `DeleteTemporaryUpload`, sweeper | Phase 2 |
 | `Reconciliation` aggregate, reports | Phase 3 |
-| `ExportUserData`, `RequestAccountDeletion`, deletion-log replay, App Check enforcement, CI staging deploy | Phase 4 |
+| `ExportUserData`, `RequestAccountDeletion`, deletion-log replay, scheduled Auth export, App Check enforcement, CI staging deploy | Phase 4 |
 
 Release gates after Phase 0: **33, 35 and 36** have their owning tests green. **25 and 26** are green at domain and adapter level and complete end to end at the Phase 1 exit. Gates 27 to 32 and 34 belong to later phases. The spec's traceability rows for claims, provider calls, owner scoping, and the registry CI test are also green.
 
@@ -111,7 +111,7 @@ Expected: `12.18.0`. If `corepack enable` cannot write its shims, use `corepack 
 - `tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `module: ESNext`, `moduleResolution: Bundler`, `target: ES2023`, `noEmit`, `verbatimModuleSyntax`.
 - `vitest.config.ts`: includes `**/*.test.{ts,tsx}`, excludes `**/*.emulator.test.ts`, `node_modules` and `tooling/boundaries/fixtures`.
 - `vitest.emulator.config.ts`: includes `**/*.emulator.test.ts`, with `fileParallelism: false`.
-- `.gitignore`: change `/node_modules` to `node_modules`, and add `dist/`, `.next/`, `.firebase/`, `firebase-debug.log`, `firestore-debug.log`, `*service-account*.json`.
+- `.gitignore`: change `/node_modules` to `node_modules`, and add `dist/`, `.next/`, `.firebase/`, `firebase-debug.log`, `firestore-debug.log`, `*service-account*.json`, `drill-expected.json`.
 
 | Script | Command |
 |---|---|
@@ -415,6 +415,7 @@ git commit -m "feat(domain): add lifecycles, provider retry decisions and Confid
   - `userProfileSchema` for the `users/{uid}` document
   - `OWNER_DATA_REGISTRY: Record<OwnerCollectionName, { retentionClass: RetentionClass; exportTreatment: 'included' | 'excluded'; clientRead: boolean }>`
   - `type RetentionClass = 'untilAccountDeletion' | 'providerResult' | 'conversation' | 'temporaryUpload'`
+  - `deletionLogEntrySchema = { ownerIdHash, deletedAtMs }` for the top-level, server-only `deletionLog` collection. It is outside `users/`, so it survives account deletion and is not in the registry. Phase 4 writes real entries and adds the replay
   - `retentionPolicySchema`, `DEFAULT_RETENTION_POLICY = { version: 1, temporaryUploadMaxHours: 24, providerResultDays: 30, conversationDays: 365, operationalLogDays: 30 }`. `temporaryUploadMaxHours` is a ceiling for abandoned files; normal deletion happens as soon as evidence is persisted. `operationalLogDays` covers Cloud Logging only and never applies to accounting records
   - `confidenceConfigSchema`, `DEFAULT_CONFIDENCE_CONFIG = { version: 1, aiAutoPostThresholdBp: 10001 }`. 10001 is above the maximum score, so AI cannot auto-post until Phase 1 tunes the value against fixtures.
 
@@ -1131,16 +1132,36 @@ Steps marked **Mabrur** need their Google account, billing or decisions. Everyth
 - Modify: root `package.json` (`drill:seed`, `drill:verify`, `deploy:staging`)
 
 **Interfaces:**
-- Consumes: Task 9 adapters, Task 8 use cases.
-- Produces: `ledgerChecksum(db, ownerId): Promise<{ entryCount: number; transactionCount: number; balances: Record<string, number> }>`, with deterministic key order.
+- Consumes: Task 9 adapters, Task 8 use cases, Task 5 `OWNER_DATA_REGISTRY`, `userProfileSchema` and `deletionLogEntrySchema`.
+- Produces:
+  - `dataChecksum(db, ownerId): Promise<DataChecksum>`, with `DataChecksum = { collections: Record<OwnerCollectionName, { count: number; sha256: string }>; profileSha256: string; deletionLogSha256: string }`. Each hash covers canonical JSON of the documents sorted by ID, so a changed field is detected as well as a missing document. The list of collections comes from `OWNER_DATA_REGISTRY`, never a hand-written list.
+  - `diffChecksums(expected, actual): string[]`, naming each scope that differs. Empty means a match.
 
 - [ ] **Step 1: Write the failing checksum test**
 
-`checksum.emulator.test.ts`: the same data gives an identical checksum; any added entry changes it. **The drill must refuse a project ID other than one ending in `-staging`, or `demo-moneytrace`.** Test that refusal.
+`checksum.emulator.test.ts`:
+
+```ts
+it('seeds at least one valid document in every registered collection', async () => {
+  await seed(db);
+  const sum = await dataChecksum(db, DRILL_OWNER);
+  for (const name of Object.keys(OWNER_DATA_REGISTRY)) expect(sum.collections[name].count, name).toBeGreaterThan(0);
+});
+it.each(Object.keys(OWNER_DATA_REGISTRY))('detects a lost document in %s', async (name) => {
+  const expected = await dataChecksum(db, DRILL_OWNER);
+  await deleteOneDoc(DRILL_OWNER, name);
+  expect(diffChecksums(expected, await dataChecksum(db, DRILL_OWNER))).toEqual([name]);
+});
+it.each(Object.keys(OWNER_DATA_REGISTRY))('detects a changed field in %s', async (name) => { /* same, updating one field */ });
+it('detects a lost profile and a lost deletion-log entry', async () => { /* scopes profile and deletionLog */ });
+it('the same data gives an identical checksum', async () => { /* two runs are equal */ });
+```
+
+**The drill must refuse a project ID other than one ending in `-staging`, or `demo-moneytrace`.** Test that refusal.
 
 - [ ] **Step 2: Implement `drill.ts` and verify**
 
-Add `tsx` as a root dev dependency to run the script. `drill seed` posts a fixed set of transactions as owner `restore-drill`, then writes the checksum to stdout. `drill verify --database <id>` recomputes against the restored database and compares.
+Add `tsx` as a root dev dependency to run the script. `drill seed` posts fixed ledger transactions through the use cases as owner `restore-drill`, writes one schema-valid document with fixed values to each remaining registered collection, plus the profile and one `deletionLog` entry, then writes the checksum to `--expected <path>`. It fails if any registered collection has no seed. `drill verify --database <id> --expected <path>` recomputes against the restored database, prints `diffChecksums` and exits non-zero on any difference. It also asserts that each balance equals a recompute from restored `ledgerEntries`. The checksum file holds only counts and hashes.
 
 Run: `pnpm test:emulator`
 Expected: PASS.
@@ -1178,7 +1199,13 @@ Expected: deploy succeeds, and `pnpm firebase firestore:backups:schedules:list -
 
 - [ ] **Step 7: Mabrur: run the first restore drill**
 
-`drill.ts` uses Application Default Credentials, so this needs `gcloud auth application-default login` (gcloud is not installed yet) or a staging service account key that is never committed. Run `pnpm drill:seed --project staging`, wait for a daily backup, then restore it with `firebase firestore:databases:restore` into database `restore-drill`, run `pnpm drill:verify --project staging --database restore-drill`, and delete that database. Expected: checksums match. Record date, backup ID and result in `restore-drill-log.md`.
+`drill.ts` uses Application Default Credentials, so this needs `gcloud auth application-default login` (gcloud is not installed yet) or a staging service account key that is never committed. Run `pnpm drill:seed --project staging --expected drill-expected.json`, wait for a daily backup, then restore it with `firebase firestore:databases:restore` into database `restore-drill`, run `pnpm drill:verify --project staging --database restore-drill --expected drill-expected.json`, and delete that database. Expected: no differences in any collection.
+
+Firestore backups do not include Storage or Auth, so the drill covers them separately:
+- **Auth:** `ownerId` is the Auth UID, so restored data is unreachable if the user record is lost. Run `firebase auth:export` to a path outside the repo, confirm a test user's UID is present, then delete the file, because it contains user data. The runbook documents the export as the only Auth copy, and that nothing in Phase 0 schedules it. Add scheduling to the Phase 4 hardening list.
+- **Storage:** not restored, by design, because originals are ephemeral. The runbook states that a restored `temporaryUploads` record may point at a file that no longer exists, and that the event then asks for a new upload, as spec section 5 stage 7 requires.
+
+Record date, backup ID, per-collection result and the Auth check in `restore-drill-log.md`.
 
 - [ ] **Step 8: Mabrur: require CI on `master`**
 
@@ -1202,4 +1229,5 @@ PRD exit gate: **security and accounting tests green**. Before calling Phase 0 d
 - [ ] CI is green on the pushed branch.
 - [ ] Every item in spec section 8 exists: schemas and indexes (Tasks 5, 7), contracts (Task 6), rules (Task 7), `ConfidencePolicy` rules and config (Tasks 4, 5), claim and `ProviderCall` code with concurrency and failure-injection tests (Tasks 10, 11), `RetentionPolicy` and `OwnerDataRegistry` with CI test (Task 5), backups and first restore drill (Task 15), boundary-tool ADR (Task 1).
 - [ ] The staging smoke test passed in `asia-south2`, with the result recorded in ADR 0004.
+- [ ] The restore drill matched for every registered collection, the profile and the deletion log, and the Auth and Storage boundaries are documented in the runbook.
 - [ ] Open items for Phase 1 are written down: whether DeepSeek honors idempotency keys, which sets its `retrySafety`; a review of AI and OCR data-processing terms (PRD section 10).
