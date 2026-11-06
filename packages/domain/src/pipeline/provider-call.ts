@@ -1,3 +1,5 @@
+import { DomainError } from "../errors";
+
 export type ProviderCallState = "started" | "succeeded" | "failed" | "unknown" | "purged";
 
 export type RetrySafety = "idempotentKey" | "localPure" | "none";
@@ -20,6 +22,17 @@ export type ProviderCallInput = {
  */
 export function nextProviderAction(input: ProviderCallInput): ProviderAction {
   const { state, hasResult, retrySafety, attemptCount, maxAttempts, userApprovedRetry } = input;
+  if (
+    !Number.isInteger(attemptCount) ||
+    attemptCount < 0 ||
+    !Number.isInteger(maxAttempts) ||
+    maxAttempts < 0
+  ) {
+    throw new DomainError(
+      "invalidConfig",
+      "attemptCount and maxAttempts must be non-negative integers",
+    );
+  }
   if (state === null) return "invoke";
   if (state === "succeeded" && hasResult) return "reuseResult";
   if (state === "succeeded" || state === "purged")

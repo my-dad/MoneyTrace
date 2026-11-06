@@ -24,6 +24,11 @@ const ROWS: Row[] = [
   ["unknown", false, "idempotentKey", 1, false, "invoke"],
   ["unknown", false, "localPure", 1, false, "invoke"],
   ["unknown", false, "idempotentKey", 3, false, "exhausted"],
+  ["unknown", false, "none", 3, true, "invoke"],
+  ["succeeded", false, "idempotentKey", 1, false, "resultMissing"],
+  ["succeeded", false, "localPure", 1, false, "resultMissing"],
+  ["purged", false, "idempotentKey", 1, false, "resultMissing"],
+  ["purged", false, "localPure", 1, false, "resultMissing"],
   ["started", false, "none", 1, false, "awaitUserDecision"],
   ["started", false, "localPure", 1, false, "invoke"],
 ];
@@ -44,4 +49,25 @@ describe("nextProviderAction", () => {
       ).toBe(expected);
     },
   );
+
+  it.each([
+    [Number.NaN, 3],
+    [1, Number.NaN],
+    [-1, 3],
+    [1, -1],
+    [1.5, 3],
+    [1, 2.5],
+    [Number.POSITIVE_INFINITY, 3],
+  ])("rejects attemptCount=%s maxAttempts=%s", (attemptCount, maxAttempts) => {
+    expect(() =>
+      nextProviderAction({
+        state: "failed",
+        hasResult: false,
+        retrySafety: "none",
+        attemptCount,
+        maxAttempts,
+        userApprovedRetry: false,
+      }),
+    ).toThrow(expect.objectContaining({ code: "invalidConfig" }) as Error);
+  });
 });

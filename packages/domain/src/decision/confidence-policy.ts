@@ -23,12 +23,9 @@ export type DecisionOutcome = "autoPost" | "needsClarification" | "failed";
 
 export type DecisionResult = { outcome: DecisionOutcome; rule: string };
 
-export type DecisionRecord = {
+type DecisionRecordBase = {
   outcome: DecisionOutcome;
   rule: string;
-  source: DecisionInput["source"];
-  parser: { name: string; version: string } | null;
-  ai: { model: string; promptVersion: string } | null;
   configVersion: number;
   aiAutoPostThresholdBp: number;
   confidenceBp: number;
@@ -36,6 +33,13 @@ export type DecisionRecord = {
   retriedAfterUnknown: boolean;
   sourceEventIds: readonly string[];
 };
+
+export type DecisionRecord =
+  | (DecisionRecordBase & {
+      source: "deterministicParser";
+      parser: { name: string; version: string };
+    })
+  | (DecisionRecordBase & { source: "ai"; ai: { model: string; promptVersion: string } });
 
 function isBp(n: number, max: number): boolean {
   return Number.isInteger(n) && n >= 0 && n <= max;
