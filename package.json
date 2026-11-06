@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.18.0",
-  "engines": { "node": ">=22.12 <23" },
+  "engines": {
+    "node": ">=22.12 <23"
+  },
   "scripts": {
     "build:functions": "node -e \"process.exit(0)\"",
     "test": "vitest run --passWithNoTests",
-    "test:emulator": "pnpm build:functions && firebase emulators:exec --project demo-moneytrace --only auth,firestore,storage \"vitest run --passWithNoTests --config vitest.emulator.config.ts\"",
+    "test:emulator": "pnpm build:functions && firebase emulators:exec --project demo-moneytrace --only auth,firestore,storage \"vitest run --config vitest.emulator.config.ts\"",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tools.json",
     "lint": "eslint .",
     "boundaries": "depcruise packages apps --config .dependency-cruiser.cjs",

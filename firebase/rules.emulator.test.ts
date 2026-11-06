@@ -16,11 +16,30 @@ import {
   getDocs,
   setDoc,
 } from "firebase/firestore";
-import { deleteObject, getBytes, ref, uploadBytes } from "firebase/storage";
+import {
+  deleteObject,
+  getBytes,
+  listAll,
+  ref,
+  updateMetadata,
+  uploadBytes,
+  type StorageReference,
+} from "firebase/storage";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const PROJECT_ID = "demo-moneytrace";
 const storageRulesText = readFileSync(resolve(__dirname, "storage.rules"), "utf8");
+const firestoreRulesText = readFileSync(resolve(__dirname, "firestore.rules"), "utf8");
+
+// clearStorage() only removes root-level objects, so delete recursively.
+const wipe = async (dir: StorageReference): Promise<void> => {
+  const listing = await listAll(dir);
+  await Promise.all([...listing.items.map((i) => deleteObject(i)), ...listing.prefixes.map(wipe)]);
+};
+
+// Every denial test uses a never-created id, so a denial cannot come from an existing object.
+let idCounter = 0;
+const fresh = (prefix: string) => `${prefix}-${String(++idCounter)}-${String(Date.now())}`;
 
 let env: RulesTestEnvironment;
 
@@ -31,7 +50,7 @@ const anon = () => env.unauthenticatedContext();
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: PROJECT_ID,
-    firestore: { rules: readFileSync(resolve(__dirname, "firestore.rules"), "utf8") },
+    firestore: { rules: firestoreRulesText },
     storage: { rules: storageRulesText },
   });
 });
@@ -42,7 +61,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await env.clearFirestore();
-  await env.clearStorage();
+  await env.withSecurityRulesDisabled((ctx) => wipe(ref(ctx.storage())));
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, "users/bob"), { displayName: "Bob" });
@@ -68,6 +87,10 @@ describe.each(Object.entries(OWNER_DATA_REGISTRY))("firestore %s", (name, entry)
     const read = getDoc(doc(bob().firestore(), `users/bob/${name}/seeded`));
     return entry.clientRead ? assertSucceeds(read) : assertFails(read);
   });
+  it("denies another user listing the collection", () =>
+    assertFails(getDocs(collection(alice().firestore(), `users/bob/${name}`))));
+  it("denies a collection-group query", () =>
+    assertFails(getDocs(collectionGroup(bob().firestore(), name))));
   it("matches clientRead for an owner list query", () => {
     const list = getDocs(collection(bob().firestore(), `users/bob/${name}`));
     return entry.clientRead ? assertSucceeds(list) : assertFails(list);
@@ -91,6 +114,20 @@ describe("firestore profile and outside paths", () => {
     assertFails(setDoc(doc(bob().firestore(), "deletionLog/y"), { a: 1 })));
   it("denies an unregistered collection under the owner", () =>
     assertFails(getDoc(doc(bob().firestore(), "users/bob/unregistered/seeded"))));
+  it("denies another user listing users", () =>
+    assertFails(getDocs(collection(alice().firestore(), "users"))));
+  it("denies the owner listing users", () =>
+    assertFails(getDocs(collection(bob().firestore(), "users"))));
+  it("declares match blocks for exactly the clientRead collections", () => {
+    const matched = [...firestoreRulesText.matchAll(/match \/users\/\{uid\}\/(\w+)\/\{id\}/g)]
+      .map((m) => m[1])
+      .sort();
+    const readable = Object.entries(OWNER_DATA_REGISTRY)
+      .filter(([, e]) => e.clientRead)
+      .map(([n]) => n)
+      .sort();
+    expect(matched).toEqual(readable);
+  });
   it("denies a collection-group query over ledgerEntries", () =>
     assertFails(getDocs(collectionGroup(bob().firestore(), "ledgerEntries"))));
 });
@@ -99,45 +136,62 @@ const bytes = (n: number) => new Uint8Array(n);
 const uploadPath = (uid: string, id: string) => `users/${uid}/uploads/${id}`;
 
 describe("storage uploads", () => {
+  it.each(UPLOAD_MIME_TYPES)("lets the owner create a %s", async (mimeType) => {
+    await assertSucceeds(
+      uploadBytes(ref(bob().storage(), uploadPath("bob", fresh("ok"))), bytes(10), {
+        contentType: mimeType,
+      }),
+    );
+  });
   it("lets the owner create a 1 MB png", () =>
     assertSucceeds(
-      uploadBytes(ref(bob().storage(), uploadPath("bob", "u1")), bytes(1024 * 1024), {
+      uploadBytes(ref(bob().storage(), uploadPath("bob", fresh("u1"))), bytes(1024 * 1024), {
         contentType: "image/png",
       }),
     ));
   it("lets the owner create a file of exactly the maximum size", () =>
     assertSucceeds(
-      uploadBytes(ref(bob().storage(), uploadPath("bob", "max")), bytes(UPLOAD_MAX_BYTES), {
+      uploadBytes(ref(bob().storage(), uploadPath("bob", fresh("max"))), bytes(UPLOAD_MAX_BYTES), {
         contentType: "application/pdf",
       }),
     ));
   it("denies another user's path", () =>
     assertFails(
-      uploadBytes(ref(alice().storage(), uploadPath("bob", "u1")), bytes(10), {
+      uploadBytes(ref(alice().storage(), uploadPath("bob", fresh("x"))), bytes(10), {
+        contentType: "image/png",
+      }),
+    ));
+  it("denies a 0-byte upload", () =>
+    assertFails(
+      uploadBytes(ref(bob().storage(), uploadPath("bob", fresh("zero"))), bytes(0), {
         contentType: "image/png",
       }),
     ));
   it("denies one byte over the limit", () =>
     assertFails(
-      uploadBytes(ref(bob().storage(), uploadPath("bob", "big")), bytes(UPLOAD_MAX_BYTES + 1), {
-        contentType: "image/png",
-      }),
+      uploadBytes(
+        ref(bob().storage(), uploadPath("bob", fresh("big"))),
+        bytes(UPLOAD_MAX_BYTES + 1),
+        {
+          contentType: "image/png",
+        },
+      ),
     ));
   it("denies text/html", () =>
     assertFails(
-      uploadBytes(ref(bob().storage(), uploadPath("bob", "h")), bytes(10), {
+      uploadBytes(ref(bob().storage(), uploadPath("bob", fresh("h"))), bytes(10), {
         contentType: "text/html",
       }),
     ));
   it("denies a path outside uploads", () =>
     assertFails(
-      uploadBytes(ref(bob().storage(), "users/bob/other/u1"), bytes(10), {
+      uploadBytes(ref(bob().storage(), `users/bob/other/${fresh("o")}`), bytes(10), {
         contentType: "image/png",
       }),
     ));
   it("denies no auth", () =>
     assertFails(
-      uploadBytes(ref(anon().storage(), uploadPath("bob", "u1")), bytes(10), {
+      uploadBytes(ref(anon().storage(), uploadPath("bob", fresh("x"))), bytes(10), {
         contentType: "image/png",
       }),
     ));
@@ -155,6 +209,16 @@ describe("storage uploads", () => {
           contentType: "image/png",
         }),
       ));
+    it("denies the owner updating metadata", () =>
+      assertFails(
+        updateMetadata(ref(bob().storage(), uploadPath("bob", "old")), {
+          contentType: "image/jpeg",
+        }),
+      ));
+    it("denies the owner listing uploads", () =>
+      assertFails(listAll(ref(bob().storage(), "users/bob/uploads"))));
+    it("denies another user listing uploads", () =>
+      assertFails(listAll(ref(alice().storage(), "users/bob/uploads"))));
     it("denies the owner reading", () =>
       assertFails(getBytes(ref(bob().storage(), uploadPath("bob", "old")))));
     it("denies the owner deleting", () =>

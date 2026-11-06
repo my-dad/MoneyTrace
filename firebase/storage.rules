@@ -9,6 +9,7 @@ service firebase.storage {
       allow create: if resource == null
         && request.auth != null
         && request.auth.uid == uid
+        && request.resource.size > 0
         && request.resource.size <= 10485760
         && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     }
