@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Receipt uploads: create-only under the owner's path. Reads, overwrites and deletes
+// are done by Cloud Functions. Limits equal UPLOAD_MAX_BYTES and UPLOAD_MIME_TYPES in
+// @moneytrace/contracts; rules.emulator.test.ts fails if they diverge.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/uploads/{uploadId} {
+      allow create: if resource == null
+        && request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size <= 10485760
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    }
+  }
+}

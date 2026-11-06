@@ -1,0 +1,80 @@
+rules_version = '2';
+
+// Deny by default. Clients may only read; every write goes through Cloud Functions
+// (Admin SDK bypasses these rules). Collections below are exactly those with
+// clientRead: true in OWNER_DATA_REGISTRY. The rules test fails if the two diverge.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/accounts/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/paymentInstruments/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/sourceEvents/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/transactions/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/ledgerEntries/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/balances/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/cutoverMarkers/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/decisionRecords/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/cashAllocations/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/reconciliations/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/followUps/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/conversations/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/conversationMessages/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/aiUsage/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/temporaryUploads/{id} {
+      allow read: if isOwner(uid);
+    }
+
+    match /users/{uid}/consents/{id} {
+      allow read: if isOwner(uid);
+    }
+  }
+}
