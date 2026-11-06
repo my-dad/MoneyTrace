@@ -14,11 +14,6 @@ export type DecisionInput = {
 /** Thresholds are basis points. A value above 10000 can never be reached, so it disables AI auto-post. */
 export type ConfidenceConfig = { version: number; aiAutoPostThresholdBp: number };
 
-export const DEFAULT_CONFIDENCE_CONFIG: ConfidenceConfig = {
-  version: 1,
-  aiAutoPostThresholdBp: 10001,
-};
-
 export type DecisionOutcome = "autoPost" | "needsClarification" | "failed";
 
 export type DecisionResult = { outcome: DecisionOutcome; rule: string };
