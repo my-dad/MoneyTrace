@@ -1,7 +1,7 @@
 # MoneyTrace Architecture Design
 
 Date: 2026-11-06
-Status: Draft for review
+Status: Approved 2026-11-06 (account deletion overrides ledger immutability, per section 7)
 Source: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline)
 
 ## 1. Purpose and scope
@@ -69,12 +69,13 @@ Value objects (immutable): `Money` (integer minor units + currency; exact add, s
 
 Aggregates and entities:
 - `Account`: kind is `bank | cash | familyCash | creditLiability`. `PaymentInstrument` links to an account and carries no balance.
+- Nominal ledger accounts: `expense` (one per category), `income` (one per category) and `equity` (opening balances, reconciliation adjustments). Balanced entries need these counterparts. They are system-defined, are not user-managed `Account` records, and do not appear on the Accounts screen.
 - `Transaction`: canonical event. Lifecycle `pending → posted | rejected`, and `posted → reversed`. Links to source events.
 - `LedgerEntry`: append-only, debit or credit side, exact amount.
 - `CashAllocation`, `Reconciliation`, `FollowUp`, `SourceEvent`: separate aggregates with their own rules.
 
 Posting:
-- `PostingPolicy` (domain service) converts a typed intent into balanced entries. Intents: `Withdrawal`, `Transfer`, `CardPurchase`, `CardRepayment` (full or partial; the liability reduces by exactly the amount paid), `Fee`, `Refund`, `Adjustment`, `OpeningBalance`, `CashCustodyTransfer` (moves cash between own wallet and `familyCash`; custody change only, never expense), `HistoricalImport` (posts imported history strictly after the cutover marker). Each intent is one strategy class.
+- `PostingPolicy` (domain service) converts a typed intent into balanced entries. Intents: `Withdrawal`, `Transfer`, `Purchase` (expense paid from a bank account, including via a debit instrument, or from cash), `CardPurchase` (credit card), `CardRepayment` (full or partial; the liability reduces by exactly the amount paid), `Income`, `Fee`, `Refund`, `Adjustment`, `OpeningBalance`, `CashCustodyTransfer` (moves cash between own wallet and `familyCash`; custody change only, never expense), `HistoricalImport` (posts imported history strictly after the cutover marker). Each intent is one strategy class.
 - Invariants are enforced in the domain: entries balance per currency; withdrawals and repayments never create expense; opening balances are never income; cash discrepancies require an explicit `Adjustment` with cause, authorization and audit.
 - `PostTransaction` use case: check idempotency key, obtain entries from `PostingPolicy`, call `LedgerWriter.commit(transaction, entries)`.
 - The Firestore adapter commits in a single Firestore transaction: idempotency record, entries, transaction state and balance projections together.
@@ -126,7 +127,7 @@ Ports: `OCRProvider`, `AIProvider`, `SourceEventRepository`, `ProviderCallReposi
 
 Resilience:
 - Bounded retries with backoff; a dead-letter state is shown in the Inbox.
-- `AIGateway` decorates any `AIProvider`: per-request, daily and monthly quotas, token and cost metering, timeouts. On quota exhaustion the event stays `Pending` with reason `aiQuotaExhausted` and non-AI features continue.
+- `AIGateway` decorates any `AIProvider`: per-request, daily and monthly quotas, token and cost metering, timeouts. On quota exhaustion the event stays `Pending` with reason `aiQuotaExhausted` and non-AI features continue. Initial limits are USD 0.05 per request, USD 0.50 per day and USD 5 per month, with a warning notification at 80% of the daily and monthly limits. Quota is reserved before each call and reconciled afterward. Metrics cover daily requests, cost, timeout rate and manual retries. Settings discloses that OCR, Firestore, Functions, Storage and egress costs are separate from this budget.
 - Recovery of quota-blocked events: a scheduled `ResumeQuotaBlockedEvents` job runs after each daily and monthly quota window rolls over and when the user raises the budget. It re-opens blocked events oldest first, within the new quota, using the same claim protocol so resumption is idempotent. The user can also trigger a manual retry from the Inbox. Each blocked event shows its reason, retry count and next scheduled attempt; none stays pending silently. Events that can be interpreted deterministically never wait for quota.
 - Provider details (DeepSeek auth, model names, JSON handling) stay inside the adapter. OCR candidates (Tesseract.js, managed OCR) implement the same contract. OCR runs server-side behind `OCRProvider`. Server-side execution does not keep the document inside our infrastructure when a managed provider is used, so each `OCRProvider` declares an `OcrPrivacyProfile`: `processing` (`local | managed`), region, provider retention and deletion guarantees, and whether the provider may train on content. A managed provider is eligible only if its terms were reviewed and recorded in an ADR, its profile meets the PRD §10 requirements, and the user has given explicit opt-in consent in Settings (stored with a consent version). When consent is absent or no eligible managed provider exists, only local OCR (Tesseract.js) is used and low-quality results go to retry or clarification, never to a managed fallback. The privacy copy shown to the user states that deletion from active storage does not guarantee deletion of provider-side copies or backups (PRD §10). The provider choice is made by an ADR after the Phase 2 benchmark.
 
@@ -198,10 +199,10 @@ Security:
 Observability: `Logger` port with structured JSON and a correlation ID carried through every pipeline stage; `AIUsage` records drive cost dashboards and alerts; job status and deletion confirmations are recorded.
 
 Retention, backup, export and deletion (`application` use cases, `infrastructure` adapters):
-- A versioned `RetentionPolicy` configuration defines each data class: temporary uploads (deadline from the cleanup sweeper), extracted evidence and audit history (kept per the disclosed policy), `ProviderCall` results (bounded window that starts only when the owning `SourceEvent` becomes terminal, per section 5), conversation messages (bounded retention window), and logs (short retention, no raw financial content). An unresolved event keeps its provider results until the user resolves or cancels it, and account deletion overrides this. The policy version is shown to the user in Settings.
+- A versioned `RetentionPolicy` configuration defines each data class: temporary uploads (24-hour maximum for abandoned files; deleted sooner, as soon as evidence is persisted), extracted evidence and audit history (kept per the disclosed policy), `ProviderCall` results (bounded window that starts only when the owning `SourceEvent` becomes terminal, per section 5), conversation messages (bounded retention window), and operational logs (30 days, no raw financial content or secrets). Accounting audit history (transactions, ledger entries, decision records, source events) is stored separately from operational logs and is never subject to the log window. An unresolved event keeps its provider results until the user resolves or cancels it, and account deletion overrides this. The policy version is shown to the user in Settings.
 - `OwnerDataRegistry` lists every owner-scoped collection with its retention class and export treatment. A CI test fails if a collection in the Firestore schema is not registered, so new data cannot silently fall outside retention or export.
 - `ExportUserData` produces an export in a documented format, defined by this manifest:
-  - Included: profile and settings; accounts; payment instruments (masked); source events (retained text, status, provenance); transactions; ledger entries; decision records; cash allocations; reconciliations; cutover markers; follow-ups; conversations; AI usage; provider-call records (metadata and any retained result); temporary-upload records (metadata and deletion verification, not the files); consent records with versions; the retention policy version; and any pending deletion-job status.
+  - Included: profile and settings; accounts; payment instruments (masked); source events (retained text, status, provenance); transactions; ledger entries; balance projections; decision records; cash allocations; reconciliations; cutover markers; follow-ups; conversations; AI usage records and quota counters; provider-call records (metadata and any retained result); temporary-upload records (metadata and deletion verification, not the files); consent records with versions; the retention policy version; and any pending deletion-job status.
   - Excluded: receipt originals (ephemeral by design, whether already deleted or still in staging), provider-side and backup copies (outside active storage), internal claims, leases and idempotency records, and secrets.
   - The export carries a manifest file with per-collection counts and the exclusion list above. If any included collection fails to export, the whole export is reported as failed and is never presented as complete.
 - `RequestAccountDeletion` creates a `DeletionJob` that removes the owner's entire subtree and Storage objects, verifies the result and retries failures. The user's deletion right takes precedence over ledger immutability, and only a minimal tombstone with no financial content remains as proof of deletion.
@@ -212,7 +213,7 @@ CI/CD and standards:
 - GitHub Actions per PR: lint, typecheck, boundary check, unit, emulator integration, build. Deploy to staging first.
 - TypeScript `strict` plus `noUncheckedIndexedAccess`; ESLint; Prettier; Conventional Commits.
 - ADRs for decisions such as OCR provider and boundary-lint tool; glossary for domain terms.
-- Separate Firebase projects: dev, staging, prod.
+- Separate Firebase projects: dev, staging, prod. Firestore, Functions and Storage are all in `asia-south2` (Delhi). A Firestore trigger and a scheduled function must be proven in staging before any other database is created, because the Firestore location is permanent.
 - No DI framework, no premature microservices, no feature code beyond the current phase's gate.
 
 ## 8. Out of scope for this spec
