@@ -357,6 +357,40 @@ const invalid: [string, PostingIntent, string][] = [
   ],
 ];
 
+const positiveRule: [string, (amount: Money) => PostingIntent][] = [
+  ["transfer", (amount) => ({ type: "transfer", from: bank, to: bank2, amount })],
+  ["purchase", (amount) => ({ type: "purchase", funding: bank, category: "food", amount })],
+  ["cardPurchase", (amount) => ({ type: "cardPurchase", card, category: "food", amount })],
+  ["cardRepayment", (amount) => ({ type: "cardRepayment", bank, card, amount })],
+  ["income", (amount) => ({ type: "income", destination: bank, category: "salary", amount })],
+  ["fee", (amount) => ({ type: "fee", charged: bank, amount })],
+  ["refund", (amount) => ({ type: "refund", target: bank, category: "food", amount })],
+  [
+    "adjustment",
+    (amount) => ({
+      type: "adjustment",
+      account: cash,
+      direction: "increase",
+      amount,
+      cause: "c",
+      authorizedBy: "me",
+    }),
+  ],
+  [
+    "cashCustodyTransfer",
+    (amount) => ({ type: "cashCustodyTransfer", from: cash, to: fam, amount, holderName: "Mom" }),
+  ],
+];
+
+describe("positive amount rule", () => {
+  it.each(positiveRule.flatMap(([n, build]) => [0, -1].map((v) => [n, v, build] as const)))(
+    "%s rejects amount %d with invalidIntent",
+    (_n, v, build) => {
+      expect(() => policy.toEntries(build(bdt(v)))).toThrow(code("invalidIntent"));
+    },
+  );
+});
+
 describe("posting strategies", () => {
   it.each(valid)("%s", (_n, intent, expected) => {
     expect(raw(policy.toEntries(intent))).toEqual(expected);
