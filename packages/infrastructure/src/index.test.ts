@@ -12,11 +12,13 @@ describe("@moneytrace/infrastructure", () => {
       "FirestoreProviderCallRepository",
       "FirestoreQuotaLedger",
       "FirestoreSourceEventRepository",
+      "FirestoreUserProfileRepository",
       "JsonLogger",
       "NodeHasher",
       "SystemClock",
       "ownerPath",
       "systemTimeoutSignal",
+      "userPath",
     ]);
   });
 });

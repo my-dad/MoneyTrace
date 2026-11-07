@@ -18,3 +18,8 @@ export function ownerPath(ownerId: string, collection: OwnerCollectionName, id?:
   const base = `users/${segment("owner", ownerId)}/${collection}`;
   return id === undefined ? base : `${base}/${segment("document", id)}`;
 }
+
+/** The owner's profile document: `users/{ownerId}`. */
+export function userPath(ownerId: string): string {
+  return `users/${segment("owner", ownerId)}`;
+}

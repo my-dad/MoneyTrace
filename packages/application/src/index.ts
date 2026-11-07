@@ -24,3 +24,5 @@ export * from "./pipeline/recover-expired-claims";
 export * from "./pipeline/retry-provider-call";
 export * from "./pipeline/purge-provider-results";
 export * from "./pipeline/summarize-ai-usage";
+export * from "./ports/user-profile-repository";
+export * from "./use-cases/bootstrap-user";

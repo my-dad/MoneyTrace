@@ -11,3 +11,4 @@ export * from "./firestore/firestore-provider-call-repository";
 export * from "./firestore/firestore-quota-ledger";
 export * from "./firestore/firestore-ai-usage-recorder";
 export * from "./system/abort-timeout";
+export * from "./firestore/firestore-user-profile-repository";

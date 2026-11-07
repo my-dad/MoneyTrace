@@ -30,6 +30,7 @@ const clean = [
   "packages/domain/src/ok.test.ts",
   "packages/application/src/testing/ok.ts",
   "packages/application/src/testing/ok2.ts",
+  "apps/functions/src/composition-ok.ts",
 ];
 
 describe("layer boundaries", () => {

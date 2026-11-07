@@ -221,6 +221,30 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
+  apps/functions:
+    dependencies:
+      '@moneytrace/application':
+        specifier: workspace:*
+        version: link:../../packages/application
+      '@moneytrace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@moneytrace/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@moneytrace/infrastructure':
+        specifier: workspace:*
+        version: link:../../packages/infrastructure
+      firebase-admin:
+        specifier: 14.5.0
+        version: 14.5.0(@firebase/app-compat@0.5.21)(@firebase/app@0.16.5)(supports-color@7.2.0)
+      firebase-functions:
+        specifier: 7.4.0
+        version: 7.4.0(firebase-admin@14.5.0(@firebase/app-compat@0.5.21)(@firebase/app@0.16.5)(supports-color@7.2.0))(supports-color@7.2.0)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   packages/application:
     dependencies:
       '@moneytrace/contracts':
