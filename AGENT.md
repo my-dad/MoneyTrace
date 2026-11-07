@@ -6,7 +6,13 @@ Source of product truth: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline). If this
 
 ## Project status
 
-Implementation has **not started**. Next artifact is an engineering blueprint (repo modules, Firestore schemas, Cloud Function contracts, rules, AI/OCR adapters, test fixtures, deployment plan). Update the "Commands" and "Repository layout" sections below as soon as real scaffolding exists; do not invent commands that do not exist.
+Phase 0 foundations are **in progress**. The repository now contains the domain,
+contracts, application, infrastructure, Functions, emulator rules, and minimal
+web sign-in foundation. The Phase 0 plan is
+[`docs/superpowers/plans/2026-11-06-phase-0-foundations.md`](docs/superpowers/plans/2026-11-06-phase-0-foundations.md);
+the architecture source is
+[`docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md`](docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md).
+Cloud CI and real Firebase environments are intentionally deferred.
 
 ## What it is
 
@@ -104,11 +110,35 @@ P1 work must never undermine ledger correctness.
 
 ## Commands
 
-_None yet — project not scaffolded._ Fill in install, dev, build, lint, test, emulator, and deploy commands once they exist.
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm verify
+pnpm --filter web build
+pnpm test:emulator
+pnpm build:functions
+```
+
+`pnpm verify` runs lint, all workspace typechecks, dependency-boundary checks,
+and the unit test suite. `pnpm test:emulator` builds Functions and runs the
+emulator suite against the local demo project. There is no deploy command yet:
+real Firebase environments and deployment are deferred to Task 15.
 
 ## Repository layout
 
-_To be defined in the engineering blueprint._ Currently: `MoneyTrace_PRD_v1.0.md`, `AGENT.md`, `CLAUDE.md` (symlink).
+```text
+apps/functions/       Cloud Functions source and esbuild entry point
+apps/web/              Next.js web app and auth gate
+packages/domain/       Accounting rules and value objects
+packages/application/  Use cases and ports
+packages/contracts/    Zod schemas for persisted and callable data
+packages/infrastructure/ Firestore adapters and repositories
+firebase/             Firestore indexes and security rules
+tooling/               Boundary checks and test tooling
+docs/                  Architecture, ADRs, glossary, and plans
+```
+
+`AGENT.md` is the source for this guide; `CLAUDE.md` is a symlink to it.
 
 ## Change control
 
