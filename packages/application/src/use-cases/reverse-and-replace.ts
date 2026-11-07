@@ -6,7 +6,6 @@ import {
   asTransactionId,
   defaultPostingPolicy,
   reverseEntries,
-  type AccountId,
   type CutoverMarker,
   type EntryDraft,
   type IdempotencyKey,
@@ -35,6 +34,8 @@ type Deps = {
   hasher: Hasher;
   clock: Clock;
 };
+
+const widen = (s: string): string => s;
 
 const toDraft = (e: EntryRecord): EntryDraft => ({
   account: { id: asAccountId(e.accountId), kind: e.accountKind, currency: e.currency },
@@ -91,6 +92,7 @@ export class ReverseAndReplace {
     let replacementEntries: EntryDraft[] | null = null;
     let replacementMs = input.occurredAtMs ?? original.occurredAtMs;
     let resolved: PostingIntent | null = null;
+    let requireCutoverMarker = false;
     if (isOpening) {
       if (replacement?.type !== "openingBalance") {
         throw new DomainError(
@@ -98,8 +100,10 @@ export class ReverseAndReplace {
           "an opening balance is corrected by another opening",
         );
       }
-      if (!isSameOpeningAccount(original, originalEntries, replacement.account.id)) {
-        throw new DomainError("invalidIntent", "the replacement opening is for another account");
+      // Which account an opening belongs to is the writer's check: the stored marker for the
+      // replacement's account must belong to the original.
+      if (widen(replacement.amount.currency) !== widen(replacement.account.currency)) {
+        throw new DomainError("accountInvalid", "amount currency differs from the account's");
       }
       if (input.occurredAtMs !== undefined) {
         throw new DomainError("invalidIntent", "an opening's date is its effectiveAt");
@@ -124,9 +128,8 @@ export class ReverseAndReplace {
         );
       }
       LedgerDate.fromEpochMs(replacementMs);
-      ({ intent: resolved, entries: replacementEntries } = await resolveIntent(
-        reader,
-        ownerId,
+      resolved = replacement;
+      ({ entries: replacementEntries, requireCutoverMarker } = resolveIntent(
         replacement,
         replacementMs,
       ));
@@ -134,6 +137,8 @@ export class ReverseAndReplace {
         throw new DomainError("invalidIntent", "replacement produced no entries");
       }
       await assertAccountsUsable(this.deps.accounts, ownerId, replacementEntries);
+    } else if (input.occurredAtMs !== undefined) {
+      throw new DomainError("invalidIntent", "a date needs a replacement");
     }
 
     const committedAtMs = this.deps.clock.nowMs();
@@ -188,23 +193,15 @@ export class ReverseAndReplace {
       reversal,
       reversalEntries,
       ...(replacementTx && replacementEntries
-        ? { replacement: { transaction: replacementTx, entries: replacementEntries } }
+        ? {
+            replacement: {
+              transaction: replacementTx,
+              entries: replacementEntries,
+              ...(requireCutoverMarker ? { requireCutoverMarker } : {}),
+            },
+          }
         : {}),
       ...(marker ? { cutoverMarker: marker } : {}),
     });
   }
-}
-
-/**
- * Transactions carry no account, so the account of an opening is read from its entries, or, for a
- * zero opening with none, from its id (`opening-<account>` plus any `:repl` suffixes).
- */
-function isSameOpeningAccount(
-  original: TransactionRecord,
-  entries: readonly EntryRecord[],
-  accountId: AccountId,
-): boolean {
-  if (entries.length > 0) return entries.some((e) => e.accountId === accountId);
-  const base = `opening-${accountId}`;
-  return original.id === base || original.id.startsWith(`${base}:repl`);
 }

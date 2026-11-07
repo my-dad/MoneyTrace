@@ -13,6 +13,8 @@ export type LedgerCommit = {
   transaction: TransactionRecord;
   entries: readonly EntryDraft[];
   cutoverMarker?: CutoverMarker;
+  /** Imports set this: every real account touched must already have a stored marker. */
+  requireCutoverMarker?: boolean;
 };
 
 export type CorrectionCommit = {
@@ -21,7 +23,11 @@ export type CorrectionCommit = {
   originalTransactionId: TransactionId;
   reversal: TransactionRecord;
   reversalEntries: readonly EntryDraft[];
-  replacement?: { transaction: TransactionRecord; entries: readonly EntryDraft[] };
+  replacement?: {
+    transaction: TransactionRecord;
+    entries: readonly EntryDraft[];
+    requireCutoverMarker?: boolean;
+  };
   /** Present exactly when the original is an opening balance: replaces the account's marker. */
   cutoverMarker?: CutoverMarker;
 };
@@ -38,15 +44,21 @@ export type LedgerCommitResult =
  * with a cutover marker). The transition into `posted` is checked against the stored state.
  * At most one cutover marker exists per account: a second one is `idempotencyConflict`.
  *
- * A marker's effective date must equal its transaction's occurredAtMs.
+ * A marker's effective date must equal its transaction's occurredAtMs. After replay detection,
+ * new entries on a real account with a stored marker must be dated strictly after it (else
+ * DomainError `beforeCutover`); opening balances and reversals are exempt, and
+ * `requireCutoverMarker` makes a missing marker an error too.
  *
  * commitCorrection: the original must be `posted` and not itself a reversal (else DomainError
  * `invalidTransition`). The reversal must be `posted`, link back through `correctionOf`, and
  * mirror the stored entries exactly (else `invalidIntent`). The original becomes `reversed`, and
  * the reversal and optional replacement are written in the same step. Opening balances are
  * corrected only with a replacement and a `cutoverMarker` that atomically replaces the
- * account's marker; no other transaction may carry one. Entry sets may be empty only for an
- * opening balance that has no entries.
+ * account's marker; no other transaction may carry one, and the marker must currently belong to
+ * the original (else `invalidIntent`). It moves to the replacement's id. Moving a marker later
+ * is refused with `cutoverHasActivity` if any entry of that account outside opening-balance
+ * transactions is dated at or before the new date, reversed or not. The replacement must link
+ * back through `correctionOf`. Entry sets may be empty only for an opening balance with no entries.
  */
 export type LedgerWriter = {
   commit(ownerId: OwnerId, c: LedgerCommit): Promise<LedgerCommitResult>;

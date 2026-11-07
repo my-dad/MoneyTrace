@@ -7,6 +7,7 @@ export type DomainErrorCode =
   | "invalidId"
   | "invalidDate"
   | "beforeCutover"
+  | "cutoverHasActivity"
   | "accountInvalid"
   | "invalidConfig";
 

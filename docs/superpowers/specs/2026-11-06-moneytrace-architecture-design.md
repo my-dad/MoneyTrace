@@ -85,7 +85,7 @@ Deduplication: `MatchingService` (domain) scores candidates by amount, account, 
 
 Pending authorizations: a card authorization creates a `Transaction` in state `pending` with no ledger entries and a `PendingAuthorization` link key (card instrument, amount, merchant text, time window). When the final posting arrives, `MatchingService` links it to the pending transaction and `PostTransaction` posts the entries once, moving the same transaction to `posted`. Expired unmatched authorizations are released by a scheduled job. Pending items never contribute to balances or reports, so nothing is counted twice.
 
-Cutover: a `CutoverMarker` (account, effective timestamp) is written with each `OpeningBalance`. `HistoricalImport` rejects any record dated at or before the marker for that account, and import reconciliation compares the imported closing position against the ledger before posting.
+Cutover: a `CutoverMarker` (account, effective timestamp) is written with each `OpeningBalance`. `HistoricalImport` rejects any record dated at or before the marker for that account, and import reconciliation compares the imported closing position against the ledger before posting. The ledger writer applies the same rule to every new posting, not only imports: entries on an account with a stored marker must be dated strictly after it (reversals and opening balances are exempt), and moving a marker later is refused with `cutoverHasActivity` while the account has any earlier entries outside its opening transactions.
 
 ## 5. Ingestion pipeline (SMS, AI, OCR)
 

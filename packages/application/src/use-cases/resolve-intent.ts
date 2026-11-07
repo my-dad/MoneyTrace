@@ -1,26 +1,21 @@
 import {
   DomainError,
   defaultPostingPolicy,
-  isRealAccount,
-  type AccountId,
   type EntryDraft,
-  type OwnerId,
   type PostingIntent,
 } from "@moneytrace/domain";
-import type { LedgerReader } from "../ports/ledger-reader";
 
 /**
- * Turns an intent into entries. A historical import never trusts caller-supplied cutovers: they
- * are replaced by the stored markers, and its date must equal the transaction's date.
+ * Turns an intent into entries. A historical import is posted as its inner intent with a
+ * required cutover marker: the writer checks the stored marker atomically, so caller-supplied
+ * cutovers are never consulted. Its date must equal the transaction's date.
  */
-export async function resolveIntent(
-  reader: LedgerReader,
-  ownerId: OwnerId,
+export function resolveIntent(
   intent: PostingIntent,
   occurredAtMs: number,
-): Promise<{ intent: PostingIntent; entries: EntryDraft[] }> {
+): { entries: EntryDraft[]; requireCutoverMarker: boolean } {
   if (intent.type !== "historicalImport") {
-    return { intent, entries: defaultPostingPolicy.toEntries(intent) };
+    return { entries: defaultPostingPolicy.toEntries(intent), requireCutoverMarker: false };
   }
   if (intent.occurredAt.epochMs !== occurredAtMs) {
     throw new DomainError(
@@ -31,11 +26,5 @@ export async function resolveIntent(
   if (intent.inner.type === "openingBalance" || intent.inner.type === "historicalImport") {
     throw new DomainError("invalidIntent", `historicalImport cannot wrap ${intent.inner.type}`);
   }
-  const ids = new Set<AccountId>();
-  for (const e of defaultPostingPolicy.toEntries(intent.inner)) {
-    if (isRealAccount(e.account)) ids.add(e.account.id);
-  }
-  const cutovers = ids.size > 0 ? await reader.getCutoverMarkers(ownerId, [...ids]) : [];
-  const stored: PostingIntent = { ...intent, cutovers };
-  return { intent: stored, entries: defaultPostingPolicy.toEntries(stored) };
+  return { entries: defaultPostingPolicy.toEntries(intent.inner), requireCutoverMarker: true };
 }

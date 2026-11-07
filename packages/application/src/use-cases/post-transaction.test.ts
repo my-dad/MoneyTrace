@@ -53,7 +53,6 @@ beforeEach(async () => {
   w = createWorld();
   post = new PostTransaction({
     writer: w.ledger,
-    reader: w.ledger,
     accounts: w.accounts,
     hasher: w.hasher,
     clock: w.clock,

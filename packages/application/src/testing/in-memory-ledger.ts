@@ -5,12 +5,18 @@ import {
   assertTransition,
   type AccountId,
   type CutoverMarker,
+  assertPostingAfterCutover,
   type EntryDraft,
   type OwnerId,
   type TransactionId,
 } from "@moneytrace/domain";
 import type { AccountRecord, AccountRepository } from "../ports/account-repository";
-import type { EntryRecord, LedgerReader, TransactionRecord } from "../ports/ledger-reader";
+import type {
+  EntryRecord,
+  LedgerReader,
+  StoredCutoverMarker,
+  TransactionRecord,
+} from "../ports/ledger-reader";
 import type {
   CorrectionCommit,
   LedgerCommit,
@@ -25,7 +31,7 @@ type OwnerLedger = {
   entries: Map<string, EntryRecord[]>;
   balances: Map<string, number>;
   idempotency: Map<string, IdempotencyEntry>;
-  markers: Map<string, number>;
+  markers: Map<string, { effectiveAtMs: number; transactionId: TransactionId }>;
 };
 
 const cloneTx = (t: TransactionRecord): TransactionRecord => ({
@@ -41,6 +47,13 @@ function atomically<T>(body: () => T): Promise<T> {
   } catch (e) {
     return Promise.reject(e instanceof Error ? e : new Error(String(e)));
   }
+}
+
+function markersOf(s: OwnerLedger): CutoverMarker[] {
+  return [...s.markers].map(([accountId, m]) => ({
+    accountId: accountId as AccountId,
+    effectiveAt: LedgerDate.fromEpochMs(m.effectiveAtMs),
+  }));
 }
 
 /** The reversal must be the stored entries with every side flipped, as a multiset. */
@@ -123,6 +136,14 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       }
       assertTransition(s.transactions.get(c.transaction.id)?.state ?? null, "posted");
       if (c.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(c.entries);
+      if (c.transaction.intentType !== "openingBalance") {
+        assertPostingAfterCutover(
+          c.entries,
+          LedgerDate.fromEpochMs(c.transaction.occurredAtMs),
+          markersOf(s),
+          c.requireCutoverMarker === true,
+        );
+      }
       if (c.cutoverMarker) {
         if (c.cutoverMarker.effectiveAt.epochMs !== c.transaction.occurredAtMs) {
           throw new DomainError("invalidIntent", "marker date must equal the transaction date");
@@ -132,7 +153,10 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
 
       InMemoryLedger.write(s, c.transaction, c.entries);
       if (c.cutoverMarker) {
-        s.markers.set(c.cutoverMarker.accountId, c.cutoverMarker.effectiveAt.epochMs);
+        s.markers.set(c.cutoverMarker.accountId, {
+          effectiveAtMs: c.cutoverMarker.effectiveAt.epochMs,
+          transactionId: c.transaction.id,
+        });
       }
       s.idempotency.set(c.idempotencyKey, {
         payloadHash: c.payloadHash,
@@ -174,14 +198,36 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
         if (r === undefined || r.transaction.occurredAtMs !== c.cutoverMarker.effectiveAt.epochMs) {
           throw new DomainError("invalidIntent", "an opening correction needs a dated replacement");
         }
-        if (!s.markers.has(c.cutoverMarker.accountId)) {
-          throw new DomainError("invalidIntent", "no marker to replace");
+        const accountId = c.cutoverMarker.accountId;
+        const current = s.markers.get(accountId);
+        if (current?.transactionId !== original.id) {
+          throw new DomainError("invalidIntent", "the marker does not belong to the original");
+        }
+        const newMs = c.cutoverMarker.effectiveAt.epochMs;
+        if (newMs > current.effectiveAtMs) {
+          for (const [txId, list] of s.entries) {
+            if (s.transactions.get(txId)?.intentType === "openingBalance") continue;
+            if (list.some((e) => e.accountId === accountId && e.occurredAtMs <= newMs)) {
+              throw new DomainError("cutoverHasActivity", "the account has earlier activity");
+            }
+          }
         }
       }
       if (c.replacement) {
         const r = c.replacement;
         if ((r.transaction.intentType === "openingBalance") !== isOpening) {
           throw new DomainError("invalidIntent", "replacement kind does not match the original");
+        }
+        if (r.transaction.correctionOf !== original.id) {
+          throw new DomainError("invalidIntent", "replacement must link to the original");
+        }
+        if (!isOpening) {
+          assertPostingAfterCutover(
+            r.entries,
+            LedgerDate.fromEpochMs(r.transaction.occurredAtMs),
+            markersOf(s),
+            r.requireCutoverMarker === true,
+          );
         }
         if (r.transaction.state !== "posted") {
           throw new DomainError("invalidIntent", "replacement must be posted");
@@ -198,7 +244,10 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       InMemoryLedger.write(s, c.reversal, c.reversalEntries);
       if (c.replacement) InMemoryLedger.write(s, c.replacement.transaction, c.replacement.entries);
       if (c.cutoverMarker) {
-        s.markers.set(c.cutoverMarker.accountId, c.cutoverMarker.effectiveAt.epochMs);
+        s.markers.set(c.cutoverMarker.accountId, {
+          effectiveAtMs: c.cutoverMarker.effectiveAt.epochMs,
+          transactionId: c.replacement?.transaction.id ?? original.id,
+        });
       }
       s.idempotency.set(c.idempotencyKey, {
         payloadHash: c.payloadHash,
@@ -233,13 +282,21 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
     return atomically(() => this.of(ownerId).balances.get(accountId) ?? 0);
   }
 
-  getCutoverMarkers(ownerId: OwnerId, accountIds: readonly AccountId[]): Promise<CutoverMarker[]> {
+  getCutoverMarkers(
+    ownerId: OwnerId,
+    accountIds: readonly AccountId[],
+  ): Promise<StoredCutoverMarker[]> {
     return atomically(() => {
-      const found: CutoverMarker[] = [];
+      const found: StoredCutoverMarker[] = [];
       for (const id of new Set(accountIds)) {
-        const ms = this.of(ownerId).markers.get(id);
-        if (ms !== undefined)
-          found.push({ accountId: id, effectiveAt: LedgerDate.fromEpochMs(ms) });
+        const m = this.of(ownerId).markers.get(id);
+        if (m !== undefined) {
+          found.push({
+            accountId: id,
+            effectiveAt: LedgerDate.fromEpochMs(m.effectiveAtMs),
+            transactionId: m.transactionId,
+          });
+        }
       }
       return found;
     });

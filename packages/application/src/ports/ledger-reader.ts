@@ -39,6 +39,9 @@ export type EntryRecord = {
   occurredAtMs: number;
 };
 
+/** A marker plus the opening-balance transaction that currently owns it. */
+export type StoredCutoverMarker = CutoverMarker & { transactionId: TransactionId };
+
 export type LedgerReader = {
   getTransaction(ownerId: OwnerId, id: TransactionId): Promise<TransactionRecord | null>;
   getEntries(ownerId: OwnerId, txId: TransactionId): Promise<EntryRecord[]>;
@@ -47,5 +50,8 @@ export type LedgerReader = {
   /** The same figure summed from entries; used to prove the projection. */
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
   /** The stored cutover markers for the given accounts; accounts without one are omitted. */
-  getCutoverMarkers(ownerId: OwnerId, accountIds: readonly AccountId[]): Promise<CutoverMarker[]>;
+  getCutoverMarkers(
+    ownerId: OwnerId,
+    accountIds: readonly AccountId[],
+  ): Promise<StoredCutoverMarker[]>;
 };

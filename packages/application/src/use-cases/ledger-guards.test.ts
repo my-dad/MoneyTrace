@@ -386,3 +386,118 @@ describe("blank actor", () => {
     ).rejects.toThrow(code("invalidIntent"));
   });
 });
+
+describe("every posting respects the cutover, and replays stay replays", () => {
+  const purchase = (n: number): PostingIntent => ({
+    type: "purchase",
+    funding: cash,
+    category: "food",
+    amount: bdt(n),
+  });
+  const openCash = (atMs: number) =>
+    opening.execute({
+      ownerId: alice,
+      accountId: cash.id,
+      amount: bdt(1_000),
+      effectiveAtMs: atMs,
+      actor: "user",
+    });
+
+  it("refuses an ordinary posting dated at or before the account's marker", async () => {
+    await openCash(effective);
+    await expect(postIntent(purchase(10), { occurredAtMs: effective })).rejects.toThrow(
+      code("beforeCutover"),
+    );
+    await expect(postIntent(purchase(10), { occurredAtMs: effective - DAY })).rejects.toThrow(
+      code("beforeCutover"),
+    );
+    expect(await w.ledger.getBalance(alice, cash.id)).toBe(1_000);
+    expect((await postIntent(purchase(10), { occurredAtMs: effective + DAY })).status).toBe(
+      "committed",
+    );
+  });
+
+  it("a retry of an already recorded posting stays a duplicate after the opening is recorded", async () => {
+    const early = effective - 5 * DAY;
+    await postIntent(purchase(10), { occurredAtMs: early });
+    await openCash(effective);
+    expect(await postIntent(purchase(10), { occurredAtMs: early })).toMatchObject({
+      status: "duplicate",
+    });
+    await expect(
+      postIntent(purchase(10), { key: "k2", txId: "tx-2", occurredAtMs: early }),
+    ).rejects.toThrow(code("beforeCutover"));
+  });
+
+  it("a correction may reverse a pre-cutover posting but not replace it with one", async () => {
+    const early = effective - 5 * DAY;
+    await postIntent(purchase(10), { occurredAtMs: early });
+    await openCash(effective);
+    await expect(correct("tx-1", purchase(12))).rejects.toThrow(code("beforeCutover"));
+    expect((await w.ledger.getTransaction(alice, tx("tx-1")))?.state).toBe("posted");
+    expect((await correct("tx-1", null)).status).toBe("committed");
+  });
+});
+
+describe("opening correction ownership and edge cases", () => {
+  const zeroOpen = async (id: string) => {
+    const account = ref(id, "bank");
+    await w.accounts.create(alice, {
+      id: account.id,
+      kind: "bank",
+      name: id,
+      currency: "BDT",
+      status: "active",
+      createdAtMs: 1,
+    });
+    await opening.execute({
+      ownerId: alice,
+      accountId: account.id,
+      amount: bdt(0),
+      effectiveAtMs: effective,
+      actor: "user",
+    });
+    return account;
+  };
+
+  it.each([
+    ["a", "a:repl"],
+    ["a:repl", "a:replz"],
+    ["a:replz", "a:repl"],
+  ])("a correction of opening-%s cannot be matched by account %s", async (owner, other) => {
+    const one = await zeroOpen(owner);
+    const two = await zeroOpen(other);
+    await expect(correct(`opening-${two.id}`, openingIntent(one, 5))).rejects.toThrow(
+      code("invalidIntent"),
+    );
+    expect(await w.ledger.getBalance(alice, one.id)).toBe(0);
+    expect((await w.ledger.getTransaction(alice, tx(`opening-${two.id}`)))?.state).toBe("posted");
+  });
+
+  it("rejects an explicit date when there is no replacement", async () => {
+    await postIntent({ type: "purchase", funding: cash, category: "food", amount: bdt(5) });
+    await expect(correct("tx-1", null, { occurredAtMs: effective })).rejects.toThrow(
+      code("invalidIntent"),
+    );
+  });
+
+  it("rejects a replacement opening in another currency, even when zero", async () => {
+    await openBank();
+    const usd = Money.ofMinor(0, "USD" as unknown as "BDT");
+    await expect(
+      correct("opening-bank-1", {
+        type: "openingBalance",
+        account: bank,
+        amount: usd,
+        effectiveAt: LedgerDate.fromEpochMs(effective),
+      }),
+    ).rejects.toThrow(code("accountInvalid"));
+    expect((await w.ledger.getTransaction(alice, tx("opening-bank-1")))?.state).toBe("posted");
+  });
+
+  it("conflicts when a replacement custody holder changes under the same correction key", async () => {
+    await postIntent(custody("Mother"));
+    await correct("tx-1", custody("Mother"));
+    expect(await correct("tx-1", custody("Father"))).toEqual({ status: "idempotencyConflict" });
+  });
+});

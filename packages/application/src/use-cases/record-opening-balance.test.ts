@@ -153,6 +153,19 @@ describe("RecordOpeningBalance", () => {
     ).rejects.toThrow(code("invalidIntent"));
   });
 
+  it("conflicts when the actor changes under the same key", async () => {
+    await record(100_000);
+    expect(
+      await opening.execute({
+        ownerId: alice,
+        accountId: bankId,
+        amount: bdt(100_000),
+        effectiveAtMs: effective,
+        actor: "someone-else",
+      }),
+    ).toEqual({ status: "idempotencyConflict" });
+  });
+
   const reverser = (): ReverseAndReplace =>
     new ReverseAndReplace({
       writer: w.ledger,
@@ -180,7 +193,6 @@ describe("RecordOpeningBalance", () => {
     await record(100_000);
     const post = new PostTransaction({
       writer: w.ledger,
-      reader: w.ledger,
       accounts: w.accounts,
       hasher: w.hasher,
       clock: w.clock,
@@ -209,12 +221,17 @@ describe("RecordOpeningBalance", () => {
     expect((await historical(effective + DAY, "h3", "tx-h3")).status).toBe("committed");
     expect(await w.ledger.getBalance(alice, bankId)).toBe(99_700);
 
-    // Moving the cutover through a correction moves the boundary for later imports.
-    await correctOpening(120_000, effective + 10 * DAY);
-    await expect(historical(effective + 5 * DAY, "h4", "tx-h4")).rejects.toThrow(
-      code("beforeCutover"),
+    // Moving the cutover forward past recorded activity would double count it: refused.
+    await expect(correctOpening(120_000, effective + 10 * DAY)).rejects.toThrow(
+      code("cutoverHasActivity"),
     );
-    expect((await historical(effective + 11 * DAY, "h5", "tx-h5")).status).toBe("committed");
+    expect(await w.ledger.getBalance(alice, bankId)).toBe(99_700);
+    expect((await w.ledger.getTransaction(alice, asTransactionId("opening-bank-1")))?.state).toBe(
+      "posted",
+    );
+    // Moving it earlier is allowed and moves the boundary for later imports.
+    await correctOpening(100_000, effective - DAY);
+    expect((await historical(effective - DAY / 2, "h4", "tx-h4")).status).toBe("committed");
   });
 
   it("gate 33: a corrected opening keeps the original evidence and audit, and cannot be replayed", async () => {
