@@ -1,1 +1,8 @@
-{"projects":{"default":"demo-moneytrace"}}
+{
+  "projects": {
+    "default": "demo-moneytrace",
+    "staging": "moneytrace-staging"
+  },
+  "targets": {},
+  "etags": {}
+}
