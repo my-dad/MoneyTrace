@@ -28,3 +28,6 @@ export * from "./ports/ai-provider";
 export * from "./pipeline/ai-gateway";
 export * from "./ports/user-profile-repository";
 export * from "./use-cases/bootstrap-user";
+export * from "./ports/payment-instrument-repository";
+export * from "./use-cases/create-payment-instrument";
+export * from "./pipeline/candidate-reader";

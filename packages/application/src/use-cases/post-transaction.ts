@@ -42,6 +42,7 @@ export class PostTransaction {
     occurredAtMs: number;
     sourceEventIds: readonly SourceEventId[];
     actor: string;
+    reference?: string;
   }): Promise<LedgerCommitResult> {
     const { ownerId, intent } = input;
     if (intent.type === "openingBalance") {
@@ -64,6 +65,8 @@ export class PostTransaction {
       currency: first.amount.currency,
       sourceEventIds: input.sourceEventIds,
       actor: input.actor,
+      ...("category" in intent ? { category: intent.category } : {}),
+      ...(input.reference !== undefined ? { reference: input.reference } : {}),
       ...(audit ? { auditDetails: audit } : {}),
       committedAtMs: this.deps.clock.nowMs(),
     };
@@ -74,6 +77,7 @@ export class PostTransaction {
         sourceEventIds: [...input.sourceEventIds],
         actor: input.actor,
         audit: auditJson(audit),
+        reference: input.reference ?? null,
         occurredAt: intent.type === "historicalImport" ? intent.occurredAt.epochMs : null,
       }),
     );

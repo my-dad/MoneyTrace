@@ -93,3 +93,15 @@ export function assertCorrectionShape(original: TransactionRecord, c: Correction
     }
   }
 }
+
+/** Same provider, and the shorter of two endings is a suffix of the other. A wallet has no digits. */
+export function instrumentMatches(
+  record: { provider: string; maskedIdentifier: string; status: "active" | "closed" },
+  query: { provider: string; mask?: string },
+): boolean {
+  if (record.status !== "active" || record.provider !== query.provider) return false;
+  const stored = record.maskedIdentifier;
+  if (query.mask === undefined) return stored === "";
+  if (stored === "") return false;
+  return stored.endsWith(query.mask) || query.mask.endsWith(stored);
+}

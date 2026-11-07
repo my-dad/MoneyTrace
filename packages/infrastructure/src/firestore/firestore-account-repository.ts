@@ -19,6 +19,14 @@ export class FirestoreAccountRepository implements AccountRepository {
     await this.db.doc(ownerPath(ownerId, "accounts", record.id)).create(data);
   }
 
+  async ensure(ownerId: OwnerId, record: AccountRecord): Promise<void> {
+    const data = OWNER_COLLECTIONS.accounts.parse({ ...record });
+    const ref = this.db.doc(ownerPath(ownerId, "accounts", record.id));
+    await this.db.runTransaction(async (t) => {
+      if (!(await t.get(ref)).exists) t.create(ref, data);
+    });
+  }
+
   async getMany(ownerId: OwnerId, ids: readonly AccountId[]): Promise<AccountRecord[]> {
     const unique = [...new Set(ids)];
     if (unique.length === 0) return [];

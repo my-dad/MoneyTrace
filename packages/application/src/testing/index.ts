@@ -9,3 +9,5 @@ export * from "./in-memory-quota";
 export * from "./fake-provider";
 export * from "./provider-call-contract";
 export * from "./ai-provider-contract";
+export * from "./payment-instrument-contract";
+export * from "./in-memory-payment-instruments";

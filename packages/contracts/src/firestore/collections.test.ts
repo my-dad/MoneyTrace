@@ -28,6 +28,7 @@ const valid = {
   paymentInstruments: {
     id: "p1",
     kind: "debitCard",
+    provider: "ucb",
     maskedIdentifier: "1234",
     linkedAccountId: "a1",
     status: "active",

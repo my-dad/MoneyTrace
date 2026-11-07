@@ -59,7 +59,7 @@ Use case: RecordOpeningBalance
 
 Phase: 1
 
-Request: `{ accountId, maskedIdentifier, type: debitCard|creditCard }`
+Request: `{ accountId, provider, maskedIdentifier (last 3 or 4 digits, empty for a wallet), type: debitCard|creditCard|mobileWallet|bankAccount }`
 
 Response: `{ instrumentId }`
 

@@ -15,7 +15,12 @@ const EXAMPLES: Record<CommandName, unknown> = {
   bootstrapUser: {},
   createAccount: { kind: "bank", name: "City Bank", currency: "BDT" },
   recordOpeningBalance: validOpening,
-  createPaymentInstrument: { accountId: "acc1", maskedIdentifier: "1234", type: "debitCard" },
+  createPaymentInstrument: {
+    accountId: "acc1",
+    provider: "ucb",
+    maskedIdentifier: "1234",
+    type: "debitCard",
+  },
   updateSettings: { reportingCycle: { kind: "salaryCycle", startDay: 25 } },
   submitEvidence: { idempotencyKey: "k1", text: "Tk 500 debited at ATM" },
   sendChatMessage: { conversationId: "conv1", text: "I gave 2000 cash to Mom" },

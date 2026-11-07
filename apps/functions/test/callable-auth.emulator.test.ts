@@ -85,6 +85,31 @@ beforeEach(async () => {
 
 /** The first call to each function cold-starts it in the emulator, which can exceed the 5s default. */
 describe("authenticated callables", { timeout: 60_000 }, () => {
+  it("bootstrap creates the system cash wallet", async () => {
+    const user = await signUp("wallet");
+    unwrap(await call("bootstrapUser", user, {}));
+    const wallet = await db.doc(`users/${user.uid}/accounts/cash-unassigned`).get();
+    expect(wallet.get("kind")).toBe("cash");
+  });
+
+  it("creates a payment instrument, and treats another user's account as not found", async () => {
+    const [owner, other] = [await signUp("owner"), await signUp("other")];
+    const { accountId } = unwrap(
+      await call("createAccount", owner, { kind: "bank", name: "City", currency: "BDT" }),
+    );
+    const request = { accountId, provider: "ucb", maskedIdentifier: "1234", type: "debitCard" };
+    const { instrumentId } = unwrap(await call("createPaymentInstrument", owner, request));
+    expect(typeof instrumentId).toBe("string");
+    const refused = await call("createPaymentInstrument", other, request);
+    expect(refused.error?.status).toBe("NOT_FOUND");
+    const full = await call("createPaymentInstrument", owner, {
+      ...request,
+      maskedIdentifier: "4111111111111111",
+    });
+    expect(full.error?.status).toBe("INVALID_ARGUMENT");
+    expect((await db.collection(`users/${owner.uid}/paymentInstruments`).get()).size).toBe(1);
+  });
+
   it("rejects a request with no token", async () => {
     const res = await call("createAccount", null, validAccount);
     expect(res.status).toBe(401);

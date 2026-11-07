@@ -3,6 +3,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { bootstrapUser as makeBootstrapUser } from "./callable/bootstrap-user";
 import { createAccount as makeCreateAccount } from "./callable/create-account";
 import { recordOpeningBalance as makeRecordOpeningBalance } from "./callable/record-opening-balance";
+import { createPaymentInstrument as makeCreatePaymentInstrument } from "./callable/create-payment-instrument";
 import { composeDeps, type Deps } from "./composition";
 
 let deps: Deps | undefined;
@@ -14,4 +15,5 @@ const getDeps = (): Deps => {
 
 export const bootstrapUser = makeBootstrapUser(getDeps);
 export const createAccount = makeCreateAccount(getDeps);
+export const createPaymentInstrument = makeCreatePaymentInstrument(getDeps);
 export const recordOpeningBalance = makeRecordOpeningBalance(getDeps);

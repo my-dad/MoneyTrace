@@ -55,9 +55,11 @@ const accounts = z
 const paymentInstruments = z
   .object({
     id: documentId,
-    kind: z.enum(["debitCard", "creditCard"]),
-    /** Masked identifier only, for example the last four digits. */
-    maskedIdentifier: z.string().min(1).max(32),
+    kind: z.enum(["debitCard", "creditCard", "mobileWallet", "bankAccount"]),
+    /** A parser provider or `other`; it separates the same ending at two banks. */
+    provider: z.string().min(1).max(32),
+    /** The last 3 or 4 digits only; empty for a mobile wallet. */
+    maskedIdentifier: z.string().regex(/^(\d{3,4})?$/),
     linkedAccountId: documentId,
     status: z.enum(["active", "closed"]),
     createdAtMs: epochMs,
@@ -197,6 +199,7 @@ const transactions = z
     currency: currencyCode,
     sourceEventIds: ids,
     actor: z.string().min(1).max(128),
+    reference: z.string().min(1).max(64).optional(),
     category: z
       .string()
       .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)

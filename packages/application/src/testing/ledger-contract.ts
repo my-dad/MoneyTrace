@@ -895,5 +895,40 @@ export function describeLedgerContract(
       expect(await accounts.getMany(alice, [record1.id, asAccountId("nope")])).toEqual([record1]);
       expect(await accounts.getMany(bob, [record1.id])).toEqual([]);
     });
+
+    it("lists entries in an inclusive date range, per owner", async () => {
+      await writer.commit(alice, commitOf("k-range", "tx-range", 700));
+      const at = 1_700_000_000_000;
+      expect(await reader.listEntriesInRange(alice, at, at)).toHaveLength(2);
+      expect(await reader.listEntriesInRange(alice, at + 1, at + 2)).toEqual([]);
+      expect(await reader.listEntriesInRange(bob, at, at)).toEqual([]);
+    });
+
+    it("ensure creates an account once and leaves an existing one alone", async () => {
+      const row = {
+        id: asAccountId("sys"),
+        kind: "cash" as const,
+        name: "first",
+        currency: "BDT" as const,
+        status: "active" as const,
+        createdAtMs: 1,
+      };
+      await accounts.ensure(alice, row);
+      await accounts.ensure(alice, { ...row, name: "second" });
+      expect(await accounts.getMany(alice, [row.id])).toEqual([
+        expect.objectContaining({ name: "first" }),
+      ]);
+    });
+
+    it("keeps a transaction's category and reference", async () => {
+      await writer.commit(alice, {
+        ...commitOf("k-ref", "tx-ref", 700),
+        transaction: record("tx-ref", { reference: "REF1", category: "groceries" }),
+      });
+      expect(await reader.getTransaction(alice, asTransactionId("tx-ref"))).toMatchObject({
+        reference: "REF1",
+        category: "groceries",
+      });
+    });
   });
 }

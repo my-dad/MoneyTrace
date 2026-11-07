@@ -1,12 +1,18 @@
 import { DEFAULT_RETENTION_POLICY } from "@moneytrace/contracts";
-import type { OwnerId } from "@moneytrace/domain";
+import { asAccountId, type OwnerId } from "@moneytrace/domain";
+import type { AccountRepository } from "../ports/account-repository";
 import type { Clock } from "../ports/clock";
 import type { UserProfileRepository } from "../ports/user-profile-repository";
 
-export class BootstrapUser {
-  private readonly deps: { profiles: UserProfileRepository; clock: Clock };
+/** Holds cash whose place the user has not told us yet: a withdrawal moves money here at once. */
+export const SYSTEM_CASH_ACCOUNT_ID = asAccountId("cash-unassigned");
 
-  constructor(deps: { profiles: UserProfileRepository; clock: Clock }) {
+type Deps = { profiles: UserProfileRepository; accounts: AccountRepository; clock: Clock };
+
+export class BootstrapUser {
+  private readonly deps: Deps;
+
+  constructor(deps: Deps) {
     this.deps = deps;
   }
 
@@ -18,6 +24,14 @@ export class BootstrapUser {
       reportingCycle: { kind: "calendarMonth" },
       notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 },
       retentionPolicyVersion: DEFAULT_RETENTION_POLICY.version,
+      createdAtMs: this.deps.clock.nowMs(),
+    });
+    await this.deps.accounts.ensure(input.ownerId, {
+      id: SYSTEM_CASH_ACCOUNT_ID,
+      kind: "cash",
+      name: "Cash · place not set",
+      currency: "BDT",
+      status: "active",
       createdAtMs: this.deps.clock.nowMs(),
     });
     return { created };

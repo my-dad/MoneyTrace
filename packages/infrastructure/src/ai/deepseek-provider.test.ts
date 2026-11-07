@@ -195,8 +195,9 @@ describe("interpret prompt", () => {
 
 describe("FakeAIProvider", () => {
   it("answers unknown text as unusable", async () => {
-    expect(
-      await new FakeAIProvider().interpretEvidence({ text: "hello", context }, "k", liveSignal()),
-    ).toEqual({ kind: "success", value: { kind: "unusable" } });
+    expect(await new FakeAIProvider().interpretEvidence({ text: "hello", context })).toEqual({
+      kind: "success",
+      value: { kind: "unusable" },
+    });
   });
 });

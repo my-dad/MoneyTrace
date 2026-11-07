@@ -1,6 +1,7 @@
 import {
   BootstrapUser,
   CreateAccount,
+  CreatePaymentInstrument,
   RecordOpeningBalance,
   type IdGenerator,
   type Logger,
@@ -10,6 +11,7 @@ import {
   FirestoreAccountRepository,
   FirestoreLedgerReader,
   FirestoreLedgerWriter,
+  FirestorePaymentInstrumentRepository,
   FirestoreUserProfileRepository,
   JsonLogger,
   NodeHasher,
@@ -22,6 +24,7 @@ export type Deps = {
   ids: IdGenerator;
   bootstrapUser: BootstrapUser;
   createAccount: CreateAccount;
+  createPaymentInstrument: CreatePaymentInstrument;
   recordOpeningBalance: RecordOpeningBalance;
 };
 
@@ -39,8 +42,14 @@ export function composeDeps(db: Firestore): Deps {
       console.log(line);
     }),
     ids,
-    bootstrapUser: new BootstrapUser({ profiles, clock }),
+    bootstrapUser: new BootstrapUser({ profiles, accounts, clock }),
     createAccount: new CreateAccount({ accounts, ids, clock }),
+    createPaymentInstrument: new CreatePaymentInstrument({
+      accounts,
+      instruments: new FirestorePaymentInstrumentRepository(db),
+      ids,
+      clock,
+    }),
     recordOpeningBalance: new RecordOpeningBalance({ writer, reader, accounts, hasher, clock }),
   };
 }

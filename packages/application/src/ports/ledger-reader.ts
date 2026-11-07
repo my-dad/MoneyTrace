@@ -19,6 +19,10 @@ export type TransactionRecord = {
   currency: CurrencyCode;
   sourceEventIds: readonly SourceEventId[];
   actor: string;
+  /** The expense or income category, when the intent has one. */
+  category?: string;
+  /** The provider's own transaction ID, when the evidence gives one. */
+  reference?: string;
   rationale?: string;
   correctionOf?: TransactionId;
   reversedBy?: TransactionId;
@@ -49,6 +53,8 @@ export type LedgerReader = {
   getBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
   /** The same figure summed from entries; used to prove the projection. */
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
+  /** Every entry dated in the inclusive range, across the owner's accounts. */
+  listEntriesInRange(ownerId: OwnerId, fromMs: number, toMs: number): Promise<EntryRecord[]>;
   /** The stored cutover markers for the given accounts; accounts without one are omitted. */
   getCutoverMarkers(
     ownerId: OwnerId,

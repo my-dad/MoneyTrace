@@ -45,6 +45,15 @@ export class FirestoreLedgerReader implements LedgerReader {
     return s.exists ? OWNER_COLLECTIONS.balances.parse(s.data()).debitMinusCreditMinor : 0;
   }
 
+  async listEntriesInRange(ownerId: OwnerId, fromMs: number, toMs: number): Promise<EntryRecord[]> {
+    const snap = await this.db
+      .collection(ownerPath(ownerId, "ledgerEntries"))
+      .where("occurredAtMs", ">=", fromMs)
+      .where("occurredAtMs", "<=", toMs)
+      .get();
+    return snap.docs.map((d) => toEntryRecord(d.data()));
+  }
+
   async recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number> {
     const snap = await this.db
       .collection(ownerPath(ownerId, "ledgerEntries"))

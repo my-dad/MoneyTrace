@@ -268,6 +268,15 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
     });
   }
 
+  listEntriesInRange(ownerId: OwnerId, fromMs: number, toMs: number): Promise<EntryRecord[]> {
+    return atomically(() =>
+      [...this.of(ownerId).entries.values()]
+        .flat()
+        .filter((e) => e.occurredAtMs >= fromMs && e.occurredAtMs <= toMs)
+        .map((e) => ({ ...e })),
+    );
+  }
+
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number> {
     return atomically(() => {
       let sum = 0;
@@ -293,6 +302,14 @@ export class InMemoryAccountRepository implements AccountRepository {
       }
       if (accounts.has(record.id)) throw new Error("account already exists");
       accounts.set(record.id, { ...record });
+    });
+  }
+
+  ensure(ownerId: OwnerId, record: AccountRecord): Promise<void> {
+    return atomically(() => {
+      const accounts = this.owners.get(ownerId) ?? new Map<string, AccountRecord>();
+      this.owners.set(ownerId, accounts);
+      if (!accounts.has(record.id)) accounts.set(record.id, { ...record });
     });
   }
 

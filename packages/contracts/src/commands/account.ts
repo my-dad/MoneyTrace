@@ -26,7 +26,9 @@ export const recordOpeningBalanceResponse = strictObject({
 
 export const createPaymentInstrumentRequest = strictObject({
   accountId: documentId,
-  maskedIdentifier: z.string().min(1).max(32),
-  type: z.enum(["debitCard", "creditCard"]),
+  provider: z.enum(["bkash", "brac", "mtb", "stanchart", "trustbank", "ucb", "upay", "other"]),
+  /** The last 3 or 4 digits only; empty for a mobile wallet. */
+  maskedIdentifier: z.string().regex(/^(\d{3,4})?$/),
+  type: z.enum(["debitCard", "creditCard", "mobileWallet", "bankAccount"]),
 });
 export const createPaymentInstrumentResponse = strictObject({ instrumentId: documentId });
