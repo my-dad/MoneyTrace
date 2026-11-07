@@ -72,7 +72,7 @@ export const COMMANDS = {
   },
   updateSettings: { phase: 1, request: updateSettingsRequest, response: updateSettingsResponse },
   submitEvidence: { phase: 1, request: submitEvidenceRequest, response: submitEvidenceResponse },
-  sendChatMessage: { phase: 1, request: sendChatMessageRequest, response: sendChatMessageResponse },
+  sendChatMessage: { phase: 3, request: sendChatMessageRequest, response: sendChatMessageResponse },
   confirmCandidate: {
     phase: 1,
     request: confirmCandidateRequest,
@@ -101,7 +101,7 @@ export const COMMANDS = {
     response: recordCustodyTransferResponse,
   },
   upsertCashAllocation: {
-    phase: 1,
+    phase: 3,
     request: upsertCashAllocationRequest,
     response: upsertCashAllocationResponse,
   },

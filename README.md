@@ -6,9 +6,9 @@ receipts, uploads, and chat as evidence that must be validated before posting.
 
 ## Status
 
-Phase 0 foundations are in progress. The minimal web sign-in foundation is
-implemented, while GitHub Actions, real Firebase environments, deployment,
-backups, and restore drills remain deferred.
+The Phase 1 SMS vertical slice is locally implemented and verified. GitHub
+Actions, production deployment, backups, and restore drills remain deferred
+until the Phase 0B security and billing gates are approved.
 
 See [`AGENT.md`](AGENT.md) for the engineering rules and
 [`docs/superpowers/plans/2026-11-06-phase-0-foundations.md`](docs/superpowers/plans/2026-11-06-phase-0-foundations.md)
@@ -25,6 +25,7 @@ pnpm install --frozen-lockfile
 pnpm verify
 pnpm --filter web build
 pnpm test:emulator
+pnpm test:e2e
 ```
 
 The emulator suite uses the non-production Firebase project ID
@@ -41,9 +42,9 @@ Useful commands:
   Functions emulator tests.
 - `pnpm --filter web build` — build the Next.js web app.
 
-No production or staging deployment command is provided yet. Do not create a
-real Firebase database until the staging region smoke test and restore plan in
-Task 15 are approved.
+`pnpm deploy:staging` exists, but do not run it. The staging project exists on
+Spark with Firestore in `asia-south2`; deployment is blocked until the Phase 0B
+security, billing, backup, and restore gates are approved.
 
 ## Repository map
 

@@ -27,6 +27,22 @@ The user-visible accounting event created after validation. A transaction owns
 one or more immutable ledger entries and may be corrected only by an atomic
 reversal-and-replacement operation.
 
+## Candidate
+
+A parser- or AI-proposed interpretation of a SourceEvent. A candidate is not
+accounting truth until deterministic checks and, where required, the user
+confirm it.
+
+## System wallet
+
+The non-editable `Cash · place not set` cash account. It receives withdrawals
+until the user explains where the physical cash went.
+
+## Unexplained cash
+
+Money currently held in the system wallet. It remains part of total cash but is
+not treated as spending and appears as a focused Home question.
+
 ## LedgerEntry
 
 An immutable debit or credit line belonging to a transaction. A posted

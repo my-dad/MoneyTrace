@@ -93,7 +93,7 @@ Use case: SubmitEvidence
 
 ### sendChatMessage
 
-Phase: 1
+Phase: 3
 
 Request: `{ conversationId, text }`. `text` is 1 to 10,000 characters.
 
@@ -189,7 +189,7 @@ Use case: RecordCustodyTransfer
 
 ### upsertCashAllocation
 
-Phase: 1
+Phase: 3
 
 Request: `{ walletId, purpose, amountMinor, currency }`
 

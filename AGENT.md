@@ -6,9 +6,10 @@ Source of product truth: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline). If this
 
 ## Project status
 
-Phase 0 foundations are **in progress**. The repository now contains the domain,
-contracts, application, infrastructure, Functions, emulator rules, and minimal
-web sign-in foundation. The Phase 0 plan is
+Phase 1's SMS vertical slice is implemented and locally verified on
+`phase-1-sms-slice`. It includes the authenticated chat, Home summary, account
+setup, deterministic pipeline, emulator coverage, and PWA shell. Production
+deployment remains blocked by the Phase 0B gates. The Phase 0 plan is
 [`docs/superpowers/plans/2026-11-06-phase-0-foundations.md`](docs/superpowers/plans/2026-11-06-phase-0-foundations.md);
 the architecture source is
 [`docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md`](docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md).
@@ -117,12 +118,15 @@ pnpm verify
 pnpm --filter web build
 pnpm test:emulator
 pnpm build:functions
+pnpm test:e2e
 ```
 
 `pnpm verify` runs lint, all workspace typechecks, dependency-boundary checks,
 and the unit test suite. `pnpm test:emulator` builds Functions and runs the
-emulator suite against the local demo project. There is no deploy command yet:
-real Firebase environments and deployment are deferred to Task 15.
+emulator suite against the local demo project. `pnpm test:e2e` builds the web
+app and runs emulator-gated Playwright smoke paths. `pnpm deploy:staging` exists,
+but must not run before Phase 0B's App Check, rate-limit, billing, backup, and
+restore gates are approved.
 
 ## Repository layout
 

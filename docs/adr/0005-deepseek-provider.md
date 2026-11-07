@@ -30,3 +30,10 @@ guard, not a measurement, so real spending must be checked in DeepSeek's dashboa
 Text is masked by `AIGateway` before it reaches the provider. Under PRD CR-002, no real financial
 data goes to the real API until the 0B gate passes. DeepSeek's data-processing terms still need
 review (PRD section 10).
+
+## Phase 1 verification status
+
+No live API check was run: no `DEEPSEEK_API_KEY` was supplied. The emulator
+suite uses the fake provider, and no real financial text was sent to DeepSeek.
+Before 0B, verify current pricing, retention/data-processing terms, and the
+configured model name against DeepSeek's current documentation.

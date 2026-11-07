@@ -1,8 +1,9 @@
 # Firebase environments
 
-This runbook is prepared for Phase 0. The repository currently supports the
-local `demo-moneytrace` emulator project. Staging, development, and production
-projects are intentionally not created yet.
+This runbook covers the Phase 0B deployment gate. The repository supports the
+local `demo-moneytrace` emulator project and has a user-created staging project
+`moneytrace-staging` in alias `staging`. Development and production projects
+are not created.
 
 ## Security and billing decision
 
@@ -45,12 +46,11 @@ Firebase project.
 These steps require Mabrur's Google account and billing decision. Do not run
 them from an automated agent.
 
-1. Create a globally available project ID ending in `-staging` and upgrade it
-   to Blaze. Do not use a project ID that the drill refuses.
-2. Create the default Firestore database and Storage bucket in `asia-south2`.
-   The Firestore location is permanent. Stop if that region is unavailable.
-3. Enable Google sign-in and provide the project ID to the implementer.
-4. Add the Firebase alias only after the project exists:
+1. Keep `moneytrace-staging` on Spark for now; do not upgrade or deploy.
+2. The default Firestore database already exists in `asia-south2`; its location
+   is permanent. Stop if any new environment cannot use the approved region.
+3. Enable Google sign-in and verify the web authorized domains manually.
+4. The repository alias is already configured:
 
    ```bash
    firebase use --add
@@ -66,6 +66,10 @@ them from an automated agent.
 If the trigger or schedule cannot deploy in `asia-south2`, stop before creating
 dev or prod. Evaluate `asia-east2` for Functions with the existing database
 only after discussing the result.
+
+Functions currently declare `maxInstances: 2` for the source-event trigger and
+`maxInstances: 1` for scheduled jobs. These limits are emulator-tested defaults,
+not a substitute for the Phase 0B rate-limit and spend-cap review.
 
 ## Dev and prod
 
