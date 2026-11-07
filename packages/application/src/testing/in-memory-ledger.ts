@@ -56,6 +56,15 @@ function markersOf(s: OwnerLedger): CutoverMarker[] {
   }));
 }
 
+/** Any non-opening entry on the account dated at or before `ms`, reversed or not. */
+function hasActivityUpTo(s: OwnerLedger, accountId: string, ms: number): boolean {
+  for (const [txId, list] of s.entries) {
+    if (s.transactions.get(txId)?.intentType === "openingBalance") continue;
+    if (list.some((e) => e.accountId === accountId && e.occurredAtMs <= ms)) return true;
+  }
+  return false;
+}
+
 /** The reversal must be the stored entries with every side flipped, as a multiset. */
 function assertMirrors(stored: readonly EntryRecord[], reversal: readonly EntryDraft[]): void {
   const key = (account: string, side: string, minor: number, currency: string): string =>
@@ -136,6 +145,9 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       }
       assertTransition(s.transactions.get(c.transaction.id)?.state ?? null, "posted");
       if (c.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(c.entries);
+      if (c.transaction.intentType === "openingBalance" && c.cutoverMarker === undefined) {
+        throw new DomainError("invalidIntent", "an opening balance must carry a cutover marker");
+      }
       if (c.transaction.intentType !== "openingBalance") {
         assertPostingAfterCutover(
           c.entries,
@@ -149,6 +161,12 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
           throw new DomainError("invalidIntent", "marker date must equal the transaction date");
         }
         if (s.markers.has(c.cutoverMarker.accountId)) return { status: "idempotencyConflict" };
+        if (hasActivityUpTo(s, c.cutoverMarker.accountId, c.cutoverMarker.effectiveAt.epochMs)) {
+          throw new DomainError(
+            "cutoverHasActivity",
+            "the account has activity before the opening",
+          );
+        }
       }
 
       InMemoryLedger.write(s, c.transaction, c.entries);
@@ -204,13 +222,8 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
           throw new DomainError("invalidIntent", "the marker does not belong to the original");
         }
         const newMs = c.cutoverMarker.effectiveAt.epochMs;
-        if (newMs > current.effectiveAtMs) {
-          for (const [txId, list] of s.entries) {
-            if (s.transactions.get(txId)?.intentType === "openingBalance") continue;
-            if (list.some((e) => e.accountId === accountId && e.occurredAtMs <= newMs)) {
-              throw new DomainError("cutoverHasActivity", "the account has earlier activity");
-            }
-          }
+        if (newMs > current.effectiveAtMs && hasActivityUpTo(s, accountId, newMs)) {
+          throw new DomainError("cutoverHasActivity", "the account has earlier activity");
         }
       }
       if (c.replacement) {

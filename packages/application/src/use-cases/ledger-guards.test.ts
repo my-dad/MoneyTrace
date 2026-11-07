@@ -420,22 +420,34 @@ describe("every posting respects the cutover, and replays stay replays", () => {
   it("a retry of an already recorded posting stays a duplicate after the opening is recorded", async () => {
     const early = effective - 5 * DAY;
     await postIntent(purchase(10), { occurredAtMs: early });
-    await openCash(effective);
+    await openCash(early - DAY);
     expect(await postIntent(purchase(10), { occurredAtMs: early })).toMatchObject({
       status: "duplicate",
     });
     await expect(
-      postIntent(purchase(10), { key: "k2", txId: "tx-2", occurredAtMs: early }),
+      postIntent(purchase(10), { key: "k2", txId: "tx-2", occurredAtMs: early - 2 * DAY }),
     ).rejects.toThrow(code("beforeCutover"));
   });
 
-  it("a correction may reverse a pre-cutover posting but not replace it with one", async () => {
+  it("refuses a first opening dated at or after existing activity", async () => {
     const early = effective - 5 * DAY;
     await postIntent(purchase(10), { occurredAtMs: early });
+    await expect(openCash(early)).rejects.toThrow(code("cutoverHasActivity"));
+    await expect(openCash(effective)).rejects.toThrow(code("cutoverHasActivity"));
+    expect(await w.ledger.getCutoverMarkers(alice, [cash.id])).toEqual([]);
+    expect(await w.ledger.getBalance(alice, cash.id)).toBe(-10);
+  });
+
+  it("a replacement dated at or before the marker is refused, a later date is fine", async () => {
     await openCash(effective);
-    await expect(correct("tx-1", purchase(12))).rejects.toThrow(code("beforeCutover"));
+    await postIntent(purchase(10), { occurredAtMs: effective + DAY });
+    await expect(correct("tx-1", purchase(12), { occurredAtMs: effective - DAY })).rejects.toThrow(
+      code("beforeCutover"),
+    );
     expect((await w.ledger.getTransaction(alice, tx("tx-1")))?.state).toBe("posted");
-    expect((await correct("tx-1", null)).status).toBe("committed");
+    expect(
+      (await correct("tx-1", purchase(12), { occurredAtMs: effective + 2 * DAY })).status,
+    ).toBe("committed");
   });
 });
 

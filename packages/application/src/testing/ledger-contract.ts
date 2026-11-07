@@ -556,18 +556,60 @@ export function describeLedgerContract(
       expect(await reader.getBalance(alice, cash.id)).toBe(800_000);
     });
 
-    it("a replay stays a duplicate after a later marker is stored", async () => {
-      const early = commitOf("k1", "tx-1", 500_000);
-      await writer.commit(alice, early);
-      await writer.commit(
-        alice,
-        markerCommit("opening:cash-1", "cash-1", "hash-a", 1_701_000_000_000),
-      );
-      expect(await writer.commit(alice, early)).toEqual({
+    it("refuses a first marker dated at or after existing activity, and writes nothing", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const activity = 1_700_000_000_000;
+      for (const ms of [activity, activity + 1]) {
+        await expect(
+          writer.commit(alice, markerCommit("opening:cash-1", "cash-1", "hash-a", ms)),
+        ).rejects.toThrow(code("cutoverHasActivity"));
+      }
+      expect(await reader.getCutoverMarkers(alice, [cash.id])).toEqual([]);
+      expect(
+        await reader.getTransaction(alice, asTransactionId("marker-opening:cash-1")),
+      ).toBeNull();
+      // Before the activity, and on an account without activity, it is fine.
+      expect(
+        (
+          await writer.commit(
+            alice,
+            markerCommit("opening:cash-1", "cash-1", "hash-a", activity - 1),
+          )
+        ).status,
+      ).toBe("committed");
+      // Another owner's activity does not matter.
+      expect(
+        (await writer.commit(bob, markerCommit("opening:cash-1", "cash-1", "hash-a", activity + 5)))
+          .status,
+      ).toBe("committed");
+    });
+
+    it("a replayed opening stays a duplicate", async () => {
+      const marker = markerCommit("opening:cash-1", "cash-1", "hash-a");
+      const first = await writer.commit(alice, marker);
+      expect(await writer.commit(alice, marker)).toEqual({
         status: "duplicate",
-        transactionId: early.transaction.id,
+        transactionId: committedId(first),
       });
-      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+    });
+
+    it("an opening-balance commit must carry a marker", async () => {
+      const bad: LedgerCommit = { ...openingCommit(100), cutoverMarker: undefined };
+      delete bad.cutoverMarker;
+      await expect(writer.commit(alice, bad)).rejects.toThrow(code("invalidIntent"));
+      expect(await reader.getTransaction(alice, asTransactionId("opening-cash-1"))).toBeNull();
+      expect(await reader.getBalance(alice, cash.id)).toBe(0);
+    });
+
+    it("a replayed correction stays a duplicate after its opening marker moved", async () => {
+      await writer.commit(alice, openingCommit(100_000));
+      const fix = openingCorrection("fix1", "opening-cash-1", 100_000, 110_000, EFFECTIVE + 1000);
+      const first = await writer.commitCorrection(alice, fix);
+      expect(await writer.commitCorrection(alice, fix)).toEqual({
+        status: "duplicate",
+        transactionId: committedId(first),
+      });
+      expect(await reader.getBalance(alice, cash.id)).toBe(110_000);
     });
 
     it("refuses any new entries on an account at or before its stored marker", async () => {
@@ -596,20 +638,73 @@ export function describeLedgerContract(
       expect((await writer.commit(alice, strict)).status).toBe("committed");
     });
 
-    it("a correction may reverse a pre-cutover transaction, but its replacement must respect the marker", async () => {
+    it("a correction replacement must respect the stored marker", async () => {
+      await writer.commit(alice, markerCommit("opening:cash-1", "cash-1", "hash-a"));
       await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const base = correctionOf("c1", "tx-1", 300_000);
+      const replacement = base.replacement;
+      if (replacement === undefined) throw new Error("replacement expected");
+      const early: CorrectionCommit = {
+        ...base,
+        replacement: {
+          ...replacement,
+          transaction: { ...replacement.transaction, occurredAtMs: EFFECTIVE },
+        },
+      };
+      await expect(writer.commitCorrection(alice, early)).rejects.toThrow(code("beforeCutover"));
+      expect((await reader.getTransaction(alice, asTransactionId("tx-1")))?.state).toBe("posted");
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+      expect((await writer.commitCorrection(alice, base)).status).toBe("committed");
+    });
+
+    it("a correction replacement can require a marker, and writes nothing without one", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const base = correctionOf("c1", "tx-1", 300_000);
+      const replacement = base.replacement;
+      if (replacement === undefined) throw new Error("replacement expected");
+      const strict: CorrectionCommit = {
+        ...base,
+        replacement: { ...replacement, requireCutoverMarker: true },
+      };
+      await expect(writer.commitCorrection(alice, strict)).rejects.toThrow(code("beforeCutover"));
+      expect((await reader.getTransaction(alice, asTransactionId("tx-1")))?.state).toBe("posted");
+      expect(await reader.getTransaction(alice, strict.reversal.id)).toBeNull();
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+      // With markers on both accounts the same correction goes through.
       await writer.commit(
         alice,
-        markerCommit("opening:cash-1", "cash-1", "hash-a", 1_701_000_000_000),
+        markerCommit("opening:cash-1", "cash-1", "hash-a", 1_699_000_000_000),
       );
-      await expect(
-        writer.commitCorrection(alice, correctionOf("c1", "tx-1", 300_000)),
-      ).rejects.toThrow(code("beforeCutover"));
-      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
-      expect((await writer.commitCorrection(alice, correctionOf("c2", "tx-1", null))).status).toBe(
-        "committed",
+      await writer.commit(
+        alice,
+        markerCommit("opening:bank-1", "bank-1", "hash-b", 1_699_000_000_000),
       );
-      expect(await reader.getBalance(alice, cash.id)).toBe(0);
+      expect((await writer.commitCorrection(alice, strict)).status).toBe("committed");
+    });
+
+    it("other accounts' and other owners' activity does not block a forward marker move", async () => {
+      await writer.commit(alice, openingCommit(100_000));
+      const bank2: AccountRef = { id: asAccountId("bank-2"), kind: "bank", currency: "BDT" };
+      const elsewhere: LedgerCommit = {
+        ...commitOf("k1", "tx-1", 500),
+        transaction: record("tx-1", { occurredAtMs: EFFECTIVE + 10 }),
+        entries: [
+          { account: bank, side: "debit", amount: bdt(500) },
+          { account: bank2, side: "credit", amount: bdt(500) },
+        ],
+      };
+      await writer.commit(alice, elsewhere);
+      await writer.commit(bob, {
+        ...commitOf("k2", "tx-2", 500),
+        transaction: record("tx-2", { occurredAtMs: EFFECTIVE + 10 }),
+      });
+      const moved = await writer.commitCorrection(
+        alice,
+        openingCorrection("fix1", "opening-cash-1", 100_000, 120_000, EFFECTIVE + 20),
+      );
+      expect(moved.status).toBe("committed");
+      const markers = await reader.getCutoverMarkers(alice, [cash.id]);
+      expect(markers.map((m) => m.effectiveAt.epochMs)).toEqual([EFFECTIVE + 20]);
     });
 
     it("moving a marker earlier is allowed; the replacement opening is exempt from the old marker", async () => {
