@@ -4,3 +4,7 @@ export * from "./ledger-contract";
 export * from "./world";
 export * from "./in-memory-source-events";
 export * from "./source-event-contract";
+export * from "./in-memory-provider-calls";
+export * from "./in-memory-quota";
+export * from "./fake-provider";
+export * from "./provider-call-contract";

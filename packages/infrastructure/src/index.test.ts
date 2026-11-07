@@ -6,13 +6,17 @@ describe("@moneytrace/infrastructure", () => {
     expect(Object.keys(infrastructure).sort()).toEqual([
       "CryptoIdGenerator",
       "FirestoreAccountRepository",
+      "FirestoreAiUsageRecorder",
       "FirestoreLedgerReader",
       "FirestoreLedgerWriter",
+      "FirestoreProviderCallRepository",
+      "FirestoreQuotaLedger",
       "FirestoreSourceEventRepository",
       "JsonLogger",
       "NodeHasher",
       "SystemClock",
       "ownerPath",
+      "systemTimeoutSignal",
     ]);
   });
 });

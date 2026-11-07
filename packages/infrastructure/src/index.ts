@@ -7,3 +7,7 @@ export * from "./system/crypto-id-generator";
 export * from "./system/node-hasher";
 export * from "./system/json-logger";
 export * from "./firestore/firestore-source-event-repository";
+export * from "./firestore/firestore-provider-call-repository";
+export * from "./firestore/firestore-quota-ledger";
+export * from "./firestore/firestore-ai-usage-recorder";
+export * from "./system/abort-timeout";

@@ -1,0 +1,249 @@
+import { describe, expect, it } from "vitest";
+import { asOwnerId, asSourceEventId, type PipelineStage } from "@moneytrace/domain";
+import { FakeProvider, createProviderWorld } from "../testing/fake-provider";
+import { PIPELINE_TIMEOUTS } from "./timeouts";
+import type { RetrySafety } from "@moneytrace/domain";
+
+const owner = asOwnerId("alice");
+const id = asSourceEventId("evt-1");
+const LEASE = PIPELINE_TIMEOUTS.leaseMs;
+
+async function claimed(stage: PipelineStage = "normalize") {
+  const w = createProviderWorld();
+  await w.sourceEvents.create(owner, {
+    sourceEventId: id,
+    sourceType: "sms",
+    sourceHash: "h",
+    idempotencyKey: "k",
+    receivedAtMs: w.clock.nowMs(),
+  });
+  // Walk to the stage's input status.
+  const order: [PipelineStage, "normalized" | "interpreted"][] = [
+    ["normalize", "normalized"],
+    ["interpret", "interpreted"],
+  ];
+  for (const [s, next] of order) {
+    if (s === stage) break;
+    const c = await w.sourceEvents.claim(owner, id, s, "setup", w.clock.nowMs());
+    if (c.status !== "claimed") throw new Error("setup failed");
+    await w.sourceEvents.commitStage(owner, c.claim, { nextStatus: next, outputs: [] });
+  }
+  const c = await w.sourceEvents.claim(owner, id, stage, "w1", w.clock.nowMs());
+  if (c.status !== "claimed") throw new Error("claim failed");
+  return { w, claim: c.claim };
+}
+
+const seed = async (
+  w: Awaited<ReturnType<typeof claimed>>["w"],
+  retrySafety: RetrySafety,
+  stage: PipelineStage = "interpret",
+) => {
+  const r = await w.calls.getOrCreate(
+    owner,
+    { sourceEventId: id, stage, providerId: "p" },
+    retrySafety,
+  );
+  await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
+  return r;
+};
+
+describe("RecoverExpiredClaims", () => {
+  it("does nothing while the lease is live", async () => {
+    const { w } = await claimed("interpret");
+    await seed(w, "none");
+    w.clock.advance(LEASE - 1);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 0,
+      parked: 0,
+      deadLettered: 0,
+    });
+  });
+
+  it("started plus an expired lease on a none provider: unknown, parked pending, not reopened", async () => {
+    const { w } = await claimed("interpret");
+    const r = await seed(w, "none");
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 0,
+      parked: 1,
+      deadLettered: 0,
+    });
+    expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+      status: "pending",
+      pendingReason: "providerOutcomeUnknown",
+      parkedStage: "interpret",
+      claim: null,
+    });
+    expect(
+      (await w.calls.listForStage(owner, id, "interpret")).find((c) => c.id === r.id)?.state,
+    ).toBe("unknown");
+  });
+
+  it("succeeded with no result on a non-terminal event: dead-lettered providerResultMissing", async () => {
+    const { w } = await claimed("interpret");
+    const r = await seed(w, "none");
+    await w.calls.markSucceeded(owner, r.id, "ok", w.clock.nowMs());
+    w.calls.seed(owner, r.id, { state: "succeeded" });
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 0,
+      parked: 0,
+      deadLettered: 1,
+    });
+    expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+      status: "deadLetter",
+      deadLetterReason: "providerResultMissing",
+    });
+  });
+
+  it.each<RetrySafety>(["idempotentKey", "localPure"])(
+    "started on a %s provider: reopened with a higher attempt",
+    async (safety) => {
+      const { w } = await claimed("interpret");
+      await seed(w, safety);
+      w.clock.advance(LEASE);
+      expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+        reopened: 1,
+        parked: 0,
+        deadLettered: 0,
+      });
+      expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+        status: "normalized",
+        stageAttempt: 1,
+        claim: null,
+      });
+    },
+  );
+
+  it("no provider call on the stage: reopened", async () => {
+    const { w } = await claimed();
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 1,
+      parked: 0,
+      deadLettered: 0,
+    });
+    expect((await w.sourceEvents.get(owner, id))?.status).toBe("received");
+  });
+
+  it("stageAttempt at maxAttempts: dead-lettered attemptsExhausted", async () => {
+    const { w } = await claimed();
+    for (let i = 0; i < PIPELINE_TIMEOUTS.maxAttempts; i++) {
+      w.clock.advance(LEASE);
+      await w.recovery().execute(w.clock.nowMs(), 10);
+      const c = await w.sourceEvents.claim(owner, id, "normalize", "w", w.clock.nowMs());
+      if (c.status !== "claimed") throw new Error("claim failed");
+    }
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 0,
+      parked: 0,
+      deadLettered: 1,
+    });
+    expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+      status: "deadLetter",
+      deadLetterReason: "attemptsExhausted",
+    });
+  });
+
+  it("a late worker's success is stored and reused with no second call; its commit is stale", async () => {
+    const provider = new FakeProvider("p", "none");
+    const { w, claim } = await claimed("interpret");
+    const r = await seed(w, "none");
+    w.clock.advance(LEASE);
+    await w.recovery().execute(w.clock.nowMs(), 10);
+    // The late worker finally gets its response.
+    await w.calls.markSucceeded(owner, r.id, "late", w.clock.nowMs());
+    expect(
+      await w.sourceEvents.commitStage(owner, claim, { nextStatus: "interpreted", outputs: [] }),
+    ).toBe("staleClaim");
+    const stored = (await w.calls.listForStage(owner, id, "interpret"))[0];
+    expect(stored).toMatchObject({ state: "succeeded", result: "late" });
+    const result = await w.executor().execute({
+      ownerId: owner,
+      sourceEventId: id,
+      stage: "interpret",
+      provider: { id: "p", retrySafety: "none" },
+      estimateMicroUsd: 100,
+      invoke: provider.invoke,
+    });
+    expect(result).toMatchObject({ kind: "result", value: "late" });
+    expect(provider.calls).toBe(0);
+  });
+
+  it("a user-approved retry is not blocked by an attempts-exhausted stage", async () => {
+    const provider = new FakeProvider("p", "none");
+    provider.script({ kind: "success", value: "approved" });
+    const { w } = await claimed("interpret");
+    await seed(w, "none");
+    // Drive the stage to the attempt limit through recovery cycles that each park on unknown.
+    w.clock.advance(LEASE);
+    await w.recovery().execute(w.clock.nowMs(), 10);
+    expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+      status: "pending",
+      stageAttempt: 0,
+    });
+    // Retry, then crash before invoking, until the stage is out of attempts. The approval stays set.
+    expect(await w.retry().execute({ ownerId: owner, sourceEventId: id, stage: "interpret" })).toBe(
+      "reopened",
+    );
+    for (let i = 0; i < PIPELINE_TIMEOUTS.maxAttempts; i++) {
+      const c = await w.sourceEvents.claim(owner, id, "interpret", "w", w.clock.nowMs());
+      if (c.status !== "claimed") throw new Error("claim failed");
+      w.clock.advance(LEASE);
+      const out = await w.recovery().execute(w.clock.nowMs(), 10);
+      expect(out.deadLettered).toBe(0);
+      if ((await w.sourceEvents.get(owner, id))?.status === "pending") break;
+    }
+    const event = await w.sourceEvents.get(owner, id);
+    expect(event?.stageAttempt).toBeGreaterThanOrEqual(PIPELINE_TIMEOUTS.maxAttempts);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "providerOutcomeUnknown" });
+    // One more user retry still runs the provider.
+    expect(await w.retry().execute({ ownerId: owner, sourceEventId: id, stage: "interpret" })).toBe(
+      "reopened",
+    );
+    const c = await w.sourceEvents.claim(owner, id, "interpret", "w", w.clock.nowMs());
+    if (c.status !== "claimed") throw new Error("claim failed");
+    const result = await w.executor().execute({
+      ownerId: owner,
+      sourceEventId: id,
+      stage: "interpret",
+      provider: { id: "p", retrySafety: "none" },
+      estimateMicroUsd: 100,
+      invoke: provider.invoke,
+    });
+    expect(result).toMatchObject({ kind: "result", value: "approved", retriedAfterUnknown: true });
+    expect(provider.calls).toBe(1);
+  });
+
+  it("handles several expired claims and respects the limit", async () => {
+    const w = createProviderWorld();
+    for (const n of ["a", "b", "c"]) {
+      await w.sourceEvents.create(owner, {
+        sourceEventId: asSourceEventId(`evt-${n}`),
+        sourceType: "sms",
+        sourceHash: `h${n}`,
+        idempotencyKey: `k${n}`,
+        receivedAtMs: 1,
+      });
+      await w.sourceEvents.claim(
+        owner,
+        asSourceEventId(`evt-${n}`),
+        "normalize",
+        "w",
+        w.clock.nowMs(),
+      );
+    }
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 2)).toEqual({
+      reopened: 2,
+      parked: 0,
+      deadLettered: 0,
+    });
+    expect(await w.recovery().execute(w.clock.nowMs(), 2)).toEqual({
+      reopened: 1,
+      parked: 0,
+      deadLettered: 0,
+    });
+  });
+});

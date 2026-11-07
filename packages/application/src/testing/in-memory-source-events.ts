@@ -188,6 +188,40 @@ export class InMemorySourceEvents implements SourceEventRepository {
     return Promise.resolve("parked");
   }
 
+  /** Synchronous access for sibling fakes that must stay atomic with event state. */
+  peek(ownerId: OwnerId, id: string): SourceEventRecord | undefined {
+    return this.data(ownerId).events.get(id);
+  }
+
+  /** Terminal events that may hold provider results, oldest terminal time first. */
+  purgeCandidates(
+    terminalAtOrBeforeMs: number,
+    limit: number,
+  ): { ownerId: OwnerId; sourceEventId: SourceEventId; terminalAtMs: number }[] {
+    const rows: { ownerId: OwnerId; sourceEventId: SourceEventId; terminalAtMs: number }[] = [];
+    for (const [ownerId, d] of this.owners) {
+      for (const e of d.events.values()) {
+        if (e.providerResultsPurged || e.terminalAtMs === null) continue;
+        if (e.terminalAtMs > terminalAtOrBeforeMs) continue;
+        rows.push({
+          ownerId: ownerId as OwnerId,
+          sourceEventId: e.id,
+          terminalAtMs: e.terminalAtMs,
+        });
+      }
+    }
+    rows.sort((a, b) => a.terminalAtMs - b.terminalAtMs);
+    return rows.slice(0, limit);
+  }
+
+  /** Marks an event's provider results purged, as the Firestore adapter does in a transaction. */
+  flagResultsPurged(ownerId: OwnerId, id: string): void {
+    const d = this.data(ownerId);
+    const e = d.events.get(id);
+    if (e !== undefined)
+      d.events.set(id, { ...e, providerResultsPurged: true, version: e.version + 1 });
+  }
+
   /** Test access to what stage outputs wrote. */
   outputsOf(ownerId: OwnerId, collection: OwnerCollectionName): Record<string, unknown>[] {
     const prefix = `${collection}/`;
