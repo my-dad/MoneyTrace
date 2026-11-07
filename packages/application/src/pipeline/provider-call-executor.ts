@@ -113,10 +113,10 @@ export class ProviderCallExecutor {
         "workerDied",
         clock.nowMs(),
       );
-      if (record.state === "unknown") {
-        await this.appendUsage(ownerId, workerDiedUsage(died, clock.nowMs()));
-      }
+      if (record.state === "unknown") await this.placeholder(ownerId, died);
     }
+    // A success stored by a late worker can hide a later attempt that died: meter that attempt too.
+    else if (record.state === "succeeded") await this.placeholder(ownerId, record);
     const action = this.action(record);
     if (action === "reuseResult") return this.reuse(record);
     if (action !== "invoke") return { kind: action };
@@ -170,6 +170,21 @@ export class ProviderCallExecutor {
     if (next === "reuseResult") return this.reuse(record);
     if (next === "invoke") return { kind: "retryLater" };
     return { kind: next };
+  }
+
+  /** A died attempt's row. It never replaces a real row; a late worker's own row replaces it. */
+  private async placeholder(ownerId: OwnerId, record: ProviderCallRecord): Promise<void> {
+    try {
+      await this.deps.usage.appendIfAbsent(
+        ownerId,
+        workerDiedUsage(record, this.deps.clock.nowMs()),
+      );
+    } catch (error) {
+      this.deps.logger.error("aiUsage.appendFailed", {
+        sourceEventId: record.sourceEventId,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
   }
 
   private reuse<T>(record: ProviderCallRecord): ExecuteResult<T> {

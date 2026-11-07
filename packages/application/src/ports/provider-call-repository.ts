@@ -24,6 +24,8 @@ export type ProviderCallRecord = {
   attemptCount: number;
   userApprovedRetry: boolean;
   retriedAfterUnknown: boolean;
+  /** True when the latest attempt consumed a user approval (`beginAttempt` clears the flag). */
+  lastAttemptApproved: boolean;
   quotaReservationId?: string;
   result?: unknown;
   updatedAtMs: number;

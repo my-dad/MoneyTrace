@@ -69,6 +69,7 @@ export function newProviderCall(
     attemptCount: 0,
     userApprovedRetry: false,
     retriedAfterUnknown: false,
+    lastAttemptApproved: false,
     updatedAtMs: nowMs,
   };
 }
@@ -115,6 +116,7 @@ export function decideBegin(
     attemptCount: r.attemptCount + 1,
     userApprovedRetry: false,
     retriedAfterUnknown: r.retriedAfterUnknown || r.userApprovedRetry,
+    lastAttemptApproved: r.userApprovedRetry,
     updatedAtMs: nowMs,
   };
   // The reservation belongs to one attempt: the previous one is dropped, not carried over.
@@ -232,7 +234,7 @@ export function workerDiedUsage(r: ProviderCallRecord, nowMs: number): AIUsageRe
     estimatedMicroUsd,
     outcome: "unknown",
     errorCode: "workerDied",
-    userApprovedRetry: false,
+    userApprovedRetry: r.lastAttemptApproved,
     sourceEventId: r.sourceEventId,
     stage: r.stage,
     attempt: r.attemptCount,
@@ -261,6 +263,7 @@ export function providerCallToDoc(r: ProviderCallRecord): Record<string, unknown
     attemptCount: r.attemptCount,
     userApprovedRetry: r.userApprovedRetry,
     retriedAfterUnknown: r.retriedAfterUnknown,
+    lastAttemptApproved: r.lastAttemptApproved,
     ...(r.quotaReservationId !== undefined ? { quotaReservationId: r.quotaReservationId } : {}),
     ...(r.result !== undefined ? { result: r.result } : {}),
     updatedAtMs: r.updatedAtMs,
@@ -280,6 +283,7 @@ export function toProviderCallRecord(data: unknown): ProviderCallRecord {
     attemptCount: d.attemptCount,
     userApprovedRetry: d.userApprovedRetry,
     retriedAfterUnknown: d.retriedAfterUnknown,
+    lastAttemptApproved: d.lastAttemptApproved ?? false,
     ...(d.quotaReservationId !== undefined ? { quotaReservationId: d.quotaReservationId } : {}),
     ...(d.result !== undefined ? { result: d.result } : {}),
     updatedAtMs: d.updatedAtMs,

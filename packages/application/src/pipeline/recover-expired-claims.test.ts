@@ -295,4 +295,128 @@ describe("RecoverExpiredClaims", () => {
       deadLettered: 0,
     });
   });
+
+  it("skips a stale expired-claim row: a live attempt is not marked unknown", async () => {
+    const { w, claim } = await claimed("interpret");
+    const r = await seed(w, "none");
+    w.clock.advance(LEASE);
+    const stale = await w.sourceEvents.listExpiredClaims(w.clock.nowMs(), 10);
+    expect(stale).toHaveLength(1);
+    // The row is read, then another recovery reopens and a new worker starts attempt 2.
+    expect(await w.sourceEvents.reopen(owner, id, claim.version, w.clock.nowMs())).toBe("reopened");
+    await w.calls.markFailed(owner, r.id, 1, "rejected", w.clock.nowMs());
+    const live = await w.sourceEvents.claim(owner, id, "interpret", "w2", w.clock.nowMs());
+    if (live.status !== "claimed") throw new Error("claim failed");
+    await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
+    w.sourceEvents.listExpiredClaims = () => Promise.resolve(stale);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 0,
+      parked: 0,
+      deadLettered: 0,
+    });
+    expect((await w.calls.listForStage(owner, id, "interpret"))[0]?.state).toBe("started");
+    expect(w.usage.all(owner)).toHaveLength(0);
+  });
+
+  it("meters the attempt of a worker that died after a late success from an older attempt", async () => {
+    const { w } = await claimed("interpret");
+    const r = await w.calls.getOrCreate(
+      owner,
+      { sourceEventId: id, stage: "interpret", providerId: "p" },
+      "none",
+    );
+    await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
+    await w.calls.markUnknown(owner, r.id, 1, "timeout", w.clock.nowMs());
+    await w.calls.approveRetry(owner, r.id, w.clock.nowMs());
+    await w.calls.beginAttempt(
+      owner,
+      r.id,
+      { reservationId: makeReservationId(4_000, 1, "x") },
+      w.clock.nowMs(),
+    );
+    await w.calls.markSucceeded(owner, r.id, 1, "A", w.clock.nowMs());
+    w.clock.advance(LEASE);
+    await w.recovery().execute(w.clock.nowMs(), 10);
+    expect(w.usage.all(owner)).toEqual([
+      expect.objectContaining({
+        id: `${r.id}:2`,
+        outcome: "unknown",
+        errorCode: "workerDied",
+        estimatedMicroUsd: 4_000,
+        userApprovedRetry: true,
+      }),
+    ]);
+  });
+
+  it("never overwrites a real row with a placeholder", async () => {
+    const { w } = await claimed("interpret");
+    const r = await seed(w, "none");
+    await w.usage.append(owner, {
+      id: `${r.id}:1`,
+      providerId: "p",
+      estimatedMicroUsd: 9,
+      outcome: "unknown",
+      errorCode: "timeout",
+      userApprovedRetry: false,
+      sourceEventId: id,
+      stage: "interpret",
+      attempt: 1,
+      createdAtMs: 1,
+    });
+    w.clock.advance(LEASE);
+    await w.recovery().execute(w.clock.nowMs(), 10);
+    expect(w.usage.all(owner)).toEqual([expect.objectContaining({ errorCode: "timeout" })]);
+  });
+
+  it("reopens rather than dead-letters a stage that holds a stored result, with no provider call", async () => {
+    const provider = new FakeProvider("p", "none");
+    const { w } = await claimed("interpret");
+    for (let i = 0; i < PIPELINE_TIMEOUTS.maxAttempts; i++) {
+      w.clock.advance(LEASE);
+      await w.recovery().execute(w.clock.nowMs(), 10);
+      const c = await w.sourceEvents.claim(owner, id, "interpret", "w", w.clock.nowMs());
+      if (c.status !== "claimed") throw new Error("claim failed");
+    }
+    expect((await w.sourceEvents.get(owner, id))?.stageAttempt).toBe(PIPELINE_TIMEOUTS.maxAttempts);
+    const r = await seed(w, "none");
+    await w.calls.markSucceeded(owner, r.id, 1, "stored", w.clock.nowMs());
+    w.clock.advance(LEASE);
+    expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
+      reopened: 1,
+      parked: 0,
+      deadLettered: 0,
+    });
+    const c = await w.sourceEvents.claim(owner, id, "interpret", "w", w.clock.nowMs());
+    if (c.status !== "claimed") throw new Error("claim failed");
+    const result = await w.executor().execute({
+      ownerId: owner,
+      sourceEventId: id,
+      stage: "interpret",
+      provider: { id: "p", retrySafety: "none" },
+      estimateMicroUsd: 100,
+      invoke: provider.invoke,
+    });
+    expect(result).toMatchObject({ kind: "result", value: "stored" });
+    expect(provider.calls).toBe(0);
+  });
+
+  it("a late success from attempt 1 after an approved attempt 2 is marked retriedAfterUnknown", async () => {
+    const provider = new FakeProvider("p", "none");
+    const { w } = await claimed("interpret");
+    const r = await seed(w, "none");
+    await w.calls.markUnknown(owner, r.id, 1, "timeout", w.clock.nowMs());
+    await w.calls.approveRetry(owner, r.id, w.clock.nowMs());
+    await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
+    await w.calls.markSucceeded(owner, r.id, 1, "A", w.clock.nowMs());
+    const result = await w.executor().execute({
+      ownerId: owner,
+      sourceEventId: id,
+      stage: "interpret",
+      provider: { id: "p", retrySafety: "none" },
+      estimateMicroUsd: 100,
+      invoke: provider.invoke,
+    });
+    expect(result).toMatchObject({ kind: "result", value: "A", retriedAfterUnknown: true });
+    expect(provider.calls).toBe(0);
+  });
 });

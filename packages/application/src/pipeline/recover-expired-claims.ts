@@ -8,6 +8,7 @@ import type {
   SourceEventRepository,
 } from "../ports/source-event-repository";
 import type { AIUsageRecord, AIUsageRecorder } from "../ports/ai-usage-recorder";
+import { isLeaseExpired } from "../source-event-guards";
 import { hasResult, workerDiedUsage } from "../provider-call-guards";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
 
@@ -57,6 +58,18 @@ export class RecoverExpiredClaims {
 
   private async recoverOne(claim: ExpiredClaim, nowMs: number, out: RecoveryResult): Promise<void> {
     const { sourceEvents, providerCalls } = this.deps;
+    // The row may be stale: another recovery or a new worker can have moved the event since it
+    // was listed. Only an event still at the listed version with an expired lease is recovered;
+    // anything else is skipped, so a live attempt is never marked unknown.
+    const current = await sourceEvents.get(claim.ownerId, claim.sourceEventId);
+    if (
+      current === null ||
+      current.version !== claim.version ||
+      current.claim === null ||
+      !isLeaseExpired(current.claim.leaseExpiresAtMs, nowMs)
+    ) {
+      return;
+    }
     const listed = await providerCalls.listForStage(
       claim.ownerId,
       claim.sourceEventId,
@@ -64,6 +77,12 @@ export class RecoverExpiredClaims {
     );
     const calls: ProviderCallRecord[] = [];
     for (const c of listed) {
+      if (c.state === "succeeded" && hasResult(c)) {
+        // A late success can hide a later attempt that died: meter that attempt too.
+        calls.push(c);
+        await this.meter(claim, workerDiedUsage(c, nowMs));
+        continue;
+      }
       if (c.state !== "started") {
         calls.push(c);
         continue;
@@ -76,7 +95,6 @@ export class RecoverExpiredClaims {
         nowMs,
       );
       calls.push(updated);
-      // Metering for every attempt: a late worker's real row, with the same ID, replaces this one.
       if (updated.state === "unknown") await this.meter(claim, workerDiedUsage(c, nowMs));
     }
     const decision = this.decide(calls, claim.stageAttempt);
@@ -99,7 +117,7 @@ export class RecoverExpiredClaims {
 
   private async meter(claim: ExpiredClaim, record: AIUsageRecord): Promise<void> {
     try {
-      await this.deps.usage.append(claim.ownerId, record);
+      await this.deps.usage.appendIfAbsent(claim.ownerId, record);
     } catch (error) {
       this.deps.logger.error("aiUsage.appendFailed", {
         sourceEventId: claim.sourceEventId,
@@ -132,6 +150,9 @@ export class RecoverExpiredClaims {
     if (waiting.length > 0) {
       return { kind: "park", parking: { status: "pending", reason: "providerOutcomeUnknown" } };
     }
+    // A stored result is reused for free, so the stage reopens even when out of attempts. The
+    // allowance is bounded, so a stage that keeps crashing after reuse still ends in the Inbox.
+    if (calls.some(hasResult) && stageAttempt < max * 2) return { kind: "reopen" };
     if (stageAttempt >= max) {
       return { kind: "park", parking: { status: "deadLetter", reason: "attemptsExhausted" } };
     }

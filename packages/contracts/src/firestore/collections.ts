@@ -114,6 +114,8 @@ const providerCalls = z
     attemptCount: count,
     userApprovedRetry: z.boolean(),
     retriedAfterUnknown: z.boolean(),
+    /** Whether the latest attempt was a user-approved retry; absent on older documents. */
+    lastAttemptApproved: z.boolean().optional(),
     quotaReservationId: documentId.optional(),
     result: z.unknown().optional(),
     updatedAtMs: epochMs,

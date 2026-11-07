@@ -219,6 +219,17 @@ export function describeProviderCallContract(
       expect(done.userApprovedRetry).toBe(false);
     });
 
+    it("records whether the last attempt was approved", async () => {
+      const r = await calls.getOrCreate(alice, key(), "none");
+      expect(r.lastAttemptApproved).toBe(false);
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      await calls.markUnknown(alice, r.id, 1, "timeout", T0);
+      await calls.approveRetry(alice, r.id, T0);
+      expect((await calls.beginAttempt(alice, r.id, {}, T0)).lastAttemptApproved).toBe(true);
+      await calls.markFailed(alice, r.id, 2, "rejected", T0);
+      expect((await calls.beginAttempt(alice, r.id, {}, T0)).lastAttemptApproved).toBe(false);
+    });
+
     it("lists the calls of one stage only", async () => {
       await calls.getOrCreate(alice, key("a"), "none");
       await calls.getOrCreate(alice, { ...key("b"), stage: "normalize" }, "none");
@@ -572,6 +583,22 @@ export function describeAiUsageContract(
         actualMicroUsd: 7,
         userApprovedRetry: true,
       });
+      for (const d of await h.docsOf("alice", "aiUsage")) {
+        expect(() => OWNER_COLLECTIONS.aiUsage.parse(d)).not.toThrow();
+      }
+    });
+
+    it("appendIfAbsent creates a row, never overwrites one, and a real append replaces it", async () => {
+      expect(await h.usage.appendIfAbsent(alice, rec("a", { errorCode: "workerDied" }))).toBe(
+        "created",
+      );
+      expect(await h.usage.appendIfAbsent(alice, rec("a", { errorCode: "other" }))).toBe("exists");
+      expect((await h.usage.listForUtcDay(alice, "2023-11-14"))[0]?.errorCode).toBe("workerDied");
+      await h.usage.append(alice, rec("a", { outcome: "success" }));
+      expect(await h.usage.appendIfAbsent(alice, rec("a", { errorCode: "late" }))).toBe("exists");
+      const [only] = await h.usage.listForUtcDay(alice, "2023-11-14");
+      expect(only).toMatchObject({ outcome: "success" });
+      expect(only?.errorCode).toBeUndefined();
       for (const d of await h.docsOf("alice", "aiUsage")) {
         expect(() => OWNER_COLLECTIONS.aiUsage.parse(d)).not.toThrow();
       }

@@ -140,6 +140,15 @@ export class InMemoryAiUsage implements AIUsageRecorder {
     });
   }
 
+  appendIfAbsent(ownerId: OwnerId, record: AIUsageRecord): Promise<"created" | "exists"> {
+    return attempt(() => {
+      const d = this.data(ownerId);
+      if (d.has(record.id)) return "exists" as const;
+      d.set(record.id, aiUsageToDoc(record));
+      return "created" as const;
+    });
+  }
+
   listForUtcDay(ownerId: OwnerId, day: string): Promise<AIUsageRecord[]> {
     return attempt(() => {
       const { startMs, endMs } = utcDayRange(day);
