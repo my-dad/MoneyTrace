@@ -36,16 +36,19 @@ const clean = [
   "packages/ui-kit/src/ok.tsx",
 ];
 
+/** Each case spawns depcruise, which can take several seconds while the full suite is running. */
+const CRUISE_TIMEOUT_MS = 30_000;
+
 describe("layer boundaries", () => {
   it.each(violations)("%s violates %s", (file, rule) => {
     const { code, out } = cruise(file);
     expect(code).not.toBe(0);
     expect(out).toContain(rule);
-  });
+  }, CRUISE_TIMEOUT_MS);
 
   it.each(clean)("%s is allowed", (file) => {
     const { code, out } = cruise(file);
     expect(out).not.toMatch(/error/i);
     expect(code).toBe(0);
-  });
+  }, CRUISE_TIMEOUT_MS);
 });

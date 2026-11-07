@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Commands } from "../../shared/commands";
 import type { AccountRow, FollowUpRow } from "../../shared/read-model-gateway";
 import { cashPlaces } from "./chat-accounts";
-import { CHAT_COPY } from "./chat-copy";
+import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
 import { useAction } from "./use-action";
 

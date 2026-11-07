@@ -5,7 +5,7 @@ import { Composer } from "@moneytrace/ui-kit";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Commands } from "../../shared/commands";
-import { COPY } from "../../shared/copy";
+import { CHAT_COPY, COPY } from "../../shared/copy";
 import type {
   AccountRow,
   FollowUpRow,
@@ -13,7 +13,6 @@ import type {
   SourceEventRow,
 } from "../../shared/read-model-gateway";
 import { buildChatTimeline } from "./chat-view-model";
-import { CHAT_COPY } from "./chat-copy";
 import styles from "./chat.module.css";
 import { EvidenceBubble } from "./EvidenceBubble";
 import { QuestionCard } from "./QuestionCard";
@@ -121,7 +120,7 @@ export function ChatScreen({
   return (
     <div className={styles.screen}>
       <header className={styles.header}>
-        <Link href="/" aria-label="Back to Home" className={styles.back}>
+        <Link href="/" aria-label={CHAT_COPY.backToHome} className={styles.back}>
           <svg
             width="22"
             height="22"
@@ -162,7 +161,7 @@ export function ChatScreen({
         </p>
       )}
 
-      <div ref={logRef} role="log" aria-label="Conversation" aria-live="polite" className={styles.log}>
+      <div ref={logRef} role="log" aria-label={CHAT_COPY.conversation} aria-live="polite" className={styles.log}>
         {timeline.length === 0 && !sending && accepted === null && (
           <p className={styles.welcome}>{CHAT_COPY.welcome}</p>
         )}

@@ -2,7 +2,7 @@ import { Button } from "@moneytrace/ui-kit";
 import type { Commands } from "../../shared/commands";
 import type { AccountRow } from "../../shared/read-model-gateway";
 import type { ChatItem, ChatOutcome } from "./chat-view-model";
-import { CHAT_COPY } from "./chat-copy";
+import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
 import { TransactionPreview } from "./TransactionPreview";
 import { useAction } from "./use-action";
@@ -84,7 +84,7 @@ export function EvidenceBubble({
     <>
       <div className={styles.bubble}>
         <span className={styles.bubbleLabel}>
-          {event.sourceType === "sms" ? "Pasted SMS" : "Your note"}
+          {event.sourceType === "sms" ? CHAT_COPY.pastedSms : CHAT_COPY.yourNote}
         </span>
         <p className={styles.bubbleText}>{item.text}</p>
         <span className={styles.bubbleTime}>{timeFormat.format(new Date(event.receivedAtMs))}</span>

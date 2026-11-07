@@ -2,11 +2,10 @@ import { formatBdt } from "@moneytrace/contracts";
 import { Button, Card, Chip, FormField, MoneyText, StatusBadge } from "@moneytrace/ui-kit";
 import { useState } from "react";
 import type { Commands, CommandRequest } from "../../shared/commands";
-import { COPY } from "../../shared/copy";
+import { CHAT_COPY, COPY } from "../../shared/copy";
 import { parseBdtInput } from "../../shared/parse-bdt-input";
 import type { AccountRow, SourceEventRow } from "../../shared/read-model-gateway";
 import { anyAccount, bankAccounts, transferAccounts } from "./chat-accounts";
-import { CHAT_COPY } from "./chat-copy";
 import styles from "./chat.module.css";
 import { useAction } from "./use-action";
 
@@ -16,20 +15,6 @@ type KindChoice = "known" | "transfer" | "other";
 
 const TIMEZONE = "Asia/Dhaka";
 const DHAKA_OFFSET = "+06:00";
-
-const TITLE: Record<Candidate["kind"], string> = {
-  withdrawal: "Transfer: Bank → Cash",
-  cardTransaction: "Card purchase",
-  cardPurchase: "Card purchase",
-  cardRepayment: "Card repayment",
-  purchase: "Purchase",
-  income: "Income",
-  fee: "Fee",
-  refund: "Refund",
-  transfer: "Transfer",
-  unclassifiedCredit: "Money came in",
-  unclassifiedDebit: "Money went out",
-};
 
 const dhakaDate = (ms: number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date(ms));
@@ -203,12 +188,12 @@ function CandidateForm({
   const destination = accountName(accounts, event.resolvedDestinationAccountId);
 
   return (
-    <Card as="section" aria-label={TITLE[candidate.kind]}>
+    <Card as="section" aria-label={CHAT_COPY.kindTitle[candidate.kind]}>
       <div className={styles.previewTop}>
         <StatusBadge status="pending" label={CHAT_COPY.notSavedYet} />
       </div>
       <div className={styles.previewHead}>
-        <h2 className={styles.previewTitle}>{TITLE[candidate.kind]}</h2>
+        <h2 className={styles.previewTitle}>{CHAT_COPY.kindTitle[candidate.kind]}</h2>
         <p className={styles.previewAmount}>
           <MoneyText text={amountText(candidate)} />
         </p>
@@ -218,31 +203,31 @@ function CandidateForm({
       <dl className={styles.details}>
         {account !== undefined && (
           <div>
-            <dt>{candidate.kind === "withdrawal" ? "From" : "Account"}</dt>
+            <dt>{candidate.kind === "withdrawal" ? CHAT_COPY.detailFrom : CHAT_COPY.detailAccount}</dt>
             <dd>{account}</dd>
           </div>
         )}
         {destination !== undefined && (
           <div>
-            <dt>To</dt>
+            <dt>{CHAT_COPY.detailTo}</dt>
             <dd>{destination}</dd>
           </div>
         )}
         {candidate.occurredAtMs !== null && (
           <div>
-            <dt>Date</dt>
+            <dt>{CHAT_COPY.detailDate}</dt>
             <dd>{dhakaDateTime(candidate.occurredAtMs)}</dd>
           </div>
         )}
         {candidate.counterparty !== undefined && (
           <div>
-            <dt>Where</dt>
+            <dt>{CHAT_COPY.detailWhere}</dt>
             <dd>{candidate.counterparty}</dd>
           </div>
         )}
         {candidate.balanceAfterMinor !== undefined && (
           <div>
-            <dt>Balance after</dt>
+            <dt>{CHAT_COPY.detailBalanceAfter}</dt>
             <dd>{formatBdt(candidate.balanceAfterMinor)}</dd>
           </div>
         )}
