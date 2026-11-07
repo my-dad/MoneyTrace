@@ -659,5 +659,33 @@ export function describeSourceEventContract(
       expect(await repo.finishParked(alice, id, "rejected", T0)).toBe("stale");
       expect(await repo.get(alice, id)).toMatchObject({ status: "cancelled" });
     });
+
+    it("lists parked events by reason, oldest first, across owners", async () => {
+      const park = async (
+        owner: OwnerId,
+        name: string,
+        at: number,
+        reason: "aiQuotaExhausted" | "awaitingClarification",
+      ) => {
+        const sourceEventId = asSourceEventId(name);
+        await repo.create(owner, { ...inputOf(name), receivedAtMs: at });
+        const claimed = await repo.claim(owner, sourceEventId, "normalize", "w", at);
+        if (claimed.status !== "claimed") throw new Error("not claimed");
+        await repo.commitStage(owner, claimed.claim, {
+          nextStatus: "pending",
+          pendingReason: reason,
+          outputs: [],
+        });
+      };
+      await park(alice, "late", T0 + 2, "aiQuotaExhausted");
+      await park(bob, "early", T0 + 1, "aiQuotaExhausted");
+      await park(alice, "other", T0, "awaitingClarification");
+      const rows = await repo.listPendingByReason("aiQuotaExhausted", 10);
+      expect(rows.map((r) => [r.ownerId, r.sourceEventId])).toEqual([
+        [bob, "early"],
+        [alice, "late"],
+      ]);
+      expect(await repo.listPendingByReason("aiQuotaExhausted", 1)).toHaveLength(1);
+    });
   });
 }

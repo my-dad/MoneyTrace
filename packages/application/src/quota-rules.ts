@@ -61,6 +61,20 @@ export type ReserveDecision =
     };
 
 /** Pure: the caller stores the two counters atomically, or nothing. */
+export function availableIn(
+  daily: QuotaCounter | null,
+  monthly: QuotaCounter | null,
+  limits: QuotaLimits,
+): number {
+  return Math.max(
+    0,
+    Math.min(
+      limits.dailyMicroUsd - (daily?.reservedMicroUsd ?? 0),
+      limits.monthlyMicroUsd - (monthly?.reservedMicroUsd ?? 0),
+    ),
+  );
+}
+
 export function decideReserve(
   daily: QuotaCounter | null,
   monthly: QuotaCounter | null,

@@ -113,6 +113,8 @@ export type ExpiredClaim = {
   stageAttempt: number;
 };
 
+export type PendingRow = { ownerId: OwnerId; sourceEventId: SourceEventId; version: number };
+
 export type CreateResult =
   | { status: "created" | "duplicate"; sourceEventId: SourceEventId }
   | { status: "idempotencyConflict" };
@@ -165,6 +167,9 @@ export type SourceEventRepository = {
   ): Promise<"applied" | "stale">;
 
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]>;
+
+  /** Parked events with that reason across owners, oldest first. */
+  listPendingByReason(reason: PendingReason, limit: number): Promise<PendingRow[]>;
   reopen(
     ownerId: OwnerId,
     id: SourceEventId,

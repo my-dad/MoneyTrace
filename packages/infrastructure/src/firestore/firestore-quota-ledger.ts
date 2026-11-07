@@ -1,4 +1,5 @@
 import {
+  availableIn,
   assertReserveInputs,
   assertSettleInputs,
   counterToDoc,
@@ -51,6 +52,18 @@ export class FirestoreQuotaLedger implements QuotaLedger {
   ): Promise<QuotaCounter | null> {
     const s = await t.get(this.ref(ownerId, window));
     return s.exists ? toCounter(s.data()) : null;
+  }
+
+  async availableMicroUsd(ownerId: OwnerId, nowMs: number, limits: QuotaLimits): Promise<number> {
+    const [daily, monthly] = await Promise.all([
+      this.ref(ownerId, utcDayWindow(nowMs)).get(),
+      this.ref(ownerId, utcMonthWindow(nowMs)).get(),
+    ]);
+    return availableIn(
+      daily.exists ? toCounter(daily.data()) : null,
+      monthly.exists ? toCounter(monthly.data()) : null,
+      limits,
+    );
   }
 
   async reserve(

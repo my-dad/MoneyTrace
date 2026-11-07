@@ -338,6 +338,20 @@ export function describeQuotaContract(
     const reserve = (microUsd: number, owner = alice, nowMs = NOON) =>
       quota.reserve(owner, microUsd, nowMs, LIMITS);
 
+    it("available is the tighter window, never below zero", async () => {
+      const limits = { perRequestMicroUsd: 100, dailyMicroUsd: 100, monthlyMicroUsd: 1000 };
+      const at = Date.parse("2026-03-10T00:00:00Z");
+      expect(await quota.availableMicroUsd(asOwnerId("q-avail"), at, limits)).toBe(100);
+      await quota.reserve(asOwnerId("q-avail"), 60, at, limits);
+      expect(await quota.availableMicroUsd(asOwnerId("q-avail"), at, limits)).toBe(40);
+      expect(
+        await quota.availableMicroUsd(asOwnerId("q-avail"), at, { ...limits, dailyMicroUsd: 10 }),
+      ).toBe(0);
+      expect(await quota.availableMicroUsd(asOwnerId("q-avail"), at + 86_400_000, limits)).toBe(
+        100,
+      );
+    });
+
     it("reserves and returns a reservation ID that is a valid document ID", async () => {
       const r = await reserve(1000);
       expect(r).toMatchObject({ status: "reserved", warningsCrossed: [] });

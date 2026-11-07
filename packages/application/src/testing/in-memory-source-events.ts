@@ -2,6 +2,7 @@ import type { OwnerCollectionName } from "@moneytrace/contracts";
 import {
   DomainError,
   type OwnerId,
+  type PendingReason,
   type PipelineStage,
   type SourceEventId,
 } from "@moneytrace/domain";
@@ -11,6 +12,7 @@ import type {
   CreateResult,
   ExpiredClaim,
   Parking,
+  PendingRow,
   SourceEventInput,
   SourceEventRecord,
   SourceEventRepository,
@@ -141,6 +143,22 @@ export class InMemorySourceEvents implements SourceEventRepository {
     }
     d.events.set(event.id, applyCommit(event, commit, this.clock.nowMs()));
     return "committed";
+  }
+
+  listPendingByReason(reason: PendingReason, limit: number): Promise<PendingRow[]> {
+    const rows: { row: PendingRow; at: number }[] = [];
+    for (const [ownerId, d] of this.owners) {
+      for (const e of d.events.values()) {
+        if (e.status === "pending" && e.pendingReason === reason) {
+          rows.push({
+            row: { ownerId: ownerId as OwnerId, sourceEventId: e.id, version: e.version },
+            at: e.receivedAtMs,
+          });
+        }
+      }
+    }
+    rows.sort((a, b) => a.at - b.at);
+    return Promise.resolve(rows.slice(0, limit).map((r) => r.row));
   }
 
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]> {

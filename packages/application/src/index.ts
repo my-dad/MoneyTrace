@@ -37,6 +37,7 @@ export * from "./use-cases/retry-source-event";
 export * from "./use-cases/cancel-source-event";
 export * from "./pipeline/candidate-to-intent";
 export * from "./pipeline/advance-source-event";
+export * from "./pipeline/resume-quota-blocked-events";
 export * from "./ports/follow-up-repository";
 export * from "./follow-up-guards";
 export * from "./use-cases/resolve-follow-up";

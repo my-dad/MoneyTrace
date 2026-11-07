@@ -43,6 +43,7 @@ firebase-debug.log
 firestore-debug.log
 *service-account*.json
 drill-expected.json
+.secret.local
 jdk-21/
 
 # real SMS samples, never commit

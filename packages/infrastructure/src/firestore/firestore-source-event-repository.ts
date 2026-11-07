@@ -18,6 +18,7 @@ import {
   type ClaimResult,
   type ExpiredClaim,
   type Parking,
+  type PendingRow,
   type SourceEventInput,
   type SourceEventRecord,
   type SourceEventRepository,
@@ -31,6 +32,7 @@ import {
   asOwnerId,
   asSourceEventId,
   type OwnerId,
+  type PendingReason,
   type PipelineStage,
   type SourceEventId,
 } from "@moneytrace/domain";
@@ -210,6 +212,27 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
         stage: e.claim.stage,
         version: e.version,
         stageAttempt: e.stageAttempt,
+      });
+    }
+    return rows;
+  }
+
+  /** One equality and one order on a collection group: see firestore.indexes.json. */
+  async listPendingByReason(reason: PendingReason, limit: number): Promise<PendingRow[]> {
+    const snap = await this.db
+      .collectionGroup("sourceEvents")
+      .where("pendingReason", "==", reason)
+      .orderBy("receivedAtMs")
+      .limit(limit)
+      .get();
+    const rows: PendingRow[] = [];
+    for (const doc of snap.docs) {
+      const owner = doc.ref.parent.parent;
+      if (owner?.parent.id !== "users" || doc.get("status") !== "pending") continue;
+      rows.push({
+        ownerId: asOwnerId(owner.id),
+        sourceEventId: asSourceEventId(doc.id),
+        version: doc.get("version") as number,
       });
     }
     return rows;

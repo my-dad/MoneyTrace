@@ -27,6 +27,8 @@ export type ReserveResult =
  * once per reservation.
  */
 export type QuotaLedger = {
+  /** What could still be reserved now: the tighter of the daily and monthly windows. */
+  availableMicroUsd(ownerId: OwnerId, nowMs: number, limits: QuotaLimits): Promise<number>;
   reserve(
     ownerId: OwnerId,
     estimateMicroUsd: number,

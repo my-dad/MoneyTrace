@@ -17,6 +17,13 @@ import {
   snoozeFollowUp as makeSnoozeFollowUp,
   updateSettings as makeUpdateSettings,
 } from "./callable/follow-up-commands";
+import {
+  dispatchFollowUps as makeDispatchFollowUps,
+  purgeProviderResults as makePurgeProviderResults,
+  recoverExpiredClaims as makeRecoverExpiredClaims,
+  resumeQuotaBlockedEvents as makeResumeQuotaBlockedEvents,
+} from "./schedules";
+import { onSourceEventWritten as makeOnSourceEventWritten } from "./triggers/on-source-event-written";
 import { composeDeps, type Deps } from "./composition";
 
 let deps: Deps | undefined;
@@ -35,6 +42,11 @@ export const snoozeFollowUp = makeSnoozeFollowUp(getDeps);
 export const recordCustodyTransfer = makeRecordCustodyTransfer(getDeps);
 export const correctTransaction = makeCorrectTransaction(getDeps);
 export const updateSettings = makeUpdateSettings(getDeps);
+export const onSourceEventWritten = makeOnSourceEventWritten(getDeps);
+export const recoverExpiredClaims = makeRecoverExpiredClaims(getDeps);
+export const dispatchFollowUps = makeDispatchFollowUps(getDeps);
+export const resumeQuotaBlockedEvents = makeResumeQuotaBlockedEvents(getDeps);
+export const purgeProviderResults = makePurgeProviderResults(getDeps);
 export const submitEvidence = makeSubmitEvidence(getDeps);
 export const confirmCandidate = makeConfirmCandidate(getDeps);
 export const retrySourceEvent = makeRetrySourceEvent(getDeps);

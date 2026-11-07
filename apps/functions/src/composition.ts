@@ -1,5 +1,15 @@
 import {
+  AIGateway,
+  AdvanceSourceEvent,
   BootstrapUser,
+  DEFAULT_AI_ESTIMATE_MICRO_USD,
+  DEFAULT_QUOTA_LIMITS,
+  LedgerCandidateReader,
+  ProviderCallExecutor,
+  PurgeProviderResults,
+  RecoverExpiredClaims,
+  ResumeQuotaBlockedEvents,
+  WakeSnoozedFollowUps,
   CorrectTransaction,
   PostTransaction,
   RecordCustodyTransfer,
@@ -21,7 +31,10 @@ import {
   CryptoIdGenerator,
   FirestoreAccountRepository,
   FirestoreFollowUpRepository,
+  FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
+  FirestoreQuotaLedger,
+  systemTimeoutSignal,
   FirestoreLedgerWriter,
   FirestoreProviderCallRepository,
   FirestoreSourceEventRepository,
@@ -31,7 +44,9 @@ import {
   NodeHasher,
   SystemClock,
 } from "@moneytrace/infrastructure";
+import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
 import type { Firestore } from "firebase-admin/firestore";
+import { selectAiProvider } from "./ai-selection";
 
 export type Deps = {
   logger: Logger;
@@ -49,6 +64,11 @@ export type Deps = {
   recordCustodyTransfer: RecordCustodyTransfer;
   correctTransaction: CorrectTransaction;
   updateSettings: UpdateSettings;
+  advanceSourceEvent: AdvanceSourceEvent;
+  recoverExpiredClaims: RecoverExpiredClaims;
+  wakeSnoozedFollowUps: WakeSnoozedFollowUps;
+  resumeQuotaBlockedEvents: ResumeQuotaBlockedEvents;
+  purgeProviderResults: PurgeProviderResults;
 };
 
 /** The only place adapters are wired to ports. */
@@ -67,8 +87,55 @@ export function composeDeps(db: Firestore): Deps {
   const providerCalls = new FirestoreProviderCallRepository(db, clock);
   const followUps = new FirestoreFollowUpRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
+  let advance: AdvanceSourceEvent | undefined;
+  const quota = new FirestoreQuotaLedger(db, clock, ids);
+  const usage = new FirestoreAiUsageRecorder(db);
+  const instruments = new FirestorePaymentInstrumentRepository(db);
   return {
     logger,
+    // Built on first use: only the pipeline trigger has the AI key, not every callable.
+    get advanceSourceEvent() {
+      advance ??= new AdvanceSourceEvent({
+        sourceEvents,
+        clock,
+        logger,
+        accounts,
+        instruments,
+        candidates: new LedgerCandidateReader(reader),
+        gateway: new AIGateway(
+          new ProviderCallExecutor({
+            providerCalls,
+            quota,
+            usage,
+            clock,
+            logger,
+            timeoutSignal: systemTimeoutSignal,
+          }),
+          selectAiProvider(process.env),
+          DEFAULT_AI_ESTIMATE_MICRO_USD,
+        ),
+        post,
+        profiles,
+        confidence: DEFAULT_CONFIDENCE_CONFIG,
+      });
+      return advance;
+    },
+    recoverExpiredClaims: new RecoverExpiredClaims({
+      sourceEvents,
+      providerCalls,
+      usage,
+      clock,
+      logger,
+    }),
+    wakeSnoozedFollowUps: new WakeSnoozedFollowUps({ followUps, logger }),
+    resumeQuotaBlockedEvents: new ResumeQuotaBlockedEvents({
+      sourceEvents,
+      quota,
+      clock,
+      limits: DEFAULT_QUOTA_LIMITS,
+      estimateMicroUsd: DEFAULT_AI_ESTIMATE_MICRO_USD,
+    }),
+    purgeProviderResults: new PurgeProviderResults({ providerCalls, logger }),
     resolveFollowUp: new ResolveFollowUp({ followUps, reader, accounts, post, clock }),
     snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
     recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),
@@ -87,7 +154,7 @@ export function composeDeps(db: Firestore): Deps {
     createAccount: new CreateAccount({ accounts, ids, clock }),
     createPaymentInstrument: new CreatePaymentInstrument({
       accounts,
-      instruments: new FirestorePaymentInstrumentRepository(db),
+      instruments,
       ids,
       clock,
     }),

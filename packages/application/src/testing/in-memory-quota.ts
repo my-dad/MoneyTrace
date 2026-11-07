@@ -8,6 +8,7 @@ import {
   assertReserveInputs,
   assertSettleInputs,
   counterToDoc,
+  availableIn,
   decideReserve,
   makeReservationId,
   parseReservationId,
@@ -45,6 +46,13 @@ export class InMemoryQuota implements QuotaLedger {
       this.owners.set(ownerId, d);
     }
     return d;
+  }
+
+  availableMicroUsd(ownerId: OwnerId, nowMs: number, limits: QuotaLimits): Promise<number> {
+    const d = this.data(ownerId);
+    return Promise.resolve(
+      availableIn(d.get(utcDayWindow(nowMs)) ?? null, d.get(utcMonthWindow(nowMs)) ?? null, limits),
+    );
   }
 
   reserve(

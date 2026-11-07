@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "sourceEvents",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "pendingReason", "order": "ASCENDING" },
+        { "fieldPath": "receivedAtMs", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "followUps",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
