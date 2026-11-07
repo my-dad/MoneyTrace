@@ -13,7 +13,7 @@ const MARK: Record<Status, string[]> = {
 };
 
 /** Status is always icon plus text, never color alone. */
-export function StatusBadge({ status }: { status: Status }) {
+export function StatusBadge({ status, label }: { status: Status; label?: string }) {
   return (
     <span className={`mt-status mt-status--${status}`}>
       <svg
@@ -32,7 +32,7 @@ export function StatusBadge({ status }: { status: Status }) {
           <path key={d} d={d} />
         ))}
       </svg>
-      {LABEL[status]}
+      {label ?? LABEL[status]}
     </span>
   );
 }

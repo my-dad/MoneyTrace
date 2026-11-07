@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@moneytrace/contracts": "workspace:*",
+    "@moneytrace/ui-kit": "workspace:*",
     "firebase": "13.2.0",
     "next": "16.4.5",
     "react": "19.3.1",
@@ -15,6 +16,7 @@
     "@types/react": "19.1.16",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "6.2.1",
+    "axe-core": "4.14.0",
     "jsdom": "31.0.0"
   },
   "scripts": {

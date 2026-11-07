@@ -31,6 +31,15 @@ describe("StatusBadge", () => {
   });
 });
 
+describe("StatusBadge label", () => {
+  it("can say something more specific, keeping the status icon", () => {
+    const { container } = render(<StatusBadge status="pending" label="Not saved yet" />);
+    expect(screen.getByText("Not saved yet")).toBeTruthy();
+    expect(screen.queryByText("Pending")).toBeNull();
+    expect(container.querySelector("svg")).not.toBeNull();
+  });
+});
+
 describe("MoneyText", () => {
   it("shows the formatted text it is given", () => {
     render(<MoneyText text="৳1,25,000" />);

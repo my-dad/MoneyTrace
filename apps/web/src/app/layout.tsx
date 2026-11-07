@@ -1,3 +1,4 @@
+import "@moneytrace/ui-kit/tokens.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
