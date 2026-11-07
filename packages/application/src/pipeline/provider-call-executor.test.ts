@@ -3,11 +3,13 @@ import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
 import {
   FakeProvider,
   abortedSignal,
+  controllableSignal,
   createProviderWorld,
   liveSignal,
 } from "../testing/fake-provider";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
 import { DEFAULT_QUOTA_LIMITS } from "../ports/quota-ledger";
+import { makeReservationId } from "../quota-rules";
 
 const owner = asOwnerId("alice");
 const sourceEventId = asSourceEventId("evt-1");
@@ -184,7 +186,7 @@ describe("ProviderCallExecutor", () => {
     );
     for (let i = 0; i < PIPELINE_TIMEOUTS.maxAttempts + 2; i++) {
       await w.calls.beginAttempt(owner, id, {}, w.clock.nowMs());
-      await w.calls.markUnknown(owner, id, "timeout", w.clock.nowMs());
+      await w.calls.markUnknown(owner, id, i + 1, "timeout", w.clock.nowMs());
     }
     expect((await executor.execute(params)).kind).toBe("awaitUserDecision");
     await w.calls.approveRetry(owner, id, w.clock.nowMs());
@@ -275,10 +277,19 @@ describe("ProviderCallExecutor", () => {
     expect(await w.calls.listForStage(owner, sourceEventId, "interpret")).toHaveLength(2);
   });
 
-  it("a succeeded record with no result is resultMissing and makes no call", async () => {
+  it("a purged record is resultMissing and makes no call", async () => {
     const { w, provider, params, executor } = setup();
     await executor.execute(params);
     w.calls.seed(owner, "evt-1:interpret:deepseek", { state: "purged" });
+    expect((await executor.execute(params)).kind).toBe("resultMissing");
+    expect(provider.calls).toBe(1);
+  });
+
+  it("a succeeded record with no result is resultMissing and makes no call", async () => {
+    const { w, provider, params, executor } = setup();
+    await executor.execute(params);
+    w.calls.seed(owner, "evt-1:interpret:deepseek", { state: "succeeded" });
+    expect((await stored(w))?.result).toBeUndefined();
     expect((await executor.execute(params)).kind).toBe("resultMissing");
     expect(provider.calls).toBe(1);
   });
@@ -301,5 +312,148 @@ describe("ProviderCallExecutor", () => {
     w.usage.failNextAppend();
     expect(await executor.execute(params)).toMatchObject({ kind: "result", value: "ok" });
     expect(w.logger.events.some((e) => e.event === "aiUsage.appendFailed")).toBe(true);
+  });
+
+  it("a live abort during the call becomes unknown with code timeout", async () => {
+    const w = createProviderWorld();
+    const ctl = controllableSignal();
+    const provider = new FakeProvider("deepseek", "none");
+    provider.script("hang");
+    provider.onInvoke = () => {
+      ctl.abort();
+      return Promise.resolve();
+    };
+    const result = await w.executor({ timeoutSignal: () => ctl.signal }).execute({
+      ownerId: owner,
+      sourceEventId,
+      stage: "interpret",
+      provider,
+      estimateMicroUsd: ESTIMATE,
+      invoke: provider.invoke,
+    });
+    expect(result.kind).toBe("awaitUserDecision");
+    expect(w.usage.all(owner)[0]).toMatchObject({ outcome: "unknown", errorCode: "timeout" });
+  });
+
+  it("an approval survives a quotaExhausted result and is used once quota returns", async () => {
+    const { w, provider, params } = setup();
+    provider.script({ kind: "unknown", code: "timeout" });
+    await w.executor().execute(params);
+    await w.calls.approveRetry(owner, "evt-1:interpret:deepseek", w.clock.nowMs());
+    const blocked = w.executor({ limits: { ...DEFAULT_QUOTA_LIMITS, perRequestMicroUsd: 1 } });
+    expect((await blocked.execute(params)).kind).toBe("quotaExhausted");
+    expect((await stored(w))?.userApprovedRetry).toBe(true);
+    expect(await w.executor().execute(params)).toMatchObject({
+      kind: "result",
+      retriedAfterUnknown: true,
+    });
+  });
+
+  it("a late failure from attempt 1 does not disturb attempt 2, which stores its result", async () => {
+    const provider = new FakeProvider("deepseek", "idempotentKey");
+    const { w, params, executor } = setup(provider);
+    provider.script({ kind: "unknown", code: "timeout" }, { kind: "success", value: "B" });
+    expect((await executor.execute(params)).kind).toBe("retryLater");
+    provider.onInvoke = async () => {
+      await w.calls.markFailed(owner, "evt-1:interpret:deepseek", 1, "late", w.clock.nowMs());
+    };
+    expect(await executor.execute(params)).toMatchObject({ kind: "result", value: "B" });
+    expect(await stored(w)).toMatchObject({ state: "succeeded", result: "B" });
+    expect(await executor.execute(params)).toMatchObject({ kind: "result", value: "B" });
+    expect(provider.calls).toBe(2);
+  });
+
+  it("a late success from attempt 1 wins, and execute returns what is stored", async () => {
+    const provider = new FakeProvider("deepseek", "idempotentKey");
+    const { w, params, executor } = setup(provider);
+    provider.script({ kind: "unknown", code: "timeout" }, { kind: "success", value: "B" });
+    await executor.execute(params);
+    provider.onInvoke = async () => {
+      await w.calls.markSucceeded(owner, "evt-1:interpret:deepseek", 1, "A", w.clock.nowMs());
+    };
+    expect(await executor.execute(params)).toMatchObject({ kind: "result", value: "A" });
+    expect(await stored(w)).toMatchObject({ result: "A" });
+  });
+
+  it.each(["success", "definiteFailure", "unknown"] as const)(
+    "a %s outcome whose record write fails still meters the attempt",
+    async (kind) => {
+      const { w, provider, params, executor } = setup();
+      provider.script(kind === "success" ? { kind, value: "ok" } : { kind, code: "x" });
+      const down = () => Promise.reject(new Error("db down"));
+      if (kind === "success") w.calls.markSucceeded = down;
+      else if (kind === "definiteFailure") w.calls.markFailed = down;
+      else w.calls.markUnknown = down;
+      await expect(executor.execute(params)).rejects.toThrow("db down");
+      expect(w.usage.all(owner)).toHaveLength(1);
+      expect(w.usage.all(owner)[0]).toMatchObject({
+        id: "evt-1:interpret:deepseek:1",
+        outcome: "unknown",
+        errorCode: "recordWriteFailed",
+      });
+    },
+  );
+
+  it("a worker that died mid-call is metered unknown, with the reserved estimate", async () => {
+    const { w, params, executor } = setup();
+    const r = await w.calls.getOrCreate(
+      owner,
+      { sourceEventId, stage: "interpret", providerId: "deepseek" },
+      "none",
+    );
+    await w.calls.beginAttempt(owner, r.id, { reservationId: makeReservationId(7_000, 1, "x") }, 1);
+    await executor.execute(params);
+    expect(w.usage.all(owner)).toEqual([
+      expect.objectContaining({
+        id: "evt-1:interpret:deepseek:1",
+        outcome: "unknown",
+        errorCode: "workerDied",
+        estimatedMicroUsd: 7_000,
+      }),
+    ]);
+  });
+
+  it("a died worker with no reservation is metered with a zero estimate", async () => {
+    const { w, params, executor } = setup();
+    const r = await w.calls.getOrCreate(
+      owner,
+      { sourceEventId, stage: "interpret", providerId: "deepseek" },
+      "none",
+    );
+    await w.calls.beginAttempt(owner, r.id, {}, 1);
+    await executor.execute(params);
+    expect(w.usage.all(owner)[0]).toMatchObject({ estimatedMicroUsd: 0 });
+  });
+
+  it("never lets a numeric error code, such as a phone number, reach aiUsage", async () => {
+    const { w, provider, params, executor } = setup();
+    provider.script({ kind: "unknown", code: "8801712345678" });
+    await executor.execute(params);
+    expect(w.usage.all(owner)[0]).toMatchObject({ errorCode: "invalidCode" });
+  });
+
+  it("charges a free provider's reported cost to quota", async () => {
+    const provider = new FakeProvider("managed-ocr", "localPure");
+    const { w, params, executor } = setup(provider);
+    provider.script({ kind: "success", value: "ok", actualMicroUsd: 700 });
+    await executor.execute({ ...params, estimateMicroUsd: 0 });
+    expect(w.quota.monthlyReserved(owner)).toBe(700);
+  });
+
+  it("warns when settling upward takes a window past 80%, and stays silent on a downward settle", async () => {
+    const limits = {
+      perRequestMicroUsd: 50_000,
+      dailyMicroUsd: 100_000,
+      monthlyMicroUsd: 5_000_000,
+    };
+    const up = setup();
+    up.provider.script({ kind: "success", value: "ok", actualMicroUsd: 85_000 });
+    await up.w.executor({ limits }).execute({ ...up.params, estimateMicroUsd: 10_000 });
+    expect(up.w.logger.events.filter((e) => e.event === "quotaWarning")).toHaveLength(1);
+
+    const down = setup();
+    down.provider.script({ kind: "success", value: "ok", actualMicroUsd: 10 });
+    await down.w.executor({ limits }).execute({ ...down.params, estimateMicroUsd: 50_000 });
+    expect(down.w.logger.events.filter((e) => e.event === "quotaWarning")).toHaveLength(0);
   });
 });

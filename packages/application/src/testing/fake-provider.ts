@@ -27,6 +27,29 @@ export const abortedSignal = (): AbortSignalLike => ({
   removeEventListener: () => undefined,
 });
 
+/** A signal the test aborts by hand, notifying listeners as the platform does. */
+export function controllableSignal(): { signal: AbortSignalLike; abort(): void } {
+  const listeners = new Set<() => void>();
+  const state = { aborted: false };
+  return {
+    signal: {
+      get aborted() {
+        return state.aborted;
+      },
+      addEventListener: (_type, listener) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type, listener) => {
+        listeners.delete(listener);
+      },
+    },
+    abort: () => {
+      state.aborted = true;
+      for (const l of [...listeners]) l();
+    },
+  };
+}
+
 export type ScriptedStep<T> = ProviderOutcome<T> | Error | "hang";
 
 /** A provider that counts calls and plays scripted outcomes; the default is `success: "ok"`. */
@@ -86,7 +109,8 @@ export function createProviderWorld() {
         timeoutSignal: liveSignal,
         ...over,
       }),
-    recovery: () => new RecoverExpiredClaims({ sourceEvents, providerCalls: calls, clock, logger }),
+    recovery: () =>
+      new RecoverExpiredClaims({ sourceEvents, providerCalls: calls, usage, clock, logger }),
     retry: () => new RetryProviderCall({ sourceEvents, providerCalls: calls, clock }),
     purge: () => new PurgeProviderResults({ providerCalls: calls, logger }),
   };

@@ -130,28 +130,31 @@ export class FirestoreProviderCallRepository implements ProviderCallRepository {
   markSucceeded(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     result: unknown,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return this.mutate(ownerId, id, (r) => decideSucceeded(r, result, nowMs));
+    return this.mutate(ownerId, id, (r) => decideSucceeded(r, attempt, result, nowMs));
   }
 
   markFailed(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return this.mutate(ownerId, id, (r) => decideFailed(r, code, nowMs));
+    return this.mutate(ownerId, id, (r) => decideFailed(r, attempt, code, nowMs));
   }
 
   markUnknown(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return this.mutate(ownerId, id, (r) => decideUnknown(r, code, nowMs));
+    return this.mutate(ownerId, id, (r) => decideUnknown(r, attempt, code, nowMs));
   }
 
   async listForStage(

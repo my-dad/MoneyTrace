@@ -26,7 +26,7 @@ async function parkedUnknown() {
     "none",
   );
   await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
-  await w.calls.markUnknown(owner, r.id, "timeout", w.clock.nowMs());
+  await w.calls.markUnknown(owner, r.id, 1, "timeout", w.clock.nowMs());
   // The worker parks itself, as runStage work would.
   await w.sourceEvents.commitStage(owner, c.claim, {
     nextStatus: "pending",
@@ -126,5 +126,33 @@ describe("RetryProviderCall", () => {
     });
     expect(await w.retry().execute({ ...input, stage: "normalize" })).toBe("notRetryable");
     expect((await w.sourceEvents.get(owner, id))?.status).toBe("pending");
+  });
+
+  it("approves only the most recently attempted unresolved call", async () => {
+    const { w } = await parkedUnknown();
+    w.clock.advance(1_000);
+    const b = await w.calls.getOrCreate(
+      owner,
+      { sourceEventId: id, stage: "interpret", providerId: "backup" },
+      "none",
+    );
+    await w.calls.beginAttempt(owner, b.id, {}, w.clock.nowMs());
+    await w.calls.markUnknown(owner, b.id, 1, "timeout", w.clock.nowMs());
+    expect(await w.retry().execute(input)).toBe("reopened");
+    const calls = await w.calls.listForStage(owner, id, "interpret");
+    expect(calls.map((c) => [c.providerId, c.userApprovedRetry])).toEqual([
+      ["backup", true],
+      ["p", false],
+    ]);
+  });
+
+  it("reopens with no approval when the parked stage already holds a stored result", async () => {
+    const { w, callId } = await parkedUnknown();
+    await w.calls.markSucceeded(owner, callId, 1, "late", w.clock.nowMs());
+    expect(await w.retry().execute(input)).toBe("reopened");
+    expect((await w.calls.listForStage(owner, id, "interpret"))[0]).toMatchObject({
+      result: "late",
+      userApprovedRetry: false,
+    });
   });
 });

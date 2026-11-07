@@ -33,5 +33,14 @@ export type QuotaLedger = {
     nowMs: number,
     limits: QuotaLimits,
   ): Promise<ReserveResult>;
-  settle(ownerId: OwnerId, reservationId: string, actualMicroUsd: number): Promise<void>;
+  /**
+   * Moves the reservation to the actual cost. An upward move can take a window to 80%, so it
+   * reports `warningsCrossed` like `reserve`; a downward move never warns.
+   */
+  settle(
+    ownerId: OwnerId,
+    reservationId: string,
+    actualMicroUsd: number,
+    limits: QuotaLimits,
+  ): Promise<{ warningsCrossed: QuotaWindow[] }>;
 };

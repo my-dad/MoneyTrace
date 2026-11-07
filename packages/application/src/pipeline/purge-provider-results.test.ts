@@ -26,7 +26,7 @@ async function eventWithResult(
     "none",
   );
   await w.calls.beginAttempt(owner, r.id, {}, w.clock.nowMs());
-  await w.calls.markSucceeded(owner, r.id, "ok", w.clock.nowMs());
+  await w.calls.markSucceeded(owner, r.id, 1, "ok", w.clock.nowMs());
   if (finish !== null) {
     const c = await w.sourceEvents.claim(owner, id, "normalize", "w", w.clock.nowMs());
     if (c.status !== "claimed") throw new Error("claim failed");
@@ -116,5 +116,19 @@ describe("PurgeProviderResults", () => {
     expect(await w.purge().execute(w.clock.nowMs(), DEFAULT_RETENTION_POLICY, 2)).toEqual({
       purged: 1,
     });
+  });
+
+  it("an event that always fails does not starve the others", async () => {
+    const w = createProviderWorld();
+    const bad = await eventWithResult(w, "evt-a", "rejected");
+    await eventWithResult(w, "evt-b", "rejected");
+    const real = w.calls.purgeResult.bind(w.calls);
+    w.calls.purgeResult = (ownerId, callId, nowMs) =>
+      callId === bad.callId ? Promise.reject(new Error("boom")) : real(ownerId, callId, nowMs);
+    w.clock.advance(WINDOW);
+    expect(await w.purge().execute(w.clock.nowMs(), DEFAULT_RETENTION_POLICY, 1)).toEqual({
+      purged: 1,
+    });
+    expect(w.logger.events.filter((e) => e.event === "retention.purgeFailed")).toHaveLength(1);
   });
 });

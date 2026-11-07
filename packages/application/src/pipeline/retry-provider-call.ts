@@ -2,7 +2,7 @@ import type { OwnerId, PipelineStage, SourceEventId } from "@moneytrace/domain";
 import type { Clock } from "../ports/clock";
 import type { ProviderCallRepository } from "../ports/provider-call-repository";
 import type { SourceEventRepository } from "../ports/source-event-repository";
-import { isUnresolved } from "../provider-call-guards";
+import { hasResult, isUnresolved } from "../provider-call-guards";
 
 export type RetryProviderCallDeps = {
   sourceEvents: SourceEventRepository;
@@ -37,12 +37,18 @@ export class RetryProviderCall {
       (event.status === "deadLetter" && event.deadLetterReason === "providerResultMissing");
     if (!parkedOnProvider) return "notRetryable";
 
-    const unresolved = (await providerCalls.listForStage(ownerId, sourceEventId, stage)).filter(
-      isUnresolved,
-    );
-    if (unresolved.length === 0) return "notRetryable";
-    for (const call of unresolved)
-      await providerCalls.approveRetry(ownerId, call.id, clock.nowMs());
+    const calls = await providerCalls.listForStage(ownerId, sourceEventId, stage);
+    // A result stored after the event parked (a late worker) needs no approval: the executor
+    // reuses it and the provider is not called again.
+    if (!calls.some(hasResult)) {
+      // Only the most recently attempted unresolved call is approved, so an older fallback's
+      // outcome is not re-run by this one decision.
+      const [latest] = calls
+        .filter(isUnresolved)
+        .sort((a, b) => b.updatedAtMs - a.updatedAtMs || a.id.localeCompare(b.id));
+      if (latest === undefined) return "notRetryable";
+      await providerCalls.approveRetry(ownerId, latest.id, clock.nowMs());
+    }
     const reopened = await sourceEvents.reopen(
       ownerId,
       sourceEventId,

@@ -11,6 +11,8 @@ const ALLOWED: ReadonlySet<string> = new Set([
   "transactionId",
   "providerId",
   "attempt",
+  "window",
+  "errorName",
 ]);
 
 /** Same alphabet as document IDs, capped at 128: no spaces, slashes or free text. */

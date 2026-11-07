@@ -2,7 +2,7 @@ import type { OwnerId } from "@moneytrace/domain";
 import type { Clock } from "../ports/clock";
 import type { AIUsageRecord, AIUsageRecorder } from "../ports/ai-usage-recorder";
 import type { IdGenerator } from "../ports/id-generator";
-import type { QuotaLedger, QuotaLimits, ReserveResult } from "../ports/quota-ledger";
+import type { QuotaLedger, QuotaLimits, QuotaWindow, ReserveResult } from "../ports/quota-ledger";
 import {
   aiUsageToDoc,
   assertReserveInputs,
@@ -74,18 +74,34 @@ export class InMemoryQuota implements QuotaLedger {
     });
   }
 
-  settle(ownerId: OwnerId, reservationId: string, actualMicroUsd: number): Promise<void> {
+  settle(
+    ownerId: OwnerId,
+    reservationId: string,
+    actualMicroUsd: number,
+    limits: QuotaLimits,
+  ): Promise<{ warningsCrossed: QuotaWindow[] }> {
     return attempt(() => {
-      assertSettleInputs(actualMicroUsd);
+      assertSettleInputs(actualMicroUsd, limits);
       const { estimateMicroUsd, atMs } = parseReservationId(reservationId);
       const now = this.clock.nowMs();
       const d = this.data(ownerId);
-      for (const window of [utcDayWindow(atMs), utcMonthWindow(atMs)]) {
-        d.set(
+      const warningsCrossed: QuotaWindow[] = [];
+      const targets: [string, number, QuotaWindow][] = [
+        [utcDayWindow(atMs), limits.dailyMicroUsd, "daily"],
+        [utcMonthWindow(atMs), limits.monthlyMicroUsd, "monthly"],
+      ];
+      for (const [window, limit, name] of targets) {
+        const r = settleCounter(
+          d.get(window) ?? null,
           window,
-          settleCounter(d.get(window) ?? null, window, actualMicroUsd - estimateMicroUsd, now),
+          actualMicroUsd - estimateMicroUsd,
+          now,
+          limit,
         );
+        d.set(window, r.counter);
+        if (r.crossed) warningsCrossed.push(name);
       }
+      return { warningsCrossed };
     });
   }
 

@@ -35,9 +35,12 @@ export type PurgeCandidate = { ownerId: OwnerId; sourceEventId: SourceEventId };
  * A freshly created record has `state: "failed"` and `attemptCount: 0`: nothing was attempted yet
  * (see `isUnattempted`). Every method is atomic. Mutators return the stored record.
  *
- * Outcome writes are tolerant of late workers: `markSucceeded` is accepted from `started` or
- * `unknown` and never overwrites a stored result; `markFailed` and `markUnknown` only act on
- * `started`. A result that is not plain JSON throws `invalidIntent` and changes nothing.
+ * Outcome writes carry the attempt number they belong to and are fenced by it. `markFailed` and
+ * `markUnknown` act only on the `started` attempt with that number, so a late report from an older
+ * attempt is a no-op. `markSucceeded` is first-success-wins: it is stored from `started`,
+ * `unknown` or `failed` (even while a newer attempt is in flight) and never replaces a stored
+ * result; the returned record is what is stored. A result that is not plain JSON, or an attempt
+ * that was never started, throws `invalidIntent` and changes nothing.
  */
 export type ProviderCallRepository = {
   getOrCreate(
@@ -57,18 +60,21 @@ export type ProviderCallRepository = {
   markSucceeded(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     result: unknown,
     nowMs: number,
   ): Promise<ProviderCallRecord>;
   markFailed(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord>;
   markUnknown(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord>;

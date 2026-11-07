@@ -98,14 +98,14 @@ export function describeProviderCallContract(
       await expect(calls.beginAttempt(alice, r.id, {}, T0)).rejects.toMatchObject({
         code: "invalidIntent",
       });
-      await calls.markFailed(alice, r.id, "rejected", T0);
+      await calls.markFailed(alice, r.id, 1, "rejected", T0);
       expect((await calls.beginAttempt(alice, r.id, {}, T0)).attemptCount).toBe(2);
     });
 
     it("keeps an approval until the next attempt consumes it", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markUnknown(alice, r.id, "timeout", T0);
+      await calls.markUnknown(alice, r.id, 1, "timeout", T0);
       expect(await calls.approveRetry(alice, r.id, T0)).toBe("approved");
       expect((await calls.listForStage(alice, evt, "interpret"))[0]?.userApprovedRetry).toBe(true);
       const next = await calls.beginAttempt(alice, r.id, {}, T0);
@@ -120,35 +120,35 @@ export function describeProviderCallContract(
       const r = await calls.getOrCreate(alice, key(), "none");
       expect(await calls.approveRetry(alice, r.id, T0)).toBe("notApplicable");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markFailed(alice, r.id, "rejected", T0);
+      await calls.markFailed(alice, r.id, 1, "rejected", T0);
       expect(await calls.approveRetry(alice, r.id, T0)).toBe("notApplicable");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markSucceeded(alice, r.id, "ok", T0);
+      await calls.markSucceeded(alice, r.id, 2, "ok", T0);
       expect(await calls.approveRetry(alice, r.id, T0)).toBe("notApplicable");
     });
 
     it("stores a result once and never overwrites it", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      const first = await calls.markSucceeded(alice, r.id, { amount: 5, tags: ["a"] }, T0);
+      const first = await calls.markSucceeded(alice, r.id, 1, { amount: 5, tags: ["a"] }, T0);
       expect(first).toMatchObject({ state: "succeeded", result: { amount: 5, tags: ["a"] } });
-      const second = await calls.markSucceeded(alice, r.id, "other", T0 + 1);
+      const second = await calls.markSucceeded(alice, r.id, 1, "other", T0 + 1);
       expect(second.result).toEqual({ amount: 5, tags: ["a"] });
     });
 
     it("accepts a late success after the call was recorded unknown", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markUnknown(alice, r.id, "workerDied", T0);
-      const late = await calls.markSucceeded(alice, r.id, "late", T0 + 1);
+      await calls.markUnknown(alice, r.id, 1, "workerDied", T0);
+      const late = await calls.markSucceeded(alice, r.id, 1, "late", T0 + 1);
       expect(late).toMatchObject({ state: "succeeded", result: "late" });
     });
 
     it("a late failure does not overwrite an unknown outcome", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markUnknown(alice, r.id, "workerDied", T0);
-      expect((await calls.markFailed(alice, r.id, "rejected", T0)).state).toBe("unknown");
+      await calls.markUnknown(alice, r.id, 1, "workerDied", T0);
+      expect((await calls.markFailed(alice, r.id, 1, "rejected", T0)).state).toBe("unknown");
     });
 
     it.each([
@@ -161,10 +161,11 @@ export function describeProviderCallContract(
       ["a nested array", [[1]]],
       ["an undefined field", { a: undefined }],
       ["a reserved key", { __x__: 1 }],
+      ["a result over 512 KiB in UTF-8 bytes", "\u0985".repeat(200_000)],
     ])("rejects %s as a result and leaves the call started", async (_n, bad) => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await expect(calls.markSucceeded(alice, r.id, bad, T0)).rejects.toMatchObject({
+      await expect(calls.markSucceeded(alice, r.id, 1, bad, T0)).rejects.toMatchObject({
         code: "invalidIntent",
       });
       expect((await calls.listForStage(alice, evt, "interpret"))[0]).toMatchObject({
@@ -177,9 +178,45 @@ export function describeProviderCallContract(
       await calls.beginAttempt(alice, r.id, {}, T0);
       const cyclic: Record<string, unknown> = {};
       cyclic["self"] = cyclic;
-      await expect(calls.markSucceeded(alice, r.id, cyclic, T0)).rejects.toMatchObject({
+      await expect(calls.markSucceeded(alice, r.id, 1, cyclic, T0)).rejects.toMatchObject({
         code: "invalidIntent",
       });
+    });
+
+    it("ignores a failure or unknown outcome reported by an older attempt", async () => {
+      const r = await calls.getOrCreate(alice, key(), "none");
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      await calls.markFailed(alice, r.id, 1, "rejected", T0);
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      expect((await calls.markFailed(alice, r.id, 1, "late", T0)).state).toBe("started");
+      expect((await calls.markUnknown(alice, r.id, 1, "late", T0)).state).toBe("started");
+      expect((await calls.markFailed(alice, r.id, 2, "real", T0)).state).toBe("failed");
+    });
+
+    it("first success wins: a late success is kept and the newer attempt's does not replace it", async () => {
+      const r = await calls.getOrCreate(alice, key(), "none");
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      await calls.markFailed(alice, r.id, 1, "rejected", T0);
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      const late = await calls.markSucceeded(alice, r.id, 1, "A", T0);
+      expect(late).toMatchObject({ state: "succeeded", result: "A" });
+      expect((await calls.markSucceeded(alice, r.id, 2, "B", T0)).result).toBe("A");
+    });
+
+    it("rejects a success from an attempt that was never started", async () => {
+      const r = await calls.getOrCreate(alice, key(), "none");
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      await expect(calls.markSucceeded(alice, r.id, 2, "x", T0)).rejects.toMatchObject({
+        code: "invalidIntent",
+      });
+    });
+
+    it("a stored success clears a pending approval", async () => {
+      const r = await calls.getOrCreate(alice, key(), "none");
+      await calls.beginAttempt(alice, r.id, {}, T0);
+      await calls.approveRetry(alice, r.id, T0);
+      const done = await calls.markSucceeded(alice, r.id, 1, "ok", T0);
+      expect(done.userApprovedRetry).toBe(false);
     });
 
     it("lists the calls of one stage only", async () => {
@@ -194,7 +231,7 @@ export function describeProviderCallContract(
     it("refuses to purge a result while the event is not terminal", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markSucceeded(alice, r.id, "ok", T0);
+      await calls.markSucceeded(alice, r.id, 1, "ok", T0);
       expect(await calls.purgeResult(alice, r.id, T0)).toBe("blockedNotTerminal");
       expect((await calls.listForStage(alice, evt, "interpret"))[0]).toMatchObject({
         state: "succeeded",
@@ -207,7 +244,7 @@ export function describeProviderCallContract(
       const b = await calls.getOrCreate(alice, key("b"), "none");
       for (const c of [a, b]) {
         await calls.beginAttempt(alice, c.id, {}, T0);
-        await calls.markSucceeded(alice, c.id, "ok", T0);
+        await calls.markSucceeded(alice, c.id, 1, "ok", T0);
       }
       await terminate();
       expect(await calls.purgeResult(alice, a.id, T0)).toBe("purged");
@@ -239,7 +276,7 @@ export function describeProviderCallContract(
     it("will not complete an event purge while a result remains or the event is live", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);
-      await calls.markSucceeded(alice, r.id, "ok", T0);
+      await calls.markSucceeded(alice, r.id, 1, "ok", T0);
       expect(await calls.completeEventPurge(alice, evt)).toBe("blockedNotTerminal");
       await terminate();
       expect(await calls.completeEventPurge(alice, evt)).toBe("resultsRemain");
@@ -248,10 +285,10 @@ export function describeProviderCallContract(
     it("every stored provider call validates against its contract schema", async () => {
       const a = await calls.getOrCreate(alice, key("a"), "idempotentKey");
       await calls.beginAttempt(alice, a.id, { reservationId: "res_1_2_x" }, T0);
-      await calls.markSucceeded(alice, a.id, { v: 1 }, T0);
+      await calls.markSucceeded(alice, a.id, 1, { v: 1 }, T0);
       const b = await calls.getOrCreate(alice, key("b"), "none");
       await calls.beginAttempt(alice, b.id, {}, T0);
-      await calls.markUnknown(alice, b.id, "timeout", T0);
+      await calls.markUnknown(alice, b.id, 1, "timeout", T0);
       await terminate();
       await calls.purgeResult(alice, a.id, T0);
       const docs = await h.docsOf("alice", "providerCalls");
@@ -406,22 +443,60 @@ export function describeQuotaContract(
           "reservedMicroUsd"
         ];
       expect(await monthly()).toBe(1000);
-      await quota.settle(alice, r.reservationId, 400);
+      await quota.settle(alice, r.reservationId, 400, LIMITS);
       expect(await monthly()).toBe(400);
       const r2 = await reserve(100);
       if (r2.status !== "reserved") throw new Error("not reserved");
-      await quota.settle(alice, r2.reservationId, 900);
+      await quota.settle(alice, r2.reservationId, 900, LIMITS);
       expect(await monthly()).toBe(1300);
       for (const d of await h.docsOf("alice", "quotaCounters")) {
         expect(() => OWNER_COLLECTIONS.quotaCounters.parse(d)).not.toThrow();
       }
     });
 
+    it("settling upward past 80% warns once; settling downward stays silent", async () => {
+      const limits: QuotaLimits = {
+        perRequestMicroUsd: 100,
+        dailyMicroUsd: 100,
+        monthlyMicroUsd: 1000,
+      };
+      const r = await quota.reserve(alice, 50, NOON, limits);
+      if (r.status !== "reserved") throw new Error("not reserved");
+      expect(await quota.settle(alice, r.reservationId, 90, limits)).toEqual({
+        warningsCrossed: ["daily"],
+      });
+      const daily = (await h.docsOf("alice", "quotaCounters")).find(
+        (d) => d["window"] === "2023-11-14",
+      );
+      expect(daily?.["warnedAtMs"]).toBe(NOON);
+      const r2 = await quota.reserve(alice, 1, NOON, limits);
+      expect(r2).toMatchObject({ warningsCrossed: [] });
+      if (r2.status !== "reserved") throw new Error("not reserved");
+      expect(await quota.settle(alice, r2.reservationId, 5, limits)).toEqual({
+        warningsCrossed: [],
+      });
+    });
+
+    it("a downward settle never warns", async () => {
+      const limits: QuotaLimits = {
+        perRequestMicroUsd: 100,
+        dailyMicroUsd: 100,
+        monthlyMicroUsd: 100,
+      };
+      const r = await quota.reserve(alice, 70, NOON, limits);
+      if (r.status !== "reserved") throw new Error("not reserved");
+      expect(await quota.settle(alice, r.reservationId, 10, limits)).toEqual({
+        warningsCrossed: [],
+      });
+    });
+
     it("settle rejects a malformed reservation ID or amount", async () => {
-      await expect(quota.settle(alice, "nope", 1)).rejects.toMatchObject({ code: "invalidIntent" });
+      await expect(quota.settle(alice, "nope", 1, LIMITS)).rejects.toMatchObject({
+        code: "invalidIntent",
+      });
       const r = await reserve(10);
       if (r.status !== "reserved") throw new Error("not reserved");
-      await expect(quota.settle(alice, r.reservationId, -1)).rejects.toMatchObject({
+      await expect(quota.settle(alice, r.reservationId, -1, LIMITS)).rejects.toMatchObject({
         code: "invalidIntent",
       });
     });

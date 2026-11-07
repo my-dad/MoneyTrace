@@ -150,6 +150,7 @@ describe("firestore provider calls end to end", () => {
     const recovery = new RecoverExpiredClaims({
       sourceEvents: events,
       providerCalls: calls,
+      usage: new FirestoreAiUsageRecorder(db),
       clock,
       logger,
     });
@@ -169,7 +170,8 @@ describe("firestore provider calls end to end", () => {
       state: "unknown",
       attemptCount: 1,
     });
-    for (const name of ["sourceEvents", "providerCalls"] as const) {
+    expect(await docsOf("alice", "aiUsage")).toHaveLength(1);
+    for (const name of ["sourceEvents", "providerCalls", "aiUsage"] as const) {
       for (const d of await docsOf("alice", name)) {
         expect(() => OWNER_COLLECTIONS[name].parse(d)).not.toThrow();
       }

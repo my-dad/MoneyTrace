@@ -47,6 +47,10 @@ const emptyCounter = (window: string, nowMs: number): QuotaCounter => ({
   updatedAtMs: nowMs,
 });
 
+/** The first time a window reaches 80% of its limit; `warnedAtMs` makes it fire once. */
+const crossesWarning = (c: QuotaCounter, reservedMicroUsd: number, limit: number): boolean =>
+  c.warnedAtMs === null && limit > 0 && reservedMicroUsd * 100 >= limit * 80;
+
 export type ReserveDecision =
   | { ok: false; result: Extract<ReserveResult, { status: "exhausted" }> }
   | {
@@ -78,7 +82,7 @@ export function decideReserve(
   const warningsCrossed: QuotaWindow[] = [];
   const advance = (c: QuotaCounter, limit: number, name: QuotaWindow): QuotaCounter => {
     const reservedMicroUsd = c.reservedMicroUsd + estimateMicroUsd;
-    const crosses = c.warnedAtMs === null && limit > 0 && reservedMicroUsd * 100 >= limit * 80;
+    const crosses = crossesWarning(c, reservedMicroUsd, limit);
     if (crosses) warningsCrossed.push(name);
     return {
       ...c,
@@ -110,19 +114,36 @@ export function parseReservationId(id: string): { estimateMicroUsd: number; atMs
   return { estimateMicroUsd: Number(m[1]), atMs: Number(m[2]) };
 }
 
-export function assertSettleInputs(actualMicroUsd: number): void {
+export function assertSettleInputs(actualMicroUsd: number, limits: QuotaLimits): void {
   if (!isAmount(actualMicroUsd)) throw invalid("invalid actual cost");
+  for (const limit of [limits.dailyMicroUsd, limits.monthlyMicroUsd]) {
+    if (!isAmount(limit)) throw invalid("invalid quota limit");
+  }
 }
 
-/** Moves a counter by `delta`, never below zero. A missing counter is created. */
+/**
+ * Moves a counter by `delta`, never below zero; a missing counter is created. Only an upward move
+ * can cross the 80% warning.
+ */
 export function settleCounter(
   counter: QuotaCounter | null,
   window: string,
   delta: number,
   nowMs: number,
-): QuotaCounter {
+  limit: number,
+): { counter: QuotaCounter; crossed: boolean } {
   const c = counter ?? emptyCounter(window, nowMs);
-  return { ...c, reservedMicroUsd: Math.max(0, c.reservedMicroUsd + delta), updatedAtMs: nowMs };
+  const reservedMicroUsd = Math.max(0, c.reservedMicroUsd + delta);
+  const crossed = delta > 0 && crossesWarning(c, reservedMicroUsd, limit);
+  return {
+    counter: {
+      ...c,
+      reservedMicroUsd,
+      warnedAtMs: crossed ? nowMs : c.warnedAtMs,
+      updatedAtMs: nowMs,
+    },
+    crossed,
+  };
 }
 
 export function counterToDoc(c: QuotaCounter): Record<string, unknown> {

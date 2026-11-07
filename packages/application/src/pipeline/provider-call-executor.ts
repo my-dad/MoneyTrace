@@ -1,5 +1,4 @@
 import {
-  DomainError,
   nextProviderAction,
   type OwnerId,
   type PipelineStage,
@@ -11,7 +10,14 @@ import type { Clock } from "../ports/clock";
 import type { Logger } from "../ports/logger";
 import type { ProviderCallRecord, ProviderCallRepository } from "../ports/provider-call-repository";
 import { DEFAULT_QUOTA_LIMITS, type QuotaLedger, type QuotaLimits } from "../ports/quota-ledger";
-import { hasResult, isUnattempted } from "../provider-call-guards";
+import {
+  assertStorableResult,
+  hasResult,
+  isUnattempted,
+  safeErrorCode,
+  workerDiedUsage,
+} from "../provider-call-guards";
+import { makeReservationId } from "../quota-rules";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
 
 /** What the executor needs of an `AbortSignal`; the platform's own signal satisfies it. */
@@ -57,9 +63,6 @@ export type ProviderCallExecutorDeps = {
   timeoutSignal: (ms: number) => AbortSignalLike;
 };
 
-const CODE = /^[A-Za-z0-9_.-]{1,64}$/;
-const safeCode = (code: string): string => (CODE.test(code) ? code : "invalidCode");
-
 type UsageBase = Omit<AIUsageRecord, "outcome" | "createdAtMs">;
 
 type Settled<T> = { kind: "outcome"; outcome: ProviderOutcome<T> };
@@ -94,7 +97,7 @@ export class ProviderCallExecutor {
 
   async execute<T>(params: ExecuteParams<T>): Promise<ExecuteResult<T>> {
     const { ownerId, sourceEventId, stage, provider } = params;
-    const { providerCalls, quota, clock, logger } = this.deps;
+    const { providerCalls, quota, clock } = this.deps;
     let record = await providerCalls.getOrCreate(
       ownerId,
       { sourceEventId, stage, providerId: provider.id },
@@ -102,16 +105,20 @@ export class ProviderCallExecutor {
     );
     // A call still `started` means the previous worker died under this stage.
     if (record.state === "started") {
-      record = await providerCalls.markUnknown(ownerId, record.id, "workerDied", clock.nowMs());
+      const died = record;
+      record = await providerCalls.markUnknown(
+        ownerId,
+        died.id,
+        died.attemptCount,
+        "workerDied",
+        clock.nowMs(),
+      );
+      if (record.state === "unknown") {
+        await this.appendUsage(ownerId, workerDiedUsage(died, clock.nowMs()));
+      }
     }
     const action = this.action(record);
-    if (action === "reuseResult") {
-      return {
-        kind: "result",
-        value: record.result as T,
-        retriedAfterUnknown: record.retriedAfterUnknown,
-      };
-    }
+    if (action === "reuseResult") return this.reuse(record);
     if (action !== "invoke") return { kind: action };
 
     let reservationId: string | undefined;
@@ -125,9 +132,7 @@ export class ProviderCallExecutor {
       if (reserved.status === "exhausted")
         return { kind: "quotaExhausted", window: reserved.window };
       reservationId = reserved.reservationId;
-      for (const window of reserved.warningsCrossed) {
-        logger.warn("quotaWarning", { window, sourceEventId });
-      }
+      this.warn(reserved.warningsCrossed, sourceEventId);
     }
 
     const approved = record.userApprovedRetry;
@@ -138,30 +143,66 @@ export class ProviderCallExecutor {
       reservationId === undefined ? {} : { reservationId },
       clock.nowMs(),
     );
+    const attempt = record.attemptCount;
     const { outcome } = await this.call(record.requestKey, params);
 
-    const usage = {
-      id: `${record.id}:${String(record.attemptCount)}`,
+    const usage: UsageBase = {
+      id: `${record.id}:${String(attempt)}`,
       providerId: provider.id,
       estimatedMicroUsd: params.estimateMicroUsd,
       userApprovedRetry: approved,
       sourceEventId,
       stage,
-      attempt: record.attemptCount,
+      attempt,
     };
     if (outcome.kind === "success") {
       return this.succeed(params, record, outcome, reservationId, usage);
     }
-    const code = safeCode(outcome.code);
-    record =
+    const code = safeErrorCode(outcome.code);
+    record = await this.write(ownerId, usage, () =>
       outcome.kind === "definiteFailure"
-        ? await providerCalls.markFailed(ownerId, record.id, code, clock.nowMs())
-        : await providerCalls.markUnknown(ownerId, record.id, code, clock.nowMs());
+        ? providerCalls.markFailed(ownerId, record.id, attempt, code, clock.nowMs())
+        : providerCalls.markUnknown(ownerId, record.id, attempt, code, clock.nowMs()),
+    );
     await this.appendUsage(ownerId, { ...usage, outcome: outcome.kind, errorCode: code });
     // Re-ask the protocol: a retryable failure waits for recovery, anything else returns as it is.
     const next = this.action(record);
-    if (next === "invoke" || next === "reuseResult") return { kind: "retryLater" };
+    if (next === "reuseResult") return this.reuse(record);
+    if (next === "invoke") return { kind: "retryLater" };
     return { kind: next };
+  }
+
+  private reuse<T>(record: ProviderCallRecord): ExecuteResult<T> {
+    return {
+      kind: "result",
+      value: record.result as T,
+      retriedAfterUnknown: record.retriedAfterUnknown,
+    };
+  }
+
+  private warn(windows: readonly string[], sourceEventId: string): void {
+    for (const window of windows) this.deps.logger.warn("quotaWarning", { window, sourceEventId });
+  }
+
+  /**
+   * A failing record write must not lose the attempt from metering: the call stays `started`
+   * (treated as unknown later), so the attempt is metered as unknown and the error propagates.
+   */
+  private async write(
+    ownerId: OwnerId,
+    usage: UsageBase,
+    fn: () => Promise<ProviderCallRecord>,
+  ): Promise<ProviderCallRecord> {
+    try {
+      return await fn();
+    } catch (error) {
+      await this.appendUsage(ownerId, {
+        ...usage,
+        outcome: "unknown",
+        errorCode: "recordWriteFailed",
+      });
+      throw error;
+    }
   }
 
   private async succeed<T>(
@@ -173,41 +214,50 @@ export class ProviderCallExecutor {
   ): Promise<ExecuteResult<T>> {
     const { ownerId } = params;
     const { providerCalls, quota, clock, logger } = this.deps;
+    const attempt = record.attemptCount;
     try {
-      await providerCalls.markSucceeded(ownerId, record.id, outcome.value, clock.nowMs());
+      assertStorableResult(outcome.value);
     } catch (error) {
-      if (error instanceof DomainError && error.code === "invalidIntent") {
-        // The provider answered but the answer cannot be stored: the outcome is not usable, and
-        // the call may have been charged, so it is recorded unknown and never repeated silently.
-        await providerCalls.markUnknown(ownerId, record.id, "resultNotStorable", clock.nowMs());
-        await this.appendUsage(ownerId, {
-          ...usage,
-          outcome: "unknown",
-          errorCode: "resultNotStorable",
-        });
-      }
+      // The provider answered but the answer cannot be stored: the outcome is not usable, and
+      // the call may have been charged, so it is recorded unknown and never repeated silently.
+      await this.write(ownerId, usage, () =>
+        providerCalls.markUnknown(ownerId, record.id, attempt, "resultNotStorable", clock.nowMs()),
+      );
+      await this.appendUsage(ownerId, {
+        ...usage,
+        outcome: "unknown",
+        errorCode: "resultNotStorable",
+      });
       throw error;
     }
-    if (outcome.actualMicroUsd !== undefined && reservationId !== undefined) {
-      try {
-        await quota.settle(ownerId, reservationId, outcome.actualMicroUsd);
-      } catch (error) {
-        logger.error("quota.settleFailed", {
-          sourceEventId: usage.sourceEventId,
-          errorName: error instanceof Error ? error.name : "unknown",
-        });
+    // First success wins: what comes back is what is stored, which may be an older attempt's.
+    const stored = await this.write(ownerId, usage, () =>
+      providerCalls.markSucceeded(ownerId, record.id, attempt, outcome.value, clock.nowMs()),
+    );
+    const actual = outcome.actualMicroUsd;
+    if (actual !== undefined) {
+      // A free provider that reports a cost is still charged: it settles a zero reservation.
+      const id =
+        reservationId ??
+        (actual > 0 ? makeReservationId(0, clock.nowMs(), `charge${String(attempt)}`) : undefined);
+      if (id !== undefined) {
+        try {
+          const settled = await quota.settle(ownerId, id, actual, this.deps.limits);
+          this.warn(settled.warningsCrossed, usage.sourceEventId);
+        } catch (error) {
+          logger.error("quota.settleFailed", {
+            sourceEventId: usage.sourceEventId,
+            errorName: error instanceof Error ? error.name : "unknown",
+          });
+        }
       }
     }
     await this.appendUsage(ownerId, {
       ...usage,
       outcome: "success",
-      ...(outcome.actualMicroUsd !== undefined ? { actualMicroUsd: outcome.actualMicroUsd } : {}),
+      ...(actual !== undefined ? { actualMicroUsd: actual } : {}),
     });
-    return {
-      kind: "result",
-      value: outcome.value,
-      retriedAfterUnknown: record.retriedAfterUnknown,
-    };
+    return this.reuse(stored);
   }
 
   /** Any thrown error or abort is `unknown`: the provider may have processed the request. */

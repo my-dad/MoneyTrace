@@ -7,12 +7,14 @@ import type {
   Parking,
   SourceEventRepository,
 } from "../ports/source-event-repository";
-import { hasResult } from "../provider-call-guards";
+import type { AIUsageRecord, AIUsageRecorder } from "../ports/ai-usage-recorder";
+import { hasResult, workerDiedUsage } from "../provider-call-guards";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
 
 export type RecoverExpiredClaimsDeps = {
   sourceEvents: SourceEventRepository;
   providerCalls: ProviderCallRepository;
+  usage: AIUsageRecorder;
   clock: Clock;
   logger: Logger;
   maxAttempts?: number;
@@ -62,11 +64,20 @@ export class RecoverExpiredClaims {
     );
     const calls: ProviderCallRecord[] = [];
     for (const c of listed) {
-      calls.push(
-        c.state === "started"
-          ? await providerCalls.markUnknown(claim.ownerId, c.id, "workerDied", nowMs)
-          : c,
+      if (c.state !== "started") {
+        calls.push(c);
+        continue;
+      }
+      const updated = await providerCalls.markUnknown(
+        claim.ownerId,
+        c.id,
+        c.attemptCount,
+        "workerDied",
+        nowMs,
       );
+      calls.push(updated);
+      // Metering for every attempt: a late worker's real row, with the same ID, replaces this one.
+      if (updated.state === "unknown") await this.meter(claim, workerDiedUsage(c, nowMs));
     }
     const decision = this.decide(calls, claim.stageAttempt);
     if (decision.kind === "reopen") {
@@ -84,6 +95,17 @@ export class RecoverExpiredClaims {
     if (r !== "parked") return;
     if (decision.parking.status === "pending") out.parked += 1;
     else out.deadLettered += 1;
+  }
+
+  private async meter(claim: ExpiredClaim, record: AIUsageRecord): Promise<void> {
+    try {
+      await this.deps.usage.append(claim.ownerId, record);
+    } catch (error) {
+      this.deps.logger.error("aiUsage.appendFailed", {
+        sourceEventId: claim.sourceEventId,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
   }
 
   private decide(calls: readonly ProviderCallRecord[], stageAttempt: number): Decision {

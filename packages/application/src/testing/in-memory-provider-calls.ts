@@ -29,7 +29,7 @@ import {
 import type { InMemorySourceEvents } from "./in-memory-source-events";
 
 /** Surfaces a synchronous throw as a rejection, like an async adapter does. */
-function attempt<T>(fn: () => T): Promise<T> {
+function run<T>(fn: () => T): Promise<T> {
   try {
     return Promise.resolve(fn());
   } catch (error) {
@@ -78,7 +78,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
     key: ProviderCallKey,
     retrySafety: RetrySafety,
   ): Promise<ProviderCallRecord> {
-    return attempt(() => {
+    return run(() => {
       const id = providerCallId(key);
       const existing = this.data(ownerId).get(id);
       if (existing !== undefined) {
@@ -90,7 +90,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
   }
 
   approveRetry(ownerId: OwnerId, id: string, nowMs: number): Promise<"approved" | "notApplicable"> {
-    return attempt(() => {
+    return run(() => {
       const next = decideApprove(this.require(ownerId, id), nowMs);
       if (next === null) return "notApplicable" as const;
       this.update(ownerId, id, next);
@@ -104,7 +104,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
     options: { reservationId?: string },
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return attempt(() =>
+    return run(() =>
       this.update(
         ownerId,
         id,
@@ -116,33 +116,36 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
   markSucceeded(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     result: unknown,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return attempt(() =>
-      this.update(ownerId, id, decideSucceeded(this.require(ownerId, id), result, nowMs)),
+    return run(() =>
+      this.update(ownerId, id, decideSucceeded(this.require(ownerId, id), attempt, result, nowMs)),
     );
   }
 
   markFailed(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return attempt(() =>
-      this.update(ownerId, id, decideFailed(this.require(ownerId, id), code, nowMs)),
+    return run(() =>
+      this.update(ownerId, id, decideFailed(this.require(ownerId, id), attempt, code, nowMs)),
     );
   }
 
   markUnknown(
     ownerId: OwnerId,
     id: string,
+    attempt: number,
     code: string,
     nowMs: number,
   ): Promise<ProviderCallRecord> {
-    return attempt(() =>
-      this.update(ownerId, id, decideUnknown(this.require(ownerId, id), code, nowMs)),
+    return run(() =>
+      this.update(ownerId, id, decideUnknown(this.require(ownerId, id), attempt, code, nowMs)),
     );
   }
 
@@ -164,7 +167,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
     id: string,
     nowMs: number,
   ): Promise<"purged" | "blockedNotTerminal"> {
-    return attempt(() => {
+    return run(() => {
       const r = this.require(ownerId, id);
       const event = this.events.peek(ownerId, r.sourceEventId);
       if (event === undefined || !isTerminal(event.status)) return "blockedNotTerminal" as const;
@@ -185,7 +188,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
     ownerId: OwnerId,
     sourceEventId: SourceEventId,
   ): Promise<"done" | "blockedNotTerminal" | "resultsRemain"> {
-    return attempt(() => {
+    return run(() => {
       const event = this.events.peek(ownerId, sourceEventId);
       if (event === undefined || !isTerminal(event.status)) return "blockedNotTerminal" as const;
       const remain = [...this.data(ownerId).values()].some(

@@ -14,6 +14,7 @@ import {
   type QuotaCounter,
   type QuotaLedger,
   type QuotaLimits,
+  type QuotaWindow,
   type ReserveResult,
 } from "@moneytrace/application";
 import type { OwnerId } from "@moneytrace/domain";
@@ -81,26 +82,46 @@ export class FirestoreQuotaLedger implements QuotaLedger {
     );
   }
 
-  async settle(ownerId: OwnerId, reservationId: string, actualMicroUsd: number): Promise<void> {
-    assertSettleInputs(actualMicroUsd);
+  async settle(
+    ownerId: OwnerId,
+    reservationId: string,
+    actualMicroUsd: number,
+    limits: QuotaLimits,
+  ): Promise<{ warningsCrossed: QuotaWindow[] }> {
+    assertSettleInputs(actualMicroUsd, limits);
     const { estimateMicroUsd, atMs } = parseReservationId(reservationId);
-    const windows = [utcDayWindow(atMs), utcMonthWindow(atMs)];
-    await this.db.runTransaction(
+    const dayTarget: [string, number, QuotaWindow] = [
+      utcDayWindow(atMs),
+      limits.dailyMicroUsd,
+      "daily",
+    ];
+    const monthTarget: [string, number, QuotaWindow] = [
+      utcMonthWindow(atMs),
+      limits.monthlyMicroUsd,
+      "monthly",
+    ];
+    const targets = [dayTarget, monthTarget];
+    return await this.db.runTransaction(
       async (t) => {
         const now = this.clock.nowMs();
         const current = [
-          await this.read(t, ownerId, windows[0] ?? ""),
-          await this.read(t, ownerId, windows[1] ?? ""),
+          await this.read(t, ownerId, dayTarget[0]),
+          await this.read(t, ownerId, monthTarget[0]),
         ];
-        windows.forEach((window, i) => {
-          const next = settleCounter(
+        // Built per attempt: Firestore may run this callback again after a contention retry.
+        const warningsCrossed: QuotaWindow[] = [];
+        targets.forEach(([window, limit, name], i) => {
+          const r = settleCounter(
             current[i] ?? null,
             window,
             actualMicroUsd - estimateMicroUsd,
             now,
+            limit,
           );
-          t.set(this.ref(ownerId, window), counterToDoc(next));
+          t.set(this.ref(ownerId, window), counterToDoc(r.counter));
+          if (r.crossed) warningsCrossed.push(name);
         });
+        return { warningsCrossed };
       },
       { maxAttempts: MAX_ATTEMPTS },
     );

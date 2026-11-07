@@ -3,6 +3,7 @@ import { asOwnerId, asSourceEventId, type PipelineStage } from "@moneytrace/doma
 import { FakeProvider, createProviderWorld } from "../testing/fake-provider";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
 import type { RetrySafety } from "@moneytrace/domain";
+import { makeReservationId } from "../quota-rules";
 
 const owner = asOwnerId("alice");
 const id = asSourceEventId("evt-1");
@@ -82,7 +83,7 @@ describe("RecoverExpiredClaims", () => {
   it("succeeded with no result on a non-terminal event: dead-lettered providerResultMissing", async () => {
     const { w } = await claimed("interpret");
     const r = await seed(w, "none");
-    await w.calls.markSucceeded(owner, r.id, "ok", w.clock.nowMs());
+    await w.calls.markSucceeded(owner, r.id, 1, "ok", w.clock.nowMs());
     w.calls.seed(owner, r.id, { state: "succeeded" });
     w.clock.advance(LEASE);
     expect(await w.recovery().execute(w.clock.nowMs(), 10)).toEqual({
@@ -146,19 +147,31 @@ describe("RecoverExpiredClaims", () => {
     });
   });
 
-  it("a late worker's success is stored and reused with no second call; its commit is stale", async () => {
+  it("a late worker's success is stored; a retry reopens with no approval and no second call", async () => {
     const provider = new FakeProvider("p", "none");
     const { w, claim } = await claimed("interpret");
     const r = await seed(w, "none");
     w.clock.advance(LEASE);
     await w.recovery().execute(w.clock.nowMs(), 10);
-    // The late worker finally gets its response.
-    await w.calls.markSucceeded(owner, r.id, "late", w.clock.nowMs());
+    expect(await w.sourceEvents.get(owner, id)).toMatchObject({
+      status: "pending",
+      pendingReason: "providerOutcomeUnknown",
+    });
+    // The late worker finally gets its response, after recovery parked the event.
+    await w.calls.markSucceeded(owner, r.id, 1, "late", w.clock.nowMs());
     expect(
       await w.sourceEvents.commitStage(owner, claim, { nextStatus: "interpreted", outputs: [] }),
     ).toBe("staleClaim");
-    const stored = (await w.calls.listForStage(owner, id, "interpret"))[0];
-    expect(stored).toMatchObject({ state: "succeeded", result: "late" });
+    expect(await w.retry().execute({ ownerId: owner, sourceEventId: id, stage: "interpret" })).toBe(
+      "reopened",
+    );
+    expect((await w.calls.listForStage(owner, id, "interpret"))[0]).toMatchObject({
+      state: "succeeded",
+      result: "late",
+      userApprovedRetry: false,
+    });
+    const c = await w.sourceEvents.claim(owner, id, "interpret", "w2", w.clock.nowMs());
+    if (c.status !== "claimed") throw new Error("claim failed");
     const result = await w.executor().execute({
       ownerId: owner,
       sourceEventId: id,
@@ -167,8 +180,44 @@ describe("RecoverExpiredClaims", () => {
       estimateMicroUsd: 100,
       invoke: provider.invoke,
     });
-    expect(result).toMatchObject({ kind: "result", value: "late" });
+    expect(result).toMatchObject({ kind: "result", value: "late", retriedAfterUnknown: false });
     expect(provider.calls).toBe(0);
+    expect(
+      await w.sourceEvents.commitStage(owner, c.claim, { nextStatus: "interpreted", outputs: [] }),
+    ).toBe("committed");
+  });
+
+  it("meters a died worker's attempt as unknown, with the reserved estimate; a real row replaces it", async () => {
+    const { w } = await claimed("interpret");
+    const r = await w.calls.getOrCreate(
+      owner,
+      { sourceEventId: id, stage: "interpret", providerId: "p" },
+      "none",
+    );
+    await w.calls.beginAttempt(
+      owner,
+      r.id,
+      { reservationId: makeReservationId(4_000, 1, "x") },
+      w.clock.nowMs(),
+    );
+    w.clock.advance(LEASE);
+    await w.recovery().execute(w.clock.nowMs(), 10);
+    expect(w.usage.all(owner)).toEqual([
+      expect.objectContaining({
+        id: `${r.id}:1`,
+        outcome: "unknown",
+        errorCode: "workerDied",
+        estimatedMicroUsd: 4_000,
+      }),
+    ]);
+    // The late worker's own row has the same ID and replaces the placeholder.
+    await w.usage.append(owner, {
+      ...(w.usage.all(owner)[0] as NonNullable<ReturnType<typeof w.usage.all>[number]>),
+      outcome: "success",
+      actualMicroUsd: 3_000,
+    });
+    expect(w.usage.all(owner)).toHaveLength(1);
+    expect(w.usage.all(owner)[0]).toMatchObject({ outcome: "success", actualMicroUsd: 3_000 });
   });
 
   it("a user-approved retry is not blocked by an attempts-exhausted stage", async () => {
