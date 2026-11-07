@@ -1,0 +1,22 @@
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.page header {
+  margin-bottom: 24px;
+}
+.page h1 {
+  margin: 12px 0 0;
+}
+.page > .mt-card {
+  margin-bottom: 16px;
+}
+.page select,
+.page input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.page .mt-button {
+  margin-top: 12px;
+}

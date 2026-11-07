@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
 
 type GateState =
@@ -9,6 +9,12 @@ type GateState =
   | { kind: "bootstrapping"; user: AuthUser }
   | { kind: "ready"; user: AuthUser }
   | { kind: "bootstrapFailed"; user: AuthUser };
+
+const AuthUserContext = createContext<AuthUser | null>(null);
+
+export function useAuthUser(): AuthUser | null {
+  return useContext(AuthUserContext);
+}
 
 export function AuthGate({ gateway, children }: { gateway: AuthGateway; children: ReactNode }) {
   const [state, setState] = useState<GateState>({ kind: "checking" });
@@ -91,5 +97,5 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
     );
   }
 
-  return <>{children}</>;
+  return <AuthUserContext.Provider value={state.user}>{children}</AuthUserContext.Provider>;
 }

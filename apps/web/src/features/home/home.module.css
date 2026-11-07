@@ -1,0 +1,90 @@
+.page {
+  min-height: 100dvh;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  color: var(--mt-ink);
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+.logo,
+.eyebrow,
+.label,
+.freshness {
+  color: var(--mt-caption);
+  font-size: 13px;
+}
+.eyebrow {
+  margin: 0 0 4px;
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.summary :global(.mt-card) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.summary small {
+  color: var(--mt-caption);
+  line-height: 1.4;
+}
+.unexplained {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.unexplained strong,
+.unexplained .mt-money {
+  display: block;
+}
+.unexplained p {
+  margin: 6px 0 0;
+  color: var(--mt-caption);
+  font-size: 13px;
+}
+.section {
+  margin-top: 28px;
+}
+.section h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sectionHeading .mt-money {
+  font-size: 20px;
+}
+.freshness {
+  margin-top: 6px;
+}
+.alert {
+  padding: 12px;
+  color: var(--mt-failed-text);
+  background: var(--mt-failed-tint);
+  border-radius: 12px;
+}
+@media (max-width: 560px) {
+  .summary {
+    grid-template-columns: 1fr;
+  }
+  .unexplained {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

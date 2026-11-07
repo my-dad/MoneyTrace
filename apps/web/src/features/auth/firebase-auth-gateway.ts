@@ -11,7 +11,9 @@ import { auth, functions } from "../../shared/firebase";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
 
 function toAuthUser(user: User | null): AuthUser | null {
-  return user === null ? null : { uid: user.uid };
+  return user === null
+    ? null
+    : { uid: user.uid, ...(user.displayName === null ? {} : { displayName: user.displayName }) };
 }
 
 export function createFirebaseAuthGateway(): AuthGateway {
