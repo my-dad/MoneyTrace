@@ -8,6 +8,7 @@ describe("@moneytrace/infrastructure", () => {
       "FirestoreAccountRepository",
       "FirestoreLedgerReader",
       "FirestoreLedgerWriter",
+      "FirestoreSourceEventRepository",
       "JsonLogger",
       "NodeHasher",
       "SystemClock",

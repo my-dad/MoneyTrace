@@ -1,4 +1,4 @@
-import type { EntryRecord, TransactionRecord } from "@moneytrace/application";
+import type { EntryRecord, SourceEventRecord, TransactionRecord } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import { asAccountId, asSourceEventId, asTransactionId } from "@moneytrace/domain";
 
@@ -68,4 +68,44 @@ export function toEntryRecord(data: unknown): EntryRecord {
 export function bySequence(a: EntryRecord, b: EntryRecord): number {
   const seq = (e: EntryRecord): number => Number(e.id.slice(e.id.lastIndexOf(":") + 1));
   return seq(a) - seq(b);
+}
+
+/** Optional reasons are written only when present, and `claim` is `null` rather than absent. */
+export function sourceEventToDoc(e: SourceEventRecord): Record<string, unknown> {
+  return OWNER_COLLECTIONS.sourceEvents.parse({
+    id: e.id,
+    sourceType: e.sourceType,
+    sourceHash: e.sourceHash,
+    idempotencyKey: e.idempotencyKey,
+    status: e.status,
+    ...(e.pendingReason !== undefined ? { pendingReason: e.pendingReason } : {}),
+    ...(e.deadLetterReason !== undefined ? { deadLetterReason: e.deadLetterReason } : {}),
+    stageAttempt: e.stageAttempt,
+    claim: e.claim === null ? null : { ...e.claim },
+    parkedStage: e.parkedStage,
+    version: e.version,
+    receivedAtMs: e.receivedAtMs,
+    terminalAtMs: e.terminalAtMs,
+    providerResultsPurged: e.providerResultsPurged,
+  });
+}
+
+export function toSourceEventRecord(data: unknown): SourceEventRecord {
+  const d = OWNER_COLLECTIONS.sourceEvents.parse(data);
+  return {
+    id: asSourceEventId(d.id),
+    sourceType: d.sourceType,
+    sourceHash: d.sourceHash,
+    idempotencyKey: d.idempotencyKey,
+    status: d.status,
+    ...(d.pendingReason !== undefined ? { pendingReason: d.pendingReason } : {}),
+    ...(d.deadLetterReason !== undefined ? { deadLetterReason: d.deadLetterReason } : {}),
+    stageAttempt: d.stageAttempt,
+    claim: d.claim === null ? null : { ...d.claim },
+    parkedStage: d.parkedStage,
+    version: d.version,
+    receivedAtMs: d.receivedAtMs,
+    terminalAtMs: d.terminalAtMs,
+    providerResultsPurged: d.providerResultsPurged,
+  };
 }

@@ -6,3 +6,4 @@ export * from "./system/system-clock";
 export * from "./system/crypto-id-generator";
 export * from "./system/node-hasher";
 export * from "./system/json-logger";
+export * from "./firestore/firestore-source-event-repository";
