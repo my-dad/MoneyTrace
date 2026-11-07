@@ -153,6 +153,11 @@
   color: var(--mt-verified-text);
 }
 
+.noChange {
+  background: var(--mt-pending-tint);
+  color: var(--mt-pending-text);
+}
+
 .waiting {
   background: var(--mt-needs-answer-tint);
   color: var(--mt-needs-answer-text);

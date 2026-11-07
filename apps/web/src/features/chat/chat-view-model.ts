@@ -1,29 +1,34 @@
 import type { AccountRow, FollowUpRow, SourceEventRow } from "../../shared/read-model-gateway";
 import { COPY } from "../../shared/copy";
 
-export type ChatOutcome = "reading" | "recorded" | "waiting" | "failed";
+export type ChatOutcome = "reading" | "recorded" | "noChange" | "waiting" | "failed";
 export type ChatItem =
   | { kind: "evidence"; id: string; text: string; outcome: ChatOutcome; statusCopy: string; event: SourceEventRow }
   | { kind: "followUp"; id: string; question: string; followUp: FollowUpRow; accounts: AccountRow[] };
 
 export function chatOutcome(event: SourceEventRow): ChatOutcome {
-  if (event.status === "posted" || event.status === "linkedAsDuplicate") return "recorded";
+  if (event.status === "posted") return "recorded";
+  // Nothing went wrong and nothing new was posted: a repeat, a non-financial SMS, or the user's choice.
+  if (event.status === "linkedAsDuplicate" || event.status === "rejected" || event.status === "cancelled") return "noChange";
   if (event.status === "pending") return "waiting";
-  if (event.status === "deadLetter" || event.status === "rejected" || event.status === "cancelled") return "failed";
+  if (event.status === "deadLetter") return "failed";
   return "reading";
 }
 
 export function chatStatusCopy(event: SourceEventRow): string {
   if (event.extraction?.notFinancialReason === "otp") return COPY.otpRefused;
-  if (event.extraction?.notFinancialReason !== undefined) return COPY.notAnExpense;
-  if (event.status === "posted" || event.status === "linkedAsDuplicate") return COPY.recorded;
+  if (event.extraction?.notFinancialReason !== undefined) return COPY.notFinancial;
+  if (event.status === "posted") return COPY.recorded;
+  if (event.status === "linkedAsDuplicate") return COPY.linkedAsDuplicate;
+  if (event.status === "rejected") return COPY.rejected;
+  if (event.status === "cancelled") return COPY.cancelled;
   if (event.status === "pending") {
     if (event.pendingReason === "aiQuotaExhausted") return COPY.aiQuotaExhausted;
     if (event.pendingReason === "providerOutcomeUnknown") return COPY.providerOutcomeUnknown;
     return COPY.awaitingClarification;
   }
   if (event.status === "deadLetter" && event.deadLetterReason === "beforeOpeningBalance") return COPY.beforeOpeningBalance;
-  if (event.status === "deadLetter" || event.status === "rejected" || event.status === "cancelled") return COPY.failed;
+  if (event.status === "deadLetter") return COPY.failed;
   return "Reading your evidence";
 }
 

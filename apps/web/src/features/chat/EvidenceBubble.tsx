@@ -5,7 +5,7 @@ import type { ChatItem, ChatOutcome } from "./chat-view-model";
 import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
 import { TransactionPreview } from "./TransactionPreview";
-import { useAction } from "./use-action";
+import { useAction } from "../../shared/use-action";
 
 type EvidenceItem = Extract<ChatItem, { kind: "evidence" }>;
 
@@ -21,6 +21,12 @@ const OUTCOME_ICON: Record<Exclude<ChatOutcome, "reading">, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </>
+  ),
+  noChange: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12h8" />
     </>
   ),
   waiting: <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />,

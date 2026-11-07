@@ -2,10 +2,28 @@
 
 import { formatBdt } from "@moneytrace/contracts";
 import { Button, Card, EmptyState, List, ListItem, MoneyText } from "@moneytrace/ui-kit";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { ReadModelGateway } from "../../shared/read-model-gateway";
-import { buildHomeViewModel, monthRangeInZone } from "./home-view-model";
+import type {
+  AccountRow,
+  BalanceRow,
+  ExpenseEntryRow,
+  FollowUpRow,
+  ReadModelGateway,
+} from "../../shared/read-model-gateway";
+import { buildHomeViewModel, monthRangeInZone, SYSTEM_CASH_ACCOUNT_ID } from "./home-view-model";
 import styles from "./home.module.css";
+
+const CHAT_PATH = "/chat";
+
+const updatedFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Dhaka",
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
 
 export function HomeScreen({
   gateway,
@@ -16,24 +34,18 @@ export function HomeScreen({
   displayName?: string;
   onAddAccount?: () => void;
 }) {
-  const [accounts, setAccounts] = useState<import("../../shared/read-model-gateway").AccountRow[]>(
-    [],
-  );
-  const [balances, setBalances] = useState<import("../../shared/read-model-gateway").BalanceRow[]>(
-    [],
-  );
-  const [followUps, setFollowUps] = useState<
-    import("../../shared/read-model-gateway").FollowUpRow[]
-  >([]);
-  const [expenses, setExpenses] = useState<
-    import("../../shared/read-model-gateway").ExpenseEntryRow[]
-  >([]);
+  // Null until the first snapshot, so "not loaded yet" never reads as "you have nothing".
+  const [accounts, setAccounts] = useState<AccountRow[] | null>(null);
+  const [balances, setBalances] = useState<BalanceRow[] | null>(null);
+  const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseEntryRow[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(false);
   const nowMs = useMemo(() => Date.now(), []);
 
   useEffect(() => {
-    const onError = () => { setFailed(true); };
+    const onError = () => {
+      setFailed(true);
+    };
     const range = monthRangeInZone(nowMs, "Asia/Dhaka");
     const stops = [
       gateway.watchAccounts(setAccounts, onError),
@@ -41,22 +53,51 @@ export function HomeScreen({
       gateway.watchFollowUps(setFollowUps, onError),
       gateway.watchExpenseEntries(range.fromMs, range.toMs, setExpenses, onError),
     ];
-    return () => { stops.forEach((stop) => { stop(); }); };
+    return () => {
+      stops.forEach((stop) => {
+        stop();
+      });
+    };
   }, [gateway, nowMs]);
 
   const vm = useMemo(
-    () => buildHomeViewModel({ accounts, balances, followUps, expenseEntries: expenses, nowMs }),
+    () =>
+      buildHomeViewModel({
+        accounts: accounts ?? [],
+        balances: balances ?? [],
+        followUps,
+        expenseEntries: expenses ?? [],
+        nowMs,
+      }),
     [accounts, balances, followUps, expenses, nowMs],
   );
-  const noAccounts = accounts.filter((account) => account.id !== "cash-unassigned").length === 0;
 
-  if (noAccounts) {
+  const failure = failed && (
+    <p role="alert" className={styles.alert}>
+      Couldn&apos;t load your latest money picture. Anything shown below may be out of date.
+    </p>
+  );
+
+  if (accounts === null) {
     return (
       <main className={styles.page}>
         <header className={styles.header}>
-          <span className={styles.logo}>MoneyTrace</span>
+          <h1 className={styles.logo}>MoneyTrace</h1>
+        </header>
+        {failure}
+        {!failed && <p role="status">Loading your accounts…</p>}
+      </main>
+    );
+  }
+
+  if (accounts.every((account) => account.id === SYSTEM_CASH_ACCOUNT_ID)) {
+    return (
+      <main className={styles.page}>
+        <header className={styles.header}>
+          <h1 className={styles.logo}>MoneyTrace</h1>
           <span>{displayName ?? ""}</span>
         </header>
+        {failure}
         <EmptyState
           title="Let's set up your first account"
           description="Add an account and its opening balance so your available money starts from a real number."
@@ -75,46 +116,55 @@ export function HomeScreen({
         </div>
         <a href="/accounts">Accounts</a>
       </header>
-      {failed && (
-        <p role="alert" className={styles.alert}>
-          Couldn&apos;t load your latest money picture. The figures below may be out of date.
+      {failure}
+      {balances !== null && (
+        <>
+          <section aria-label="Money summary" className={styles.summary}>
+            <Card>
+              <span className={styles.label}>Available</span>
+              <MoneyText text={formatBdt(vm.availableMinor)} />
+            </Card>
+            <Card>
+              <span className={styles.label}>Cash</span>
+              <MoneyText text={formatBdt(vm.cashMinor)} />
+            </Card>
+            <Card>
+              <span className={styles.label}>Card dues</span>
+              <MoneyText text={formatBdt(vm.cardDuesMinor)} />
+              <small>Money you owe. Not taken out of available money.</small>
+            </Card>
+          </section>
+          {vm.unexplainedCashMinor > 0 && (
+            <Card variant="unexplained" className={styles.unexplained}>
+              <div>
+                <strong>Cash not yet explained</strong>
+                <MoneyText text={formatBdt(vm.unexplainedCashMinor)} variant="unexplained" />
+                <p>It counts in your total and isn&apos;t treated as spending.</p>
+              </div>
+              <Link
+                href={CHAT_PATH}
+                className={`mt-button mt-button--secondary ${styles.linkButton ?? ""}`}
+              >
+                Explain
+              </Link>
+            </Card>
+          )}
+        </>
+      )}
+      {expenses !== null && (
+        <section className={styles.section}>
+          <div className={styles.sectionHeading}>
+            <h2>Spending this month</h2>
+            <MoneyText text={formatBdt(vm.spendingThisMonthMinor)} />
+          </div>
+        </section>
+      )}
+      {vm.freshnessAtMs > 0 && (
+        <p className={styles.freshness}>
+          Last updated {updatedFormat.format(new Date(vm.freshnessAtMs))}
         </p>
       )}
-      <section aria-label="Money summary" className={styles.summary}>
-        <Card>
-          <span className={styles.label}>Available</span>
-          <MoneyText text={formatBdt(vm.availableMinor)} />
-        </Card>
-        <Card>
-          <span className={styles.label}>Cash</span>
-          <MoneyText text={formatBdt(vm.cashMinor)} />
-        </Card>
-        <Card>
-          <span className={styles.label}>Card dues</span>
-          <MoneyText text={formatBdt(vm.cardDuesMinor)} />
-          <small>Money you owe. Not taken out of available money.</small>
-        </Card>
-      </section>
-      {vm.unexplainedCashMinor > 0 && (
-        <Card variant="unexplained" className={styles.unexplained}>
-          <div>
-            <strong>Cash not yet explained</strong>
-            <MoneyText text={formatBdt(vm.unexplainedCashMinor)} variant="unexplained" />
-            <p>This money is safe in your total, but needs a place.</p>
-          </div>
-          <Button variant="secondary" onClick={() => { setShowQuestions(true); }}>
-            Explain
-          </Button>
-        </Card>
-      )}
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}>
-          <h2>Spending this month</h2>
-          <MoneyText text={formatBdt(vm.spendingThisMonthMinor)} />
-        </div>
-        <p className={styles.freshness}>Updated just now</p>
-      </section>
-      {(showQuestions || vm.dueFollowUps.length > 0) && (
+      {vm.dueFollowUps.length > 0 && (
         <section aria-label="Questions" className={styles.section}>
           <h2>Questions for you</h2>
           <List>
@@ -123,16 +173,21 @@ export function HomeScreen({
                 key={followUp.id}
                 title={followUp.question}
                 trailing={
-                  <Button variant="text" onClick={() => { setShowQuestions(true); }}>
+                  <Link
+                    href={CHAT_PATH}
+                    className={`mt-button mt-button--text ${styles.linkButton ?? ""}`}
+                  >
                     Open
-                  </Button>
+                  </Link>
                 }
               />
             ))}
           </List>
-          {showQuestions && vm.dueFollowUps.length === 0 && <p>No question is ready yet.</p>}
         </section>
       )}
+      <Link href={CHAT_PATH} className={styles.chatEntry}>
+        Paste a bank SMS or describe cash
+      </Link>
     </main>
   );
 }

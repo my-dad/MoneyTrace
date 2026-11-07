@@ -5,7 +5,7 @@ import type { AccountRow, FollowUpRow } from "../../shared/read-model-gateway";
 import { cashPlaces } from "./chat-accounts";
 import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
-import { useAction } from "./use-action";
+import { useAction } from "../../shared/use-action";
 
 export function QuestionCard({
   followUp,

@@ -47,7 +47,7 @@
   gap: 16px;
 }
 .unexplained strong,
-.unexplained .mt-money {
+.unexplained :global(.mt-money) {
   display: block;
 }
 .unexplained p {
@@ -87,4 +87,36 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.linkButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+.chatEntry {
+  position: sticky;
+  bottom: 16px;
+  margin-top: 28px;
+  min-height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border: 1.5px solid var(--mt-accent);
+  border-radius: 24px;
+  background: var(--mt-surface);
+  color: var(--mt-ink);
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.linkButton:focus-visible,
+.chatEntry:focus-visible {
+  outline: 3px solid var(--mt-focus);
+  outline-offset: 2px;
 }

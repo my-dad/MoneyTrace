@@ -48,3 +48,4 @@ jdk-21/
 
 # real SMS samples, never commit
 sms-pattern.md
+test-results/

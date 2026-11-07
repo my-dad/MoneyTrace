@@ -72,6 +72,21 @@ describe("Button", () => {
   });
 });
 
+describe("className", () => {
+  it("Card keeps a caller's class alongside its own", () => {
+    const { container } = render(<Card className="extra">Content</Card>);
+    expect(container.firstElementChild?.className).toContain("extra");
+    expect(container.firstElementChild?.className).toContain("mt-card");
+  });
+
+  it("Button keeps a caller's class alongside its own", () => {
+    render(<Button className="extra">Go</Button>);
+    const { className } = screen.getByRole("button", { name: "Go" });
+    expect(className).toContain("extra");
+    expect(className).toContain("mt-button");
+  });
+});
+
 describe("Chip", () => {
   it("a selected chip says so to assistive tech and shows a check, not only color", () => {
     const { container } = render(

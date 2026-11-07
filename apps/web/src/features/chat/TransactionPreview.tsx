@@ -3,21 +3,18 @@ import { Button, Card, Chip, FormField, MoneyText, StatusBadge } from "@moneytra
 import { useState } from "react";
 import type { Commands, CommandRequest } from "../../shared/commands";
 import { CHAT_COPY, COPY } from "../../shared/copy";
+import { dhakaDate, dhakaDayStartMs, isDateText } from "../../shared/dhaka-date";
 import { parseBdtInput } from "../../shared/parse-bdt-input";
 import type { AccountRow, SourceEventRow } from "../../shared/read-model-gateway";
 import { anyAccount, bankAccounts, transferAccounts } from "./chat-accounts";
 import styles from "./chat.module.css";
-import { useAction } from "./use-action";
+import { useAction } from "../../shared/use-action";
 
 type Candidate = NonNullable<SourceEventRow["candidate"]>;
 type Overrides = NonNullable<CommandRequest<"confirmCandidate">["overrides"]>;
 type KindChoice = "known" | "transfer" | "other";
 
 const TIMEZONE = "Asia/Dhaka";
-const DHAKA_OFFSET = "+06:00";
-
-const dhakaDate = (ms: number) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date(ms));
 
 const dhakaDateTime = (ms: number) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -150,7 +147,7 @@ function CandidateForm({
   ).filter((account) => account.id !== smsAccountId);
 
   const takaMinor = parseBdtInput(takaText);
-  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateText) && dateText <= pasteDate;
+  const dateValid = isDateText(dateText) && dateText <= pasteDate;
 
   const complete =
     (!unclassified || kindChoice === "known" || kindChoice === "transfer") &&
@@ -179,7 +176,7 @@ function CandidateForm({
     }
     if (undated) {
       result.occurredAtMs =
-        dateText === pasteDate ? event.receivedAtMs : Date.parse(`${dateText}T00:00:00${DHAKA_OFFSET}`);
+        dateText === pasteDate ? event.receivedAtMs : dhakaDayStartMs(dateText);
     }
     return Object.keys(result).length === 0 ? null : result;
   }

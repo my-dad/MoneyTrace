@@ -27,6 +27,13 @@ function AccountData({
   commands: ReturnType<typeof createFirebaseCommands>;
 }) {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  useEffect(() => gateway.watchAccounts(setAccounts), [gateway]);
-  return <AccountsScreen accounts={accounts} commands={commands} />;
+  const [readFailed, setReadFailed] = useState(false);
+  useEffect(
+    () =>
+      gateway.watchAccounts(setAccounts, () => {
+        setReadFailed(true);
+      }),
+    [gateway],
+  );
+  return <AccountsScreen accounts={accounts} commands={commands} readFailed={readFailed} />;
 }

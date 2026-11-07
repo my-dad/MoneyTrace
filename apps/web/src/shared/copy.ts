@@ -9,6 +9,10 @@ export const COPY = {
   providerOutcomeUnknown: "Waiting for your answer · the provider outcome is unknown",
   stageFailed: "Failed · nothing was saved",
   beforeOpeningBalance: "Failed · this is earlier than the account opening balance",
+  linkedAsDuplicate: "Already recorded · not counted twice",
+  notFinancial: "Nothing recorded · this message didn't move any money",
+  rejected: "Rejected · nothing was saved",
+  cancelled: "Cancelled · nothing was saved",
 } as const;
 
 export const CHAT_COPY = {
