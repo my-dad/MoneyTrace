@@ -2,6 +2,7 @@
 
 Date: 2026-11-06
 Status: Approved 2026-11-06 (account deletion overrides ledger immutability, per section 7)
+Amended 2026-11-07: PRD CR-001 defers OCR and receipts, so OCR and upload design below is kept for later work and is not current scope. PRD CR-002 splits Phase 0 into 0A (local) and 0B (deployment gate); CI, environments, backups and the restore drill belong to 0B.
 Source: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline)
 
 ## 1. Purpose and scope
@@ -218,14 +219,14 @@ CI/CD and standards:
 
 ## 8. Out of scope for this spec
 
-This spec fixes boundaries, rules and protocols. The concrete artifacts below are deferred, but the Phase 0 plan **must produce and review them before any feature code** (Phase 1 may not start until they exist and pass their tests):
+This spec fixes boundaries, rules and protocols. The concrete artifacts below are deferred, but the Phase 0 plan **must produce and review them before any feature code** (Phase 1 may not start until the 0A items exist and pass their tests; 0B items are required before any deployment or real data, per PRD CR-002):
 
 - Firestore collection schemas, indexes and the balance projection design.
 - Callable and trigger contracts (`contracts` package) for every command.
 - Firestore and Storage Security Rules, with cross-user emulator tests.
 - Initial `ConfidencePolicy` rule set and configuration schema (threshold values themselves are tuned in Phase 1 against fixtures).
 - The claim-protocol and `ProviderCall` implementation with their concurrency and failure-injection tests.
-- The `RetentionPolicy` schema, `OwnerDataRegistry` with its CI test, backup configuration and the first staging restore drill (Phase 0); `ExportUserData` and `RequestAccountDeletion` are delivered and tested in Phase 4.
-- ADRs for the boundary-lint tool, and for the OCR provider after the Phase 2 benchmark.
+- The `RetentionPolicy` schema, `OwnerDataRegistry` with its CI test, in 0A; backup configuration and the first staging restore drill in 0B; `ExportUserData` and `RequestAccountDeletion` are delivered and tested in Phase 4.
+- ADRs for the boundary-lint tool, and for the OCR provider if OCR returns (PRD CR-001).
 
 Each PRD phase gets its own plan; the first plan covers Phase 0 (Foundations) only.

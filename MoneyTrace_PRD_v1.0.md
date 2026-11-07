@@ -1,6 +1,6 @@
 Product Requirements Document \| Version 1.0 \| 06 November 2026
 
-Status: Locked MVP baseline. Implementation has not started. “Locked” denotes agreed product scope and technology direction, subject to change control for security, feasibility, and measured OCR/model performance.
+Status: Locked MVP baseline, amended 2026-11-07 by CR-001 (OCR and receipts deferred) and CR-002 (Phase 0 exit split); see section 19. Implementation is in progress. “Locked” denotes agreed product scope and technology direction, subject to change control for security, feasibility, and measured OCR/model performance.
 
 # 1. Executive summary
 
@@ -29,8 +29,8 @@ Primary persona: Individual managing several accounts and cards, personal and ho
 | Frontend    | Next.js + TypeScript.                                                                                    |
 | Backend     | Firebase Authentication, Cloud Functions (TypeScript), Cloud Firestore.                                  |
 | AI          | DeepSeek API initially behind an AIProvider interface; no custom model training.                         |
-| OCR         | Replaceable OCR adapter; benchmark local Tesseract.js and managed OCR against actual receipts.           |
-| Uploads     | Private temporary Cloud Storage; delete original after successful OCR, validation, and durable save.     |
+| OCR         | Deferred by CR-001. When resumed: replaceable OCR adapter; benchmark local Tesseract.js and managed OCR against actual receipts. |
+| Uploads     | Deferred by CR-001. When resumed: private temporary Cloud Storage; delete original after successful OCR, validation, and durable save. |
 | Reminders   | Scheduled backend jobs plus supported web push/FCM; user controls cadence.                               |
 | Currency    | BDT first; integer minor units / exact arithmetic.                                                       |
 | AI budget   | Configurable target initially USD 5/month for model API only; not a guaranteed all-in bill.              |
@@ -85,7 +85,7 @@ Primary persona: Individual managing several accounts and cards, personal and ho
 
 15. User replies naturally; backend posts validated transactions and closes or snoozes follow-ups.
 
-## 5.4 Receipt upload, OCR, and deletion
+## 5.4 Receipt upload, OCR, and deletion (deferred by CR-001)
 
 16. User uploads supported image/PDF into a private, short-lived staging location; restrict size and MIME type.
 
@@ -116,8 +116,8 @@ Primary persona: Individual managing several accounts and cards, personal and ho
 | FR-03 | P0       | Create dated opening balances without booking them as income/expense.                                                                  |
 | FR-04 | P0       | Accept SMS/chat text; preserve source event and parsing status.                                                                        |
 | FR-05 | P0       | Provide replaceable AI provider for structured interpretation and conversational clarification.                                        |
-| FR-06 | P0       | Process receipt image/screenshot/PDF via OCR adapter and structured validation.                                                        |
-| FR-07 | P0       | Delete original receipt from active temporary storage after successful validation and persistence; cleanup failures/abandoned uploads. |
+| FR-06 | Deferred (CR-001) | Process receipt image/screenshot/PDF via OCR adapter and structured validation.                                                        |
+| FR-07 | Deferred (CR-001) | Delete original receipt from active temporary storage after successful validation and persistence; cleanup failures/abandoned uploads. |
 | FR-08 | P0       | Deduplicate across SMS, receipts, email text and future statement imports; do not merge distinct same-value purchases.                 |
 | FR-09 | P0       | Post balanced, atomic, idempotent ledger entries; preserve immutable audit and corrections.                                            |
 | FR-10 | P0       | Handle withdrawals, transfers, card purchases, card payments, partial repayments, fees, refunds and adjustments correctly.             |
@@ -222,13 +222,13 @@ When AI quota is exhausted or provider unavailable: ledger, balances, reports an
 
 26. Given a card purchase and partial repayment, spending appears once and liability reduces by payment amount.
 
-27. Given matching SMS plus receipt, exactly one canonical expense is posted and both sources are linked.
+27. Deferred by CR-001. Given matching SMS plus receipt, exactly one canonical expense is posted and both sources are linked.
 
 28. Given two distinct equal-value purchases, deduplication does not incorrectly collapse them.
 
-29. Given unreadable receipt, system requests retry and does not mark extraction successful or post guessed amount.
+29. Deferred by CR-001. Given unreadable receipt, system requests retry and does not mark extraction successful or post guessed amount.
 
-30. Given valid receipt, structured evidence persists and temporary original deletion is confirmed or retried.
+30. Deferred by CR-001. Given valid receipt, structured evidence persists and temporary original deletion is confirmed or retried.
 
 31. Given unresolved cash custody, follow-up appears at scheduled time and stops when resolved/snoozed.
 
@@ -244,19 +244,20 @@ When AI quota is exhausted or provider unavailable: ledger, balances, reports an
 
 # 15. Scope boundaries
 
-Included: one-user onboarding, bank/cash/card accounts, text evidence, OCR receipt upload, AI interpretation, canonical ledger, cash follow-ups, hybrid home, inbox, basic reporting, privacy/security, exports and controlled imports as prioritized above.
+Included: one-user onboarding, bank/cash/card accounts, text evidence, AI interpretation, canonical ledger, cash follow-ups, hybrid home, inbox, basic reporting, privacy/security, exports and controlled imports as prioritized above.
 
-Deferred: automatic Android SMS access, continuous email monitoring, live bank integrations, family sign-in and permissions, investments, advanced budgeting, predictive financial advice, tax filing and merchant payment integrations.
+Deferred: OCR receipt upload (CR-001), automatic Android SMS access, continuous email monitoring, live bank integrations, family sign-in and permissions, investments, advanced budgeting, predictive financial advice, tax filing and merchant payment integrations.
 
 # 16. Delivery phases and dependencies
 
 | Phase                            | Outcome                                                                          | Exit gate                                               |
 |----------------------------------|----------------------------------------------------------------------------------|---------------------------------------------------------|
-| 0 — Foundations                  | Firebase project, environments, auth, rules, ledger invariants, cost monitoring. | Security and accounting tests green.                    |
+| 0A — Local foundations (CR-002)  | Auth, rules, ledger invariants and cost metering, verified on emulators. | Security and accounting tests green locally; task reviews and whole-branch review complete. |
+| 0B — Deployment gate (CR-002)    | Real Firebase projects, Blaze, deployed Functions, App Check, rate limits, spending controls, backups, CI. | All controls in the environments runbook met; Delhi trigger and schedule smoke test passed; first restore drill matched. Required before any deployment or real financial data. |
 | 1 — SMS vertical slice           | Chat → parser/AI → candidate → posting → cash follow-up → dashboard.             | ATM and card workflows correct end-to-end.              |
-| 2 — Receipt pipeline             | Private upload → OCR → extraction → matching → persistence → deletion.           | Real sample accuracy benchmark and deletion tests pass. |
+| 2 — Receipt pipeline (deferred by CR-001) | Private upload → OCR → extraction → matching → persistence → deletion. | Real sample accuracy benchmark and deletion tests pass. |
 | 3 — Reconciliation and reporting | Cash counts, card partial payments, inbox, monthly/salary-cycle reports.         | Reconciliation and duplicate tests pass.                |
-| 4 — Hardening / pilot            | Budget limits, retries, observability, exports, accessibility, user pilot.       | All release gates met.                                  |
+| 4 — Hardening / pilot            | Budget limits, retries, observability, exports, accessibility, user pilot (after 0B). | All release gates in scope met.                         |
 
 # 17. Risks, mitigations, and decisions to validate
 
@@ -273,6 +274,36 @@ Deferred: automatic Android SMS access, continuous email monitoring, live bank i
 
 # 18. Definition of done and change control
 
-MVP is ready only when every P0 requirement and release gate is satisfied, security/privacy review is completed, accounting invariants are regression-tested, and receipt deletion/cleanup behavior is verified. Any change to the locked baseline should record the proposed change, rationale, security/cost impact, and acceptance criteria. P1 work may be phased after the first functioning vertical slice, but must not undermine ledger correctness.
+MVP is ready only when every in-scope P0 requirement and release gate is satisfied, the 0B deployment gate is passed, security/privacy review is completed, and accounting invariants are regression-tested. Receipt deletion/cleanup behavior must be verified when receipts return (CR-001). Any change to the locked baseline should record the proposed change, rationale, security/cost impact, and acceptance criteria. P1 work may be phased after the first functioning vertical slice, but must not undermine ledger correctness.
 
-Document owner: MoneyTrace product initiative. Next artifact: engineering implementation blueprint (repository modules, Firestore schemas, Cloud Function contracts, rules, AI/OCR adapters, test fixtures and deployment plan).
+Document owner: MoneyTrace product initiative.
+
+# 19. Change log
+
+## CR-001: Defer OCR and receipt processing (2026-11-07)
+
+Status: Accepted by Mabrur (recorded in commit `bc3e44c`).
+
+| Field | Record |
+|---|---|
+| Proposed change | Move OCR and receipt processing out of the current P0/P1 scope. FR-06 and FR-07 change from P0 to Deferred. Journey 5.4, delivery phase 2 and release gates 27, 29 and 30 are deferred with them. No local or managed OCR provider, receipt upload flow, OCR benchmark or Storage dependency is built for now. |
+| Rationale | Keep the current product path focused on authenticated ledger workflows and SMS/text evidence. |
+| Security impact | Reduces exposure: no receipt images or PDFs are stored, and none are sent to an OCR provider. The upload rules, contracts and provider interfaces stay in the repository but no product flow uses them. The original-deletion and provider-retention requirements in sections 8, 10 and 13 apply again when receipts return. |
+| Cost impact | Removes OCR, Storage and related egress cost for now. The AI budget is unchanged. |
+| User impact | Evidence can be pasted or typed only. The upload actions on Home and AI Chat are not offered, and the "readable receipts" part of the minimal-entry goal is not met until this is reversed. |
+| Acceptance criteria | No current-phase code path requires an OCR provider or Storage. FR-08 deduplication is tested across text sources, and gate 28 still applies. Before OCR returns, FR-06, FR-07, journey 5.4 and gates 27, 29 and 30 are restored to scope through a new change record, and the bearer download-token issue noted in the scope table of `docs/superpowers/plans/2026-11-06-phase-0-foundations.md` is settled. |
+
+Text in this document that describes receipts, OCR or uploads is kept as the design for that later work.
+
+## CR-002: Split Phase 0 exit; stay on the Spark plan until the deployment gate (2026-11-07)
+
+Status: Accepted by Mabrur (Spark decision recorded in commit `f24b098`; split requested 2026-11-07).
+
+| Field | Record |
+|---|---|
+| Proposed change | Split phase 0 into 0A, local foundations verified on emulators, and 0B, a deployment gate. Real Firebase projects, Blaze, deployed Functions, backups, the restore drill and CI move to 0B. |
+| Rationale | Those items need Blaze, and Blaze is pay-as-you-go with no built-in stop, so it waits until abuse and spending controls exist. Local work does not need it. |
+| Security impact | Nothing is reachable from the internet until App Check, rate limits, least-privilege access and an abuse checklist are in place. App Check moves earlier, from phase 4 to 0B. Until 0B passes, no real financial data may enter the system, including through the real AI API. |
+| Cost impact | No Firebase bill before 0B. Backups and the first restore drill are postponed, so no real data may exist until they pass. |
+| Delivery impact | Phase 1 may start after 0A and runs on emulators. The Delhi region remains unproven for triggers and schedules until the 0B smoke test, and the Firestore location is permanent, so no dev or prod database is created before it passes. Phase 4 cannot begin its user pilot before 0B passes. |
+| Acceptance criteria | The 0A and 0B exit gates in section 16. The full 0B control list is in `docs/runbooks/firebase-environments.md`. |

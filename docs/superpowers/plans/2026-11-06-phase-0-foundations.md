@@ -48,9 +48,10 @@ on authenticated ledger workflows and SMS/text evidence.
 | Deferred | To |
 |---|---|
 | SMS parsers, `AIProvider`, `AIGateway`, DeepSeek adapter, `ResumeQuotaBlockedEvents`, `MatchingService` and `PendingAuthorization` matching, `FollowUp` and `CashAllocation` aggregates and handlers, deployed pipeline triggers and recovery schedule, delivery of 80% quota warnings to the user, the Settings disclosure that OCR, Firestore, Functions, Storage and egress costs are separate from the AI budget, a screen for AI usage metrics, `ui-kit`, Storybook, axe checks, TanStack Query, `ReadModelGateway`, PWA shell, Playwright | Phase 1 |
-| `OCRProvider`, Storage upload flow, `DeleteTemporaryUpload`, sweeper | Phase 2 |
+| `OCRProvider`, Storage upload flow, `DeleteTemporaryUpload`, sweeper | Deferred by PRD CR-001; before it returns, settle the bearer download-token issue found in Task 7's review |
+| Real projects, Blaze, deployed Functions, App Check enforcement, rate limits, spending controls, backups, restore drill, CI | Phase 0B (PRD CR-002) |
 | `Reconciliation` aggregate, reports | Phase 3 |
-| `ExportUserData`, `RequestAccountDeletion`, deletion-log replay, scheduled Auth export, App Check enforcement, CI staging deploy | Phase 4 |
+| `ExportUserData`, `RequestAccountDeletion`, deletion-log replay, scheduled Auth export | Phase 4 |
 
 Release gates after Phase 0: **33, 35 and 36** have their owning tests green. **25 and 26** are green at domain and adapter level and complete end to end at the Phase 1 exit. Gates 27 to 32 and 34 belong to later phases. The spec's traceability rows for claims, provider calls, owner scoping, and the registry CI test are also green.
 
@@ -1095,6 +1096,8 @@ git commit -m "feat(web): add sign-in gate that reports bootstrap state honestly
 
 ### Task 14: CI, documentation and agent guide
 
+> Amended by PRD CR-002: documentation is Phase 0A. The CI workflow and Step 5's push are Phase 0B.
+
 **Files:**
 - Create: `.github/workflows/ci.yml`, `docs/GLOSSARY.md`, `docs/adr/0002-integer-money-and-nominal-accounts.md`, `docs/adr/0003-functions-bundling.md`, `docs/adr/0004-region.md`
 - Modify: `AGENT.md` (Project status, Commands, Repository layout), `README.md`
@@ -1130,6 +1133,8 @@ Pushing to `origin` (`git@github.com:my-dad/MoneyTrace.git`) publishes the branc
 ---
 
 ### Task 15: Environments, backups and restore drill
+
+> Amended by PRD CR-002: Steps 1 to 3 are Phase 0A. Steps 4 onward are the Phase 0B deployment gate, and also need the controls in `docs/runbooks/firebase-environments.md`.
 
 Steps marked **Mabrur** need their Google account, billing or decisions. Everything else can be prepared by an agent. These steps create real resources, so nothing runs without Mabrur's go-ahead, and the Firestore location cannot be changed afterward.
 
@@ -1226,14 +1231,28 @@ git commit -m "chore: add environment runbooks and a verified restore drill"
 
 ---
 
-## Phase 0 exit checklist
+## Phase 0 exit checklists
 
-PRD exit gate: **security and accounting tests green**. Before calling Phase 0 done, run these and report the real output:
+Split by PRD CR-002. Run the commands and report the real output.
+
+### Phase 0A: local foundations
+
+Exit gate: **security and accounting tests green locally, and reviews complete.** Phase 1 may start after this.
 
 - [ ] `pnpm verify` passes.
+- [ ] `pnpm --filter web build` passes.
 - [ ] `pnpm test:emulator` passes.
-- [ ] CI is green on the pushed branch.
-- [ ] Every item in spec section 8 exists: schemas and indexes (Tasks 5, 7), contracts (Task 6), rules (Task 7), `ConfidencePolicy` rules and config (Tasks 4, 5), claim and `ProviderCall` code with concurrency and failure-injection tests (Tasks 10, 11), `RetentionPolicy` and `OwnerDataRegistry` with CI test (Task 5), backups and first restore drill (Task 15), boundary-tool ADR (Task 1).
-- [ ] The staging smoke test passed in `asia-south2`, with the result recorded in ADR 0004.
-- [ ] The restore drill matched for every registered collection, the profile and the deletion log, and the Auth and Storage boundaries are documented in the runbook.
-- [ ] Open items for Phase 1 are written down: whether DeepSeek honors idempotency keys, which sets its `retrySafety`; a review of AI and OCR data-processing terms (PRD section 10).
+- [ ] Every task has a completed independent review, and the whole-branch review is done with findings resolved or recorded.
+- [ ] These spec section 8 items exist: schemas and indexes (Tasks 5, 7), contracts (Task 6), rules (Task 7), `ConfidencePolicy` rules and config (Tasks 4, 5), claim and `ProviderCall` code with concurrency and failure-injection tests (Tasks 10, 11), `RetentionPolicy` and `OwnerDataRegistry` with their test (Task 5), restore drill tooling tested on the emulator (Task 15 Steps 1 to 3), boundary-tool ADR (Task 1).
+- [ ] Open items for Phase 1 are written down: whether DeepSeek honors idempotency keys, which sets its `retrySafety`; a review of AI data-processing terms (PRD section 10); the Task 5 follow-ups (profile timezone, `sourceEvents` retained text and provenance, `transactions` category); and the Phase 1 trigger firing on `version` change.
+
+### Phase 0B: deployment gate
+
+Exit gate: **all of the below, before any deployment, real financial data, or the user pilot.** It does not block Phase 1 work on emulators.
+
+- [ ] Every control in `docs/runbooks/firebase-environments.md` is met, including App Check, rate limits, Function limits, separate projects, least-privilege access, spending controls and the abuse checklist.
+- [ ] Blaze enabled, and the staging smoke test passed in `asia-south2`, with the result recorded in ADR 0004.
+- [ ] `dev` and `prod` created only after that smoke test passed.
+- [ ] Composite indexes deployed and confirmed on a real project, since the emulator does not enforce them.
+- [ ] Backups configured, and the first restore drill matched for every registered collection, the profile and the deletion log, with the Auth and Storage boundaries documented.
+- [ ] CI runs `pnpm verify`, the web build and `pnpm test:emulator`, is green on the pushed branch, and is merge-blocking where the GitHub plan allows.

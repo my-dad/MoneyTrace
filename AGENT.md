@@ -23,8 +23,8 @@ Single-user, mobile-first PWA for evidence-driven personal/household finance tra
 - Frontend: Next.js + TypeScript (PWA, mobile-first)
 - Backend: Firebase Authentication, Cloud Functions (TypeScript), Cloud Firestore
 - AI: DeepSeek API behind an `AIProvider` interface. No custom model training.
-- OCR: replaceable `OCRProvider` adapter (benchmark Tesseract.js vs managed OCR on real Bangladesh receipts)
-- Uploads: private, short-lived Cloud Storage
+- OCR: deferred by PRD CR-001. When resumed: replaceable `OCRProvider` adapter (benchmark Tesseract.js vs managed OCR on real Bangladesh receipts)
+- Uploads: deferred by PRD CR-001. When resumed: private, short-lived Cloud Storage
 - Reminders: scheduled backend jobs + FCM/web push; in-app inbox is the reliable fallback
 - Currency: BDT first; **integer minor units only**
 - Secrets: Secret Manager; no client-side API secrets
@@ -82,19 +82,19 @@ Home, AI Chat, Activity/Inbox, Accounts & Cash, Reports (calendar month + config
 
 ## Priorities
 
-P0 (must): auth + data isolation, accounts/cash/cards, opening balances, SMS/chat ingest, AIProvider, receipt OCR pipeline, receipt deletion, dedup, atomic idempotent ledger, correct withdrawal/transfer/card flows, cash tracking, follow-ups, hybrid home, AI metering + fallback.
+P0 (must): auth + data isolation, accounts/cash/cards, opening balances, SMS/chat ingest, AIProvider, dedup, atomic idempotent ledger, correct withdrawal/transfer/card flows, cash tracking, follow-ups, hybrid home, AI metering + fallback.
 P1: inbox + reconciliation views, reports, export/deletion, CSV import.
-Later: auto SMS collection, email sync, family login, bank APIs, investments.
+Later: receipt OCR pipeline and receipt deletion (CR-001), auto SMS collection, email sync, family login, bank APIs, investments.
 
 P1 work must never undermine ledger correctness.
 
 ## Delivery phases
 
-0 Foundations (Firebase, auth, rules, ledger invariants, cost monitoring) → 1 SMS vertical slice → 2 Receipt pipeline → 3 Reconciliation & reporting → 4 Hardening/pilot. Each phase has an exit gate (PRD §16). Do not jump ahead of the current phase's gate.
+0A Local foundations (auth, rules, ledger invariants, cost metering, on emulators) → 1 SMS vertical slice → 3 Reconciliation & reporting → 4 Hardening/pilot. 2 Receipt pipeline is deferred (CR-001). 0B Deployment gate (real projects, Blaze, App Check, rate limits, backups, CI; CR-002) must pass before any deployment, real financial data, or the pilot. Each phase has an exit gate (PRD §16). Do not jump ahead of the current phase's gate.
 
 ## Testing expectations
 
-- Ledger invariants need regression tests before features build on them (PRD §14 release gates 25–36 are the acceptance suite): ATM withdrawal, card purchase + partial repayment, SMS+receipt dedup into one expense, distinct equal-value purchases not collapsed, unreadable receipt, deletion verification, follow-up scheduling, cash discrepancy, edit via reversal, AI budget exhausted, cross-user isolation, import cutover.
+- Ledger invariants need regression tests before features build on them (PRD §14 release gates 25–36 are the acceptance suite; 27, 29 and 30 are deferred by CR-001): ATM withdrawal, card purchase + partial repayment, SMS+receipt dedup into one expense, distinct equal-value purchases not collapsed, unreadable receipt, deletion verification, follow-up scheduling, cash discrepancy, edit via reversal, AI budget exhausted, cross-user isolation, import cutover.
 - Use Firebase emulators for rules and function tests; test security rules explicitly for cross-user access.
 - Maintain fixtures: bank SMS samples, Bangla/English receipts (thermal, photos, screenshots, PDFs).
 - Do not claim a task is done without running the relevant tests and reporting actual output.
