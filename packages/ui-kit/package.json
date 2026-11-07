@@ -1,0 +1,27 @@
+{
+  "name": "@moneytrace/ui-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "peerDependencies": {
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.1.16",
+    "@types/react-dom": "19.1.9",
+    "axe-core": "4.14.0",
+    "jsdom": "31.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

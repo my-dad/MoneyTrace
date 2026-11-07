@@ -57,6 +57,13 @@ module.exports = {
       to: { pathNot: ["(^|/)packages/contracts/", pkg("zod")] },
     },
     {
+      name: "ui-kit-only-react",
+      comment: "ui-kit is presentational: React only, no Firebase, no contracts, no business logic.",
+      severity: "error",
+      from: { path: "(^|/)packages/ui-kit/src/", pathNot: TESTS },
+      to: { pathNot: ["(^|/)packages/ui-kit/", pkg("react|react-dom")] },
+    },
+    {
       name: "web-no-server-code",
       comment: "The web app never imports server code or inner layers.",
       severity: "error",

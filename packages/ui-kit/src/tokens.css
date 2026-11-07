@@ -1,0 +1,365 @@
+/* Values come from design/MoneyTrace.html, Components page. */
+:root {
+  --mt-ground: #F6F4EF;
+  --mt-surface: #FFFFFF;
+  --mt-surface-soft: #FBFAF7;
+  --mt-ink: #1E2320;
+  --mt-body: #4D534F;
+  --mt-caption: #5F635E;
+  --mt-accent: #B4541A;
+  --mt-accent-text: #9A4413;
+  --mt-accent-tint: #FBEADC;
+  --mt-border: #ECE7DE;
+  --mt-border-soft: #EFEBE3;
+  --mt-border-strong: #DCD4C6;
+  --mt-border-dashed: #CFC6B5;
+  --mt-disabled: #E3DED4;
+  --mt-disabled-text: #6B6F69;
+  --mt-focus: #1D5B74;
+  --mt-verified-text: #1D5B74;
+  --mt-verified-tint: #E2EFF4;
+  --mt-pending-text: #4F544F;
+  --mt-pending-tint: #EDEBE5;
+  --mt-needs-answer-text: #7F5600;
+  --mt-needs-answer-tint: #FBEFD2;
+  --mt-failed-text: #8E3A2B;
+  --mt-failed-tint: #F7E5E0;
+  --mt-font: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--mt-ground);
+  color: var(--mt-ink);
+  font-family: var(--mt-font);
+  font-variant-numeric: tabular-nums;
+}
+
+:lang(bn) {
+  font-family: 'Hind Siliguri', sans-serif;
+  line-height: 1.55;
+}
+
+button {
+  font: inherit;
+}
+
+button:focus-visible,
+.mt-input:focus-visible,
+.mt-composer__input:focus-visible {
+  outline: 3px solid var(--mt-focus);
+  outline-offset: 2px;
+}
+
+.mt-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mt-button {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mt-button--primary {
+  background: var(--mt-accent);
+  color: var(--mt-surface);
+}
+
+.mt-button--secondary {
+  border: 1px solid var(--mt-border-strong);
+  background: var(--mt-surface);
+  color: var(--mt-ink);
+}
+
+.mt-button--text {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mt-accent-text);
+  font-size: 14px;
+}
+
+.mt-button:disabled {
+  border: 0;
+  background: var(--mt-disabled);
+  color: var(--mt-disabled-text);
+  cursor: not-allowed;
+}
+
+.mt-icon-button {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--mt-accent);
+  color: var(--mt-surface);
+  cursor: pointer;
+}
+
+.mt-icon-button:disabled {
+  background: var(--mt-disabled);
+  color: var(--mt-disabled-text);
+  cursor: not-allowed;
+}
+
+.mt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--mt-border);
+  border-radius: 20px;
+  background: var(--mt-surface);
+  box-shadow: 0 1px 2px rgba(30, 35, 32, 0.04), 0 8px 24px rgba(30, 35, 32, 0.05);
+}
+
+.mt-card--inset {
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--mt-border-soft);
+  border-radius: 14px;
+  background: var(--mt-surface-soft);
+  box-shadow: none;
+}
+
+/* Money the user hasn't told us about yet, not money lost: dashed, neutral, never red. */
+.mt-card--unexplained {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 6px 14px;
+  border: 1.5px dashed var(--mt-border-dashed);
+  border-radius: 14px;
+  background: var(--mt-surface-soft);
+  color: var(--mt-body);
+  box-shadow: none;
+}
+
+.mt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 9px 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mt-status--verified {
+  background: var(--mt-verified-tint);
+  color: var(--mt-verified-text);
+}
+
+.mt-status--pending {
+  background: var(--mt-pending-tint);
+  color: var(--mt-pending-text);
+}
+
+.mt-status--needsAnswer {
+  background: var(--mt-needs-answer-tint);
+  color: var(--mt-needs-answer-text);
+}
+
+.mt-money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.mt-money--unexplained {
+  border-bottom: 1.5px dashed var(--mt-border-dashed);
+  color: var(--mt-ink);
+}
+
+.mt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--mt-border-strong);
+  border-radius: 999px;
+  background: var(--mt-surface);
+  color: var(--mt-ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mt-chip--selected {
+  padding-left: 12px;
+  border-color: var(--mt-ink);
+  background: var(--mt-ink);
+  color: var(--mt-surface);
+}
+
+.mt-chip--tentative {
+  border: 1.5px dashed var(--mt-border-dashed);
+  background: var(--mt-surface-soft);
+  color: var(--mt-body);
+}
+
+.mt-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+
+/* 16px, not the mockup's 15px: iOS Safari zooms the page when a smaller field takes focus. */
+.mt-composer__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 160px;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border: 1.5px solid var(--mt-accent);
+  border-radius: 24px;
+  background: var(--mt-surface);
+  color: var(--mt-ink);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+}
+
+.mt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mt-field__label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mt-field__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mt-caption);
+}
+
+.mt-field__error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--mt-failed-text);
+}
+
+.mt-input {
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid var(--mt-border-strong);
+  border-radius: 14px;
+  background: var(--mt-surface);
+  color: var(--mt-ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.mt-input[aria-invalid="true"] {
+  border: 1.5px solid var(--mt-failed-text);
+}
+
+.mt-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mt-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--mt-border-soft);
+}
+
+.mt-list-item__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mt-list-item__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mt-list-item__subtitle {
+  font-size: 12px;
+  color: var(--mt-caption);
+}
+
+.mt-list-item__trailing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.mt-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 20px 20px;
+  border: 1px solid var(--mt-border);
+  border-radius: 24px;
+  background: var(--mt-surface);
+}
+
+.mt-empty__icon {
+  align-self: flex-start;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--mt-accent-tint);
+  color: var(--mt-accent-text);
+}
+
+.mt-empty__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.mt-empty__description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--mt-body);
+}

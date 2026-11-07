@@ -22,6 +22,8 @@ const violations: [string, string][] = [
   ["packages/application/src/testing/uses-firebase.ts", "application-testing-only-test-libs"],
   ["packages/contracts/src/uses-domain.ts", "contracts-only-zod"],
   ["apps/web/src/uses-admin.ts", "web-no-server-code"],
+  ["packages/ui-kit/src/uses-firebase.tsx", "ui-kit-only-react"],
+  ["packages/ui-kit/src/uses-contracts.ts", "ui-kit-only-react"],
 ];
 
 const clean = [
@@ -31,6 +33,7 @@ const clean = [
   "packages/application/src/testing/ok.ts",
   "packages/application/src/testing/ok2.ts",
   "apps/functions/src/composition-ok.ts",
+  "packages/ui-kit/src/ok.tsx",
 ];
 
 describe("layer boundaries", () => {
