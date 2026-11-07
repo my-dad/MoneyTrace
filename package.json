@@ -20,6 +20,7 @@
     "@moneytrace/contracts": "workspace:*",
     "@moneytrace/infrastructure": "workspace:*",
     "@types/node": "22.20.5",
+    "@vitejs/plugin-react": "6.2.1",
     "dependency-cruiser": "18.7.2",
     "esbuild": "0.28.2",
     "eslint": "10.14.0",
