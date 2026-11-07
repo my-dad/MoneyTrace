@@ -39,6 +39,12 @@ Most likely first. Each has a named test in its owning task.
 
 ## Scope boundary
 
+OCR and receipt processing are explicitly deferred. Do not implement a local or
+managed OCR provider, receipt upload flow, OCR benchmark, or Storage dependency
+as part of the current P0/P1 work. Preserve the provider interfaces and
+architecture notes for a later phase, but keep the current product path focused
+on authenticated ledger workflows and SMS/text evidence.
+
 | Deferred | To |
 |---|---|
 | SMS parsers, `AIProvider`, `AIGateway`, DeepSeek adapter, `ResumeQuotaBlockedEvents`, `MatchingService` and `PendingAuthorization` matching, `FollowUp` and `CashAllocation` aggregates and handlers, deployed pipeline triggers and recovery schedule, delivery of 80% quota warnings to the user, the Settings disclosure that OCR, Firestore, Functions, Storage and egress costs are separate from the AI budget, a screen for AI usage metrics, `ui-kit`, Storybook, axe checks, TanStack Query, `ReadModelGateway`, PWA shell, Playwright | Phase 1 |
