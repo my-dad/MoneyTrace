@@ -36,7 +36,7 @@ export const ucbParser: BankSmsParser = {
       ],
       [
         new RegExp(
-          `^Thank you for payment (\\$|BDT)\\s*(${MONEY}) through .+? against your UCB Card#\\s*(\\d+) \\(Client ID #\\s*\\d+\\) on (\\d{2})/(\\d{2})/(\\d{2}) (\\d{2}):(\\d{2}) (AM|PM)`,
+          `^Thank you for payment (\\$|BDT)\\s*(${MONEY}) through .+? against your UCB Card#\\s*(\\d+) \\(Client ID #\\s*[\\d*]+\\) on (\\d{2})/(\\d{2})/(\\d{2}) (\\d{2}):(\\d{2}) (AM|PM)`,
           "i",
         ),
         (m) => {
@@ -59,7 +59,7 @@ export const ucbParser: BankSmsParser = {
       ],
       [
         new RegExp(
-          `^UCB Card#\\s*(\\d+)\\(ID#\\d+\\) charged at (.+?) for (BDT|\\$)\\s*(${MONEY}) on (\\d{2}):(\\d{2}) (\\d{2})\\.(\\d{2})\\.(\\d{2})\\.`,
+          `^UCB Card#\\s*(\\d+)\\(ID#[\\d*]+\\) charged at (.+?) for (BDT|\\$)\\s*(${MONEY}) on (\\d{2}):(\\d{2}) (\\d{2})\\.(\\d{2})\\.(\\d{2})\\.`,
           "i",
         ),
         (m) => {
@@ -77,7 +77,7 @@ export const ucbParser: BankSmsParser = {
       ],
       [
         new RegExp(
-          `^Your UCB Debit Card#(\\d+) \\(CL ID:\\d+\\) has been charged for (BDT|\\$)\\s*(${MONEY}) at (.+?) on (\\d{2})/(\\d{2})/(\\d{2}) (\\d{2}):(\\d{2})\\. Avl Bal:(${MONEY})\\.`,
+          `^Your UCB Debit Card#(\\d+) \\(CL ID:[\\d*]+\\) has been charged for (BDT|\\$)\\s*(${MONEY}) at (.+?) on (\\d{2})/(\\d{2})/(\\d{2}) (\\d{2}):(\\d{2})\\. Avl Bal:(${MONEY})\\.`,
           "i",
         ),
         (m) => {

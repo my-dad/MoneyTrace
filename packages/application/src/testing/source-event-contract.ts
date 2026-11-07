@@ -632,5 +632,32 @@ export function describeSourceEventContract(
       await repo.commitStage(alice, claim, { ...commitWith(null), eventPatch: { candidate: usd } });
       expect(await repo.get(alice, id)).toMatchObject({ candidate: usd });
     });
+
+    it("finishParked ends a pending event and sets terminalAtMs", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [],
+      });
+      expect(await repo.finishParked(alice, id, "rejected", T0 + 5)).toBe("finished");
+      const done = await repo.get(alice, id);
+      expect(done).toMatchObject({ status: "rejected", terminalAtMs: T0 + 5, parkedStage: null });
+      expect(done).not.toHaveProperty("pendingReason");
+    });
+
+    it("finishParked is refused on an event that is running or already finished", async () => {
+      expect(await repo.finishParked(alice, id, "cancelled", T0)).toBe("stale");
+      const claim = await claimNormalize();
+      expect(await repo.finishParked(alice, id, "cancelled", T0)).toBe("stale");
+      await repo.commitStage(alice, claim, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [],
+      });
+      await repo.finishParked(alice, id, "cancelled", T0);
+      expect(await repo.finishParked(alice, id, "rejected", T0)).toBe("stale");
+      expect(await repo.get(alice, id)).toMatchObject({ status: "cancelled" });
+    });
   });
 }

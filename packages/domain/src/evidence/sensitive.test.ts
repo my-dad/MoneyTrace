@@ -46,6 +46,9 @@ describe("maskIdentifiers", () => {
   ])("masks the client ID in %s", (input, masked) => {
     expect(maskIdentifiers(input)).toBe(masked);
   });
+  it("keeps alphanumeric transaction IDs whole", () => {
+    expect(maskIdentifiers("TrxID: BK00000001 at")).toBe("TrxID: BK00000001 at");
+  });
   it("leaves amounts readable", () => {
     expect(maskIdentifiers("Avl Bal:90000.40")).toBe("Avl Bal:90000.40");
   });

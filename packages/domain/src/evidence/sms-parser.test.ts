@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import corpus from "../../../../fixtures/sms/corpus.json";
 import type { CandidateTransaction } from "./candidate";
+import { maskIdentifiers } from "./sensitive";
 import {
   defaultParsers,
   evaluateParsers,
@@ -56,6 +57,17 @@ describe("defaultParsers on the corpus", () => {
     expect(r.parser.name).toBe(entry.provider);
     expect(r.parsed.confidenceBp).toBeGreaterThan(0);
   });
+
+  it.each(corpus.map((e) => [e.text, e] as const))(
+    "reads the same after identifiers are masked: %s",
+    (text, entry) => {
+      const r = evaluateParsers(defaultParsers, maskIdentifiers(text));
+      if (r.outcome !== "match" || r.parsed.kind !== "transaction") {
+        throw new Error("no transaction");
+      }
+      expect(r.parsed.candidate).toEqual(expectedCandidate(entry));
+    },
+  );
 
   it("reads a Trust Bank withdrawal exactly, including a 3-digit mask", () => {
     const r = evaluateParsers(defaultParsers, byText("15000.00 DEBIT"));

@@ -3,6 +3,7 @@ import {
   assertCommitReasons,
   assertCreateInput,
   decideClaim,
+  decideFinishParked,
   decidePark,
   decideReopen,
   decideUserDecision,
@@ -233,6 +234,15 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     return this.transition(ownerId, id, "parked", (e) =>
       decidePark(e, expectedVersion, parking, nowMs),
     );
+  }
+
+  finishParked(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    status: "rejected" | "linkedAsDuplicate" | "cancelled",
+    nowMs: number,
+  ): Promise<"finished" | "stale"> {
+    return this.transition(ownerId, id, "finished", (e) => decideFinishParked(e, status, nowMs));
   }
 
   applyUserDecision(

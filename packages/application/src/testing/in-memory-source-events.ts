@@ -23,6 +23,7 @@ import {
   assertCommitReasons,
   assertCreateInput,
   decideClaim,
+  decideFinishParked,
   decidePark,
   decideReopen,
   decideUserDecision,
@@ -188,6 +189,19 @@ export class InMemorySourceEvents implements SourceEventRepository {
     if (next === null) return Promise.resolve("stale");
     d.events.set(id, next);
     return Promise.resolve("parked");
+  }
+
+  finishParked(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    status: "rejected" | "linkedAsDuplicate" | "cancelled",
+    nowMs: number,
+  ): Promise<"finished" | "stale"> {
+    const d = this.data(ownerId);
+    const next = decideFinishParked(d.events.get(id) ?? null, status, nowMs);
+    if (next === null) return Promise.resolve("stale");
+    d.events.set(id, next);
+    return Promise.resolve("finished");
   }
 
   applyUserDecision(

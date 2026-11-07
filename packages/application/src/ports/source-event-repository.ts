@@ -34,6 +34,7 @@ export type SourceEventRecord = {
   extraction: Extraction | null;
   matchedTransactionId: string | null;
   resolvedAccountId: string | null;
+  resolvedDestinationAccountId: string | null;
   userConfirmed: boolean;
 };
 
@@ -54,12 +55,14 @@ export type SourceEventPatch = {
   extraction?: Extraction | null;
   matchedTransactionId?: string | null;
   resolvedAccountId?: string | null;
+  resolvedDestinationAccountId?: string | null;
 };
 
 export type UserDecision = {
   candidate: CandidateTransaction;
   userConfirmed: true;
   resolvedAccountId?: string | null;
+  resolvedDestinationAccountId?: string | null;
 };
 
 export type SourceEventInput = {
@@ -143,6 +146,14 @@ export type SourceEventRepository = {
     commit: StageCommit,
   ): Promise<"committed" | "staleClaim">;
   /** Expired claims across all owners, oldest lease first. */
+  /** Ends a parked event by the user's decision. Refused unless it is pending or dead-lettered. */
+  finishParked(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    status: "rejected" | "linkedAsDuplicate" | "cancelled",
+    nowMs: number,
+  ): Promise<"finished" | "stale">;
+
   /** Records the user's answer on a `pending` event. The caller then reopens it. */
   applyUserDecision(
     ownerId: OwnerId,

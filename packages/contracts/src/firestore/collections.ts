@@ -166,6 +166,7 @@ const sourceEvents = z
     extraction: extractionSchema.nullable(),
     matchedTransactionId: documentId.nullable(),
     resolvedAccountId: documentId.nullable(),
+    resolvedDestinationAccountId: documentId.nullable(),
     userConfirmed: z.boolean(),
   })
   .strict();

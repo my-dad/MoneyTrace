@@ -5,10 +5,13 @@ describe("@moneytrace/infrastructure", () => {
   it("exports the adapters and system services", () => {
     expect(Object.keys(infrastructure).sort()).toEqual([
       "CryptoIdGenerator",
+      "DeepSeekProvider",
+      "FakeAIProvider",
       "FirestoreAccountRepository",
       "FirestoreAiUsageRecorder",
       "FirestoreLedgerReader",
       "FirestoreLedgerWriter",
+      "FirestorePaymentInstrumentRepository",
       "FirestoreProviderCallRepository",
       "FirestoreQuotaLedger",
       "FirestoreSourceEventRepository",

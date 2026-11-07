@@ -31,3 +31,7 @@ export * from "./use-cases/bootstrap-user";
 export * from "./ports/payment-instrument-repository";
 export * from "./use-cases/create-payment-instrument";
 export * from "./pipeline/candidate-reader";
+export * from "./use-cases/intake-evidence";
+export * from "./use-cases/confirm-candidate";
+export * from "./use-cases/retry-source-event";
+export * from "./use-cases/cancel-source-event";

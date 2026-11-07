@@ -1,4 +1,4 @@
-import { asOwnerId, DomainError, type OwnerId } from "@moneytrace/domain";
+import { asOwnerId, DomainError, type DomainErrorCode, type OwnerId } from "@moneytrace/domain";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import type { z } from "zod";
 import type { Deps } from "../composition";
@@ -8,6 +8,12 @@ export const REGION = "asia-south2";
 export const TIMEOUT_SECONDS = 120;
 
 export type CallableDeps = Deps;
+
+const WIRE_STATUS: Partial<Record<DomainErrorCode, "not-found" | "already-exists">> = {
+  accountInvalid: "not-found",
+  resourceNotFound: "not-found",
+  idempotencyConflict: "already-exists",
+};
 
 export type CallableContext = { ownerId: OwnerId; correlationId: string; deps: Deps };
 
@@ -52,10 +58,7 @@ export async function runCallable<Req extends z.ZodType, Res extends z.ZodType>(
     }
     if (e instanceof DomainError) {
       deps.logger.info("callable.rejected", { correlationId, errorCode: e.code });
-      throw new HttpsError(
-        e.code === "accountInvalid" ? "not-found" : "failed-precondition",
-        e.code,
-      );
+      throw new HttpsError(WIRE_STATUS[e.code] ?? "failed-precondition", e.code);
     }
     deps.logger.error("callable.failed", {
       correlationId,

@@ -37,17 +37,35 @@ export const sendChatMessageResponse = strictObject({
 
 export const confirmCandidateRequest = strictObject({
   sourceEventId: documentId,
-  decision: z.enum(["confirm", "reject"]),
+  /** `link` says this evidence is the same transaction as one already recorded. */
+  decision: z.enum(["confirm", "reject", "link"]),
   overrides: strictObject({
+    kind: z
+      .enum([
+        "withdrawal",
+        "cardPurchase",
+        "cardRepayment",
+        "purchase",
+        "income",
+        "fee",
+        "refund",
+        "transfer",
+      ])
+      .optional(),
     amountMinor: positiveMinorAmount.optional(),
     currency: currencyCode.optional(),
     accountId: documentId.optional(),
+    destinationAccountId: documentId.optional(),
     occurredAtMs: epochMs.optional(),
+    category: z
+      .string()
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+      .max(64)
+      .optional(),
   }).optional(),
 });
 export const confirmCandidateResponse = strictObject({
-  status: z.enum(["recorded", "rejected", "pending"]),
-  transactionId: documentId.optional(),
+  status: z.enum(["pending", "rejected", "linked"]),
 });
 
 export const retrySourceEventRequest = strictObject({ sourceEventId: documentId });

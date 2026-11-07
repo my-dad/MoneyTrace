@@ -1,5 +1,10 @@
 import {
   BootstrapUser,
+  CancelSourceEvent,
+  ConfirmCandidate,
+  IntakeEvidence,
+  RetryProviderCall,
+  RetrySourceEvent,
   CreateAccount,
   CreatePaymentInstrument,
   RecordOpeningBalance,
@@ -11,6 +16,8 @@ import {
   FirestoreAccountRepository,
   FirestoreLedgerReader,
   FirestoreLedgerWriter,
+  FirestoreProviderCallRepository,
+  FirestoreSourceEventRepository,
   FirestorePaymentInstrumentRepository,
   FirestoreUserProfileRepository,
   JsonLogger,
@@ -26,6 +33,10 @@ export type Deps = {
   createAccount: CreateAccount;
   createPaymentInstrument: CreatePaymentInstrument;
   recordOpeningBalance: RecordOpeningBalance;
+  intakeEvidence: IntakeEvidence;
+  confirmCandidate: ConfirmCandidate;
+  retrySourceEvent: RetrySourceEvent;
+  cancelSourceEvent: CancelSourceEvent;
 };
 
 /** The only place adapters are wired to ports. */
@@ -37,10 +48,21 @@ export function composeDeps(db: Firestore): Deps {
   const reader = new FirestoreLedgerReader(db, clock);
   const writer = new FirestoreLedgerWriter(db, clock);
   const profiles = new FirestoreUserProfileRepository(db);
+  const logger = new JsonLogger((line) => {
+    console.log(line);
+  });
+  const sourceEvents = new FirestoreSourceEventRepository(db, clock, logger);
+  const providerCalls = new FirestoreProviderCallRepository(db, clock);
   return {
-    logger: new JsonLogger((line) => {
-      console.log(line);
+    logger,
+    intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
+    confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),
+    retrySourceEvent: new RetrySourceEvent({
+      sourceEvents,
+      retryProvider: new RetryProviderCall({ sourceEvents, providerCalls, clock }),
+      clock,
     }),
+    cancelSourceEvent: new CancelSourceEvent({ sourceEvents, clock }),
     ids,
     bootstrapUser: new BootstrapUser({ profiles, accounts, clock }),
     createAccount: new CreateAccount({ accounts, ids, clock }),

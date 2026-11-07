@@ -85,6 +85,39 @@ beforeEach(async () => {
 
 /** The first call to each function cold-starts it in the emulator, which can exceed the 5s default. */
 describe("authenticated callables", { timeout: 60_000 }, () => {
+  it("submitEvidence requires a token", async () => {
+    const r = await call("submitEvidence", null, { idempotencyKey: "k", text: "paid 500" });
+    expect(r.status).toBe(401);
+    expect(r.error?.status).toBe("UNAUTHENTICATED");
+  });
+
+  it("an OTP is refused with its code and nothing is stored", async () => {
+    const user = await signUp("otp");
+    const r = await call("submitEvidence", user, {
+      idempotencyKey: "k",
+      text: "Your OTP is 482913",
+    });
+    expect(r.error?.status).toBe("FAILED_PRECONDITION");
+    expect(r.error?.message).toBe("sensitiveEvidence");
+    expect((await db.collection(`users/${user.uid}/sourceEvents`).get()).size).toBe(0);
+    expect((await db.collection(`users/${user.uid}/idempotencyRecords`).get()).size).toBe(0);
+  });
+
+  it("another user's event is not found, and is left alone", async () => {
+    const [owner, other] = [await signUp("ev-owner"), await signUp("ev-other")];
+    const { sourceEventId } = unwrap(
+      await call("submitEvidence", owner, { idempotencyKey: "k", text: "spent 500 on tea" }),
+    );
+    for (const name of ["confirmCandidate", "retrySourceEvent", "cancelSourceEvent"]) {
+      const data =
+        name === "confirmCandidate" ? { sourceEventId, decision: "reject" } : { sourceEventId };
+      expect((await call(name, other, data)).error?.status, name).toBe("NOT_FOUND");
+    }
+    expect(
+      (await db.doc(`users/${owner.uid}/sourceEvents/${String(sourceEventId)}`).get()).exists,
+    ).toBe(true);
+  });
+
   it("bootstrap creates the system cash wallet", async () => {
     const user = await signUp("wallet");
     unwrap(await call("bootstrapUser", user, {}));

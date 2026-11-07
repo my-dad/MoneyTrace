@@ -44,6 +44,7 @@ const FIXED: Partial<Record<OwnerCollectionName, Record<string, unknown>>> = {
     extraction: null,
     matchedTransactionId: null,
     resolvedAccountId: null,
+    resolvedDestinationAccountId: null,
     userConfirmed: false,
   },
   providerCalls: {
@@ -215,16 +216,14 @@ async function seed(projectId: string): Promise<void> {
   await db
     .doc("deletionLog/restore-drill")
     .set({ ownerIdHash: "restore-owner", deletedAtMs: 1_700_000_000_000 });
-  await db
-    .doc(ownerPath(OWNER, "accounts", ACCOUNT))
-    .set({
-      id: ACCOUNT,
-      kind: "bank",
-      name: "Restore bank",
-      currency: "BDT",
-      status: "active",
-      createdAtMs: 1_700_000_000_000,
-    });
+  await db.doc(ownerPath(OWNER, "accounts", ACCOUNT)).set({
+    id: ACCOUNT,
+    kind: "bank",
+    name: "Restore bank",
+    currency: "BDT",
+    status: "active",
+    createdAtMs: 1_700_000_000_000,
+  });
   await deps.recordOpeningBalance.execute({
     ownerId: owner,
     accountId: asAccountId(ACCOUNT),

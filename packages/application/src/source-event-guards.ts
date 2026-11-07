@@ -48,6 +48,7 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     extraction: null,
     matchedTransactionId: null,
     resolvedAccountId: null,
+    resolvedDestinationAccountId: null,
     userConfirmed: false,
   };
 }
@@ -134,6 +135,7 @@ function withoutClaimAndReasons(e: SourceEventRecord): SourceEventRecord {
     extraction: e.extraction,
     matchedTransactionId: e.matchedTransactionId,
     resolvedAccountId: e.resolvedAccountId,
+    resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
   };
 }
@@ -248,7 +250,27 @@ export function decideUserDecision(
     ...(decision.resolvedAccountId !== undefined
       ? { resolvedAccountId: decision.resolvedAccountId }
       : {}),
+    ...(decision.resolvedDestinationAccountId !== undefined
+      ? { resolvedDestinationAccountId: decision.resolvedDestinationAccountId }
+      : {}),
     version: event.version + 1,
+  };
+}
+
+/** A parked event ends by the user's decision. Anything running or already ended is refused. */
+export function decideFinishParked(
+  event: SourceEventRecord | null,
+  status: "rejected" | "linkedAsDuplicate" | "cancelled",
+  nowMs: number,
+): SourceEventRecord | null {
+  if (event === null || event.claim !== null) return null;
+  if (event.status !== "pending" && event.status !== "deadLetter") return null;
+  return {
+    ...withoutClaimAndReasons(event),
+    status,
+    parkedStage: null,
+    version: event.version + 1,
+    terminalAtMs: nowMs,
   };
 }
 

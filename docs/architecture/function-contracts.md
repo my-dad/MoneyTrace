@@ -13,7 +13,7 @@ Every handler maps failures to Firebase callable codes exactly like this:
 - `idempotencyConflict`: `already-exists`.
 - Anything else: `internal`, with no detail.
 
-Commands with a missing non-account resource (transaction, follow-up, upload, source event) arrive in later phases. The phase that first needs it adds a `resourceNotFound` domain code mapped to `not-found`.
+Commands with a missing non-account resource (transaction, follow-up, upload, source event) arrive in later phases. `DomainError('resourceNotFound')` covers them and maps to `not-found`.
 
 Per-command `Errors:` lines use these wire codes, with the domain code in parentheses where one exists today. Any command whose use case derives or accepts an idempotency key returns `idempotencyConflict` when that key meets a different payload. Handlers ship in the listed phase. The contract exists from Phase 0.
 
@@ -107,9 +107,9 @@ Use case: SendChatMessage
 
 Phase: 1
 
-Request: `{ sourceEventId, decision: confirm|reject, overrides? }`
+Request: `{ sourceEventId, decision: confirm|reject|link, overrides?: { kind?, amountMinor?, currency?, accountId?, destinationAccountId?, occurredAtMs?, category? } }`
 
-Response: `{ status: recorded|rejected|pending, transactionId? }`
+Response: `{ status: pending|rejected|linked }`
 
 Errors: unauthenticated, invalid-argument, not-found, failed-precondition (invalidTransition)
 

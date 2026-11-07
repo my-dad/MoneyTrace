@@ -56,6 +56,7 @@ const VALID: Record<OwnerCollectionName, Record<string, unknown>> = {
     extraction: null,
     matchedTransactionId: null,
     resolvedAccountId: null,
+    resolvedDestinationAccountId: null,
     userConfirmed: false,
   },
   providerCalls: {

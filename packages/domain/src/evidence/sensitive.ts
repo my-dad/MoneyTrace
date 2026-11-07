@@ -42,5 +42,5 @@ export function detectSensitiveContent(text: string): SensitiveKind | null {
 export function maskIdentifiers(text: string): string {
   return text
     .replace(/(Client ID\s*#?\s*|CL ID\s*:?\s*|ID#\s*)\d+/gi, "$1**")
-    .replace(/\d{8,}/g, (run) => `**${run.slice(-4)}`);
+    .replace(/(?<![A-Za-z0-9])\d{8,}(?![A-Za-z0-9])/g, (run) => `**${run.slice(-4)}`);
 }

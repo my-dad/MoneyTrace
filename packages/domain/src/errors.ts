@@ -9,7 +9,10 @@ export type DomainErrorCode =
   | "beforeCutover"
   | "cutoverHasActivity"
   | "accountInvalid"
-  | "invalidConfig";
+  | "invalidConfig"
+  | "sensitiveEvidence"
+  | "resourceNotFound"
+  | "idempotencyConflict";
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

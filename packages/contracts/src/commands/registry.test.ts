@@ -84,7 +84,7 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   updateSettings: { updated: true },
   submitEvidence: { sourceEventId: "s", status: "received", duplicate: false },
   sendChatMessage: { messageId: "m", status: "accepted" },
-  confirmCandidate: { status: "recorded", transactionId: "t" },
+  confirmCandidate: { status: "pending" },
   resolveFollowUp: { state: "resolved" },
   snoozeFollowUp: { state: "snoozed" },
   retrySourceEvent: { status: "received" },

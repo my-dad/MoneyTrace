@@ -96,6 +96,7 @@ export function sourceEventToDoc(e: SourceEventRecord): Record<string, unknown> 
     extraction: e.extraction,
     matchedTransactionId: e.matchedTransactionId,
     resolvedAccountId: e.resolvedAccountId,
+    resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
   });
 }
@@ -122,6 +123,7 @@ export function toSourceEventRecord(data: unknown): SourceEventRecord {
     extraction: d.extraction as SourceEventRecord["extraction"],
     matchedTransactionId: d.matchedTransactionId,
     resolvedAccountId: d.resolvedAccountId,
+    resolvedDestinationAccountId: d.resolvedDestinationAccountId,
     userConfirmed: d.userConfirmed,
   };
 }
