@@ -43,3 +43,4 @@ firebase-debug.log
 firestore-debug.log
 *service-account*.json
 drill-expected.json
+jdk-21/

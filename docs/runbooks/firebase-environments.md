@@ -4,6 +4,28 @@ This runbook is prepared for Phase 0. The repository currently supports the
 local `demo-moneytrace` emulator project. Staging, development, and production
 projects are intentionally not created yet.
 
+## Security and billing decision
+
+**Decision:** remain on the Spark plan for now. Do not upgrade to Blaze or
+deploy real Functions until the following controls are implemented and tested:
+
+- App Check enforcement for deployed callables.
+- Per-user and per-IP callable rate limits.
+- Conservative Function `maxInstances`, concurrency, timeout, and minimum-instance settings.
+- Separate Firebase projects for dev, staging, and prod.
+- 2FA and least-privilege Google Cloud access; no committed service-account keys.
+- A supported billing spend cap plus alerts for invocations, errors, Storage, egress, and AI usage.
+- Emulator security tests and a staging abuse/penetration checklist.
+
+The current code already authenticates callable requests, derives ownership from
+the verified token, denies unauthorized Firestore/Storage access through rules,
+and enforces application-level AI quotas. These are necessary but do not by
+themselves prevent abuse through a valid account or stolen token.
+
+Blaze has no fixed monthly fee, but it is pay-as-you-go. Alerts alone do not
+stop spending, so the spend-cap and rate-limit controls are release gates, not
+optional monitoring.
+
 ## Local emulator
 
 Requirements are Node 22, pnpm 12.18.0, and JDK 21 or newer.
