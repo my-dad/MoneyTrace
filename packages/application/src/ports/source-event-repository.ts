@@ -1,6 +1,7 @@
 import type { OwnerCollectionName } from "@moneytrace/contracts";
 import type {
   DeadLetterReason,
+  MatchResult,
   CandidateTransaction,
   OwnerId,
   PendingReason,
@@ -33,6 +34,7 @@ export type SourceEventRecord = {
   candidate: CandidateTransaction | null;
   extraction: Extraction | null;
   matchedTransactionId: string | null;
+  matchKind: MatchResult["kind"] | null;
   resolvedAccountId: string | null;
   resolvedDestinationAccountId: string | null;
   userConfirmed: boolean;
@@ -54,6 +56,7 @@ export type SourceEventPatch = {
   candidate?: CandidateTransaction | null;
   extraction?: Extraction | null;
   matchedTransactionId?: string | null;
+  matchKind?: MatchResult["kind"] | null;
   resolvedAccountId?: string | null;
   resolvedDestinationAccountId?: string | null;
 };

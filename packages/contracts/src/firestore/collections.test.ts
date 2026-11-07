@@ -51,6 +51,7 @@ const valid = {
     candidate: null,
     extraction: null,
     matchedTransactionId: null,
+    matchKind: null,
     resolvedAccountId: null,
     resolvedDestinationAccountId: null,
     userConfirmed: false,

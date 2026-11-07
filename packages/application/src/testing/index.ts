@@ -11,3 +11,4 @@ export * from "./provider-call-contract";
 export * from "./ai-provider-contract";
 export * from "./payment-instrument-contract";
 export * from "./in-memory-payment-instruments";
+export * from "./scripted-ai-provider";

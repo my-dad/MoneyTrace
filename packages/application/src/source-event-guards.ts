@@ -47,6 +47,7 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     candidate: null,
     extraction: null,
     matchedTransactionId: null,
+    matchKind: null,
     resolvedAccountId: null,
     resolvedDestinationAccountId: null,
     userConfirmed: false,
@@ -134,6 +135,7 @@ function withoutClaimAndReasons(e: SourceEventRecord): SourceEventRecord {
     candidate: e.candidate,
     extraction: e.extraction,
     matchedTransactionId: e.matchedTransactionId,
+    matchKind: e.matchKind,
     resolvedAccountId: e.resolvedAccountId,
     resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
@@ -247,6 +249,9 @@ export function decideUserDecision(
     ...event,
     candidate: decision.candidate,
     userConfirmed: decision.userConfirmed,
+    // The user has judged any possible match, so it no longer holds the event back.
+    matchKind: null,
+    matchedTransactionId: null,
     ...(decision.resolvedAccountId !== undefined
       ? { resolvedAccountId: decision.resolvedAccountId }
       : {}),

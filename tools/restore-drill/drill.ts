@@ -43,6 +43,7 @@ const FIXED: Partial<Record<OwnerCollectionName, Record<string, unknown>>> = {
     candidate: null,
     extraction: null,
     matchedTransactionId: null,
+    matchKind: null,
     resolvedAccountId: null,
     resolvedDestinationAccountId: null,
     userConfirmed: false,

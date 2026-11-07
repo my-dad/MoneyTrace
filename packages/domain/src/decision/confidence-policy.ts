@@ -11,6 +11,10 @@ export type DecisionInput = {
   retriedAfterUnknownInChain: boolean;
   currencySupported: boolean;
   userConfirmed: boolean;
+  /** False for a plain credit or debit, until the user says what it was. */
+  kindKnown: boolean;
+  /** False when the evidence has no date, until the user gives one. */
+  dateKnown: boolean;
 };
 
 /** Thresholds are basis points. A value above 10000 can never be reached, so it disables AI auto-post. */
@@ -59,6 +63,8 @@ export function decide(input: DecisionInput, config: ConfidenceConfig): Decision
   if (input.parsersConflict) return { outcome: "needsClarification", rule: "parsersConflict" };
   if (input.retriedAfterUnknownInChain && !input.userConfirmed)
     return { outcome: "needsClarification", rule: "retriedAfterUnknown" };
+  if (!input.kindKnown) return { outcome: "needsClarification", rule: "kindUnknown" };
+  if (!input.dateKnown) return { outcome: "needsClarification", rule: "dateUnknown" };
   if (!input.accountMappingUnambiguous)
     return { outcome: "needsClarification", rule: "accountMappingAmbiguous" };
   if (input.unresolvedDuplicateCandidate)

@@ -15,7 +15,8 @@ export type PipelineStage = "normalize" | "interpret" | "match" | "decide" | "po
 
 export type PendingReason = "awaitingClarification" | "aiQuotaExhausted" | "providerOutcomeUnknown";
 
-export type DeadLetterReason = "attemptsExhausted" | "providerResultMissing" | "stageFailed";
+export type DeadLetterReason =
+  "attemptsExhausted" | "providerResultMissing" | "stageFailed" | "beforeOpeningBalance";
 
 export const STAGE_INPUT_STATUS: Record<PipelineStage, SourceEventStatus> = {
   normalize: "received",

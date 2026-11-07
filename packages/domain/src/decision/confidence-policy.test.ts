@@ -14,6 +14,8 @@ const clear: DecisionInput = {
   retriedAfterUnknownInChain: false,
   currencySupported: true,
   userConfirmed: false,
+  kindKnown: true,
+  dateKnown: true,
 };
 const ai: DecisionInput = { ...clear, source: "ai", confidenceBp: 10000 };
 const invalidConfig = expect.objectContaining({ code: "invalidConfig" }) as Error;
@@ -34,6 +36,8 @@ describe("decide", () => {
     [{ invariantsPass: false }, "failed", "invariantsFailed"],
     [{ extractionUsable: false }, "failed", "extractionUnusable"],
     [{ currencySupported: false }, "needsClarification", "currencyUnsupported"],
+    [{ kindKnown: false }, "needsClarification", "kindUnknown"],
+    [{ dateKnown: false }, "needsClarification", "dateUnknown"],
     [{ accountMappingUnambiguous: false }, "needsClarification", "accountMappingAmbiguous"],
     [{ unresolvedDuplicateCandidate: true }, "needsClarification", "duplicateCandidateUnresolved"],
     [{ parsersConflict: true }, "needsClarification", "parsersConflict"],

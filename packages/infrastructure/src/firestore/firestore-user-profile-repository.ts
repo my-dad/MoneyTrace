@@ -14,6 +14,11 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
     this.db = db;
   }
 
+  async get(ownerId: OwnerId): Promise<UserProfileDefaults | null> {
+    const snap = await this.db.doc(userPath(ownerId)).get();
+    return snap.exists ? (userProfileSchema.parse(snap.data()) as UserProfileDefaults) : null;
+  }
+
   async createIfAbsent(ownerId: OwnerId, defaults: UserProfileDefaults): Promise<boolean> {
     const data = userProfileSchema.parse({ ...defaults });
     try {

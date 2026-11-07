@@ -8,6 +8,9 @@ import { BootstrapUser, SYSTEM_CASH_ACCOUNT_ID } from "./bootstrap-user";
 
 class MemoryProfiles implements UserProfileRepository {
   readonly docs = new Map<string, UserProfileDefaults>();
+  get(ownerId: OwnerId): Promise<UserProfileDefaults | null> {
+    return Promise.resolve(this.docs.get(ownerId) ?? null);
+  }
   createIfAbsent(ownerId: OwnerId, defaults: UserProfileDefaults): Promise<boolean> {
     if (this.docs.has(ownerId)) return Promise.resolve(false);
     this.docs.set(ownerId, defaults);

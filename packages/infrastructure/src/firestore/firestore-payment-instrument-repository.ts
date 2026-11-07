@@ -25,10 +25,10 @@ export class FirestorePaymentInstrumentRepository implements PaymentInstrumentRe
     ownerId: OwnerId,
     query: InstrumentQuery,
   ): Promise<PaymentInstrumentRecord[]> {
-    const snap = await this.db
-      .collection(ownerPath(ownerId, "paymentInstruments"))
-      .where("provider", "==", query.provider)
-      .get();
+    const all = this.db.collection(ownerPath(ownerId, "paymentInstruments"));
+    const snap = await (query.provider === undefined
+      ? all.get()
+      : all.where("provider", "==", query.provider).get());
     return snap.docs
       .map((d) => {
         const r = OWNER_COLLECTIONS.paymentInstruments.parse(d.data());

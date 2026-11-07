@@ -15,7 +15,8 @@ export type PaymentInstrumentRecord = {
   createdAtMs: number;
 };
 
-export type InstrumentQuery = { provider: string; mask?: string };
+/** With no provider, matches any: an SMS names a destination bank only in words. */
+export type InstrumentQuery = { provider?: string; mask?: string };
 
 export type PaymentInstrumentRepository = {
   create(ownerId: OwnerId, record: PaymentInstrumentRecord): Promise<void>;

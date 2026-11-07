@@ -148,7 +148,7 @@ const sourceEvents = z
       .enum(["awaitingClarification", "aiQuotaExhausted", "providerOutcomeUnknown"])
       .optional(),
     deadLetterReason: z
-      .enum(["attemptsExhausted", "providerResultMissing", "stageFailed"])
+      .enum(["attemptsExhausted", "providerResultMissing", "stageFailed", "beforeOpeningBalance"])
       .optional(),
     stageAttempt: count,
     claim: z
@@ -165,6 +165,9 @@ const sourceEvents = z
     candidate: candidateSchema.nullable(),
     extraction: extractionSchema.nullable(),
     matchedTransactionId: documentId.nullable(),
+    matchKind: z
+      .enum(["none", "duplicate", "ambiguous", "finalizesAuthorization", "possibleCounterpart"])
+      .nullable(),
     resolvedAccountId: documentId.nullable(),
     resolvedDestinationAccountId: documentId.nullable(),
     userConfirmed: z.boolean(),
