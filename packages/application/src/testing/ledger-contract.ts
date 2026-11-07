@@ -594,9 +594,11 @@ export function describeLedgerContract(
     });
 
     it("an opening-balance commit must carry a marker", async () => {
-      const bad: LedgerCommit = { ...openingCommit(100), cutoverMarker: undefined };
+      const bad: Partial<LedgerCommit> = { ...openingCommit(100) };
       delete bad.cutoverMarker;
-      await expect(writer.commit(alice, bad)).rejects.toThrow(code("invalidIntent"));
+      await expect(writer.commit(alice, bad as LedgerCommit)).rejects.toThrow(
+        code("invalidIntent"),
+      );
       expect(await reader.getTransaction(alice, asTransactionId("opening-cash-1"))).toBeNull();
       expect(await reader.getBalance(alice, cash.id)).toBe(0);
     });
