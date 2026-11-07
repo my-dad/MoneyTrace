@@ -25,7 +25,7 @@ const EXAMPLES: Record<CommandName, unknown> = {
   submitEvidence: { idempotencyKey: "k1", text: "Tk 500 debited at ATM" },
   sendChatMessage: { conversationId: "conv1", text: "I gave 2000 cash to Mom" },
   confirmCandidate: { sourceEventId: "se1", decision: "confirm" },
-  resolveFollowUp: { followUpId: "f1", resolution: { kind: "answer", text: "groceries" } },
+  resolveFollowUp: { followUpId: "f1", resolution: { kind: "destination", accountId: "wallet" } },
   snoozeFollowUp: { followUpId: "f1", untilMs: 1700000000000 },
   retrySourceEvent: { sourceEventId: "se1" },
   cancelSourceEvent: { sourceEventId: "se1" },
@@ -36,6 +36,7 @@ const EXAMPLES: Record<CommandName, unknown> = {
     rationale: "wrong amount",
   },
   recordCustodyTransfer: {
+    occurredAtMs: 1700000000000,
     idempotencyKey: "k3",
     fromAccountId: "acc1",
     toAccountId: "acc2",

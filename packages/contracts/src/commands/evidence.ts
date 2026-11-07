@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { currencyCode, documentId, epochMs, positiveMinorAmount } from "../primitives";
-import { evidenceText, shortText, strictObject } from "./shared";
+import { evidenceText, strictObject } from "./shared";
 
 const sourceEventStatus = z.enum([
   "received",
@@ -76,10 +76,10 @@ export const cancelSourceEventResponse = strictObject({ status: sourceEventStatu
 export const resolveFollowUpRequest = strictObject({
   followUpId: documentId,
   resolution: z.discriminatedUnion("kind", [
-    strictObject({ kind: z.literal("answer"), text: shortText }),
-    strictObject({ kind: z.literal("dismiss") }),
+    strictObject({ kind: z.literal("destination"), accountId: documentId }),
+    strictObject({ kind: z.literal("notSureYet") }),
   ]),
 });
-export const resolveFollowUpResponse = strictObject({ state: z.enum(["resolved", "dismissed"]) });
+export const resolveFollowUpResponse = strictObject({ state: z.enum(["resolved", "open"]) });
 export const snoozeFollowUpRequest = strictObject({ followUpId: documentId, untilMs: epochMs });
 export const snoozeFollowUpResponse = strictObject({ state: z.literal("snoozed") });

@@ -85,6 +85,21 @@ beforeEach(async () => {
 
 /** The first call to each function cold-starts it in the emulator, which can exceed the 5s default. */
 describe("authenticated callables", { timeout: 60_000 }, () => {
+  it("another user's follow-up or transaction is not found", async () => {
+    const other = await signUp("fu-other");
+    const followUp = await call("resolveFollowUp", other, {
+      followUpId: "nope",
+      resolution: { kind: "notSureYet" },
+    });
+    expect(followUp.error?.status).toBe("NOT_FOUND");
+    const tx = await call("correctTransaction", other, {
+      idempotencyKey: "k",
+      transactionId: "nope",
+      rationale: "x",
+    });
+    expect(tx.error?.status).toBe("NOT_FOUND");
+  });
+
   it("submitEvidence requires a token", async () => {
     const r = await call("submitEvidence", null, { idempotencyKey: "k", text: "paid 500" });
     expect(r.status).toBe(401);

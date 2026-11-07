@@ -119,9 +119,9 @@ Use case: ConfirmCandidate
 
 Phase: 1
 
-Request: `{ followUpId, resolution: {kind: answer, text} | {kind: dismiss} }`
+Request: `{ followUpId, resolution: {kind: destination, accountId} | {kind: notSureYet} }`
 
-Response: `{ state: resolved|dismissed }`
+Response: `{ state: resolved|open }`
 
 Errors: unauthenticated, invalid-argument, not-found
 
@@ -179,7 +179,7 @@ Use case: CorrectTransaction (reversal plus replacement, atomic)
 
 Phase: 1
 
-Request: `{ idempotencyKey, fromAccountId, toAccountId, amountMinor, currency, holderName }`. Changes custody, never an expense.
+Request: `{ idempotencyKey, fromAccountId, toAccountId, amountMinor, currency, holderName, occurredAtMs }`. Changes custody, never an expense.
 
 Response: `{ transactionId, status: recorded|alreadyRecorded }`
 

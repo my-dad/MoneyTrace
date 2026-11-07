@@ -34,6 +34,7 @@ export const recordCustodyTransferRequest = strictObject({
   amountMinor: positiveMinorAmount,
   currency: currencyCode,
   holderName: accountName,
+  occurredAtMs: epochMs,
 });
 export const recordCustodyTransferResponse = strictObject({
   transactionId: documentId,

@@ -1,4 +1,8 @@
-import type { UserProfileDefaults, UserProfileRepository } from "@moneytrace/application";
+import type {
+  ProfilePatch,
+  UserProfileDefaults,
+  UserProfileRepository,
+} from "@moneytrace/application";
 import { userProfileSchema } from "@moneytrace/contracts";
 import type { OwnerId } from "@moneytrace/domain";
 import type { Firestore } from "firebase-admin/firestore";
@@ -12,6 +16,14 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
 
   constructor(db: Firestore) {
     this.db = db;
+  }
+
+  async update(ownerId: OwnerId, patch: ProfilePatch): Promise<void> {
+    const ref = this.db.doc(userPath(ownerId));
+    await this.db.runTransaction(async (t) => {
+      const s = await t.get(ref);
+      t.set(ref, userProfileSchema.parse({ ...s.data(), ...patch }));
+    });
   }
 
   async get(ownerId: OwnerId): Promise<UserProfileDefaults | null> {

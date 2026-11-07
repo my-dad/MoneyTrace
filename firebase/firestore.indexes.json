@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "followUps",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "snoozedUntilMs", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "sourceEvents",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

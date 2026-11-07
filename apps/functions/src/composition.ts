@@ -1,5 +1,11 @@
 import {
   BootstrapUser,
+  CorrectTransaction,
+  PostTransaction,
+  RecordCustodyTransfer,
+  ResolveFollowUp,
+  SnoozeFollowUp,
+  UpdateSettings,
   CancelSourceEvent,
   ConfirmCandidate,
   IntakeEvidence,
@@ -14,6 +20,7 @@ import {
 import {
   CryptoIdGenerator,
   FirestoreAccountRepository,
+  FirestoreFollowUpRepository,
   FirestoreLedgerReader,
   FirestoreLedgerWriter,
   FirestoreProviderCallRepository,
@@ -37,6 +44,11 @@ export type Deps = {
   confirmCandidate: ConfirmCandidate;
   retrySourceEvent: RetrySourceEvent;
   cancelSourceEvent: CancelSourceEvent;
+  resolveFollowUp: ResolveFollowUp;
+  snoozeFollowUp: SnoozeFollowUp;
+  recordCustodyTransfer: RecordCustodyTransfer;
+  correctTransaction: CorrectTransaction;
+  updateSettings: UpdateSettings;
 };
 
 /** The only place adapters are wired to ports. */
@@ -53,8 +65,15 @@ export function composeDeps(db: Firestore): Deps {
   });
   const sourceEvents = new FirestoreSourceEventRepository(db, clock, logger);
   const providerCalls = new FirestoreProviderCallRepository(db, clock);
+  const followUps = new FirestoreFollowUpRepository(db);
+  const post = new PostTransaction({ writer, accounts, hasher, clock });
   return {
     logger,
+    resolveFollowUp: new ResolveFollowUp({ followUps, reader, accounts, post, clock }),
+    snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
+    recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),
+    correctTransaction: new CorrectTransaction({ reader, writer, accounts, hasher, clock }),
+    updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),
     retrySourceEvent: new RetrySourceEvent({

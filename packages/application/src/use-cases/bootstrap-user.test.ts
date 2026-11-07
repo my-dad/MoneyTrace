@@ -8,6 +8,9 @@ import { BootstrapUser, SYSTEM_CASH_ACCOUNT_ID } from "./bootstrap-user";
 
 class MemoryProfiles implements UserProfileRepository {
   readonly docs = new Map<string, UserProfileDefaults>();
+  update(): Promise<void> {
+    return Promise.resolve();
+  }
   get(ownerId: OwnerId): Promise<UserProfileDefaults | null> {
     return Promise.resolve(this.docs.get(ownerId) ?? null);
   }

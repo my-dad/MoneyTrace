@@ -10,6 +10,13 @@ import {
   retrySourceEvent as makeRetrySourceEvent,
   submitEvidence as makeSubmitEvidence,
 } from "./callable/source-event-commands";
+import {
+  correctTransaction as makeCorrectTransaction,
+  recordCustodyTransfer as makeRecordCustodyTransfer,
+  resolveFollowUp as makeResolveFollowUp,
+  snoozeFollowUp as makeSnoozeFollowUp,
+  updateSettings as makeUpdateSettings,
+} from "./callable/follow-up-commands";
 import { composeDeps, type Deps } from "./composition";
 
 let deps: Deps | undefined;
@@ -23,6 +30,11 @@ export const bootstrapUser = makeBootstrapUser(getDeps);
 export const createAccount = makeCreateAccount(getDeps);
 export const createPaymentInstrument = makeCreatePaymentInstrument(getDeps);
 export const recordOpeningBalance = makeRecordOpeningBalance(getDeps);
+export const resolveFollowUp = makeResolveFollowUp(getDeps);
+export const snoozeFollowUp = makeSnoozeFollowUp(getDeps);
+export const recordCustodyTransfer = makeRecordCustodyTransfer(getDeps);
+export const correctTransaction = makeCorrectTransaction(getDeps);
+export const updateSettings = makeUpdateSettings(getDeps);
 export const submitEvidence = makeSubmitEvidence(getDeps);
 export const confirmCandidate = makeConfirmCandidate(getDeps);
 export const retrySourceEvent = makeRetrySourceEvent(getDeps);

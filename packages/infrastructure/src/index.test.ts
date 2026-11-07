@@ -9,6 +9,7 @@ describe("@moneytrace/infrastructure", () => {
       "FakeAIProvider",
       "FirestoreAccountRepository",
       "FirestoreAiUsageRecorder",
+      "FirestoreFollowUpRepository",
       "FirestoreLedgerReader",
       "FirestoreLedgerWriter",
       "FirestorePaymentInstrumentRepository",

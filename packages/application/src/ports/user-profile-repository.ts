@@ -13,7 +13,13 @@ export type UserProfileDefaults = {
   createdAtMs: number;
 };
 
+export type ProfilePatch = {
+  timezone?: string;
+  notifications?: UserProfileDefaults["notifications"];
+};
+
 export type UserProfileRepository = {
+  update(ownerId: OwnerId, patch: ProfilePatch): Promise<void>;
   get(ownerId: OwnerId): Promise<UserProfileDefaults | null>;
   /** Atomically creates `users/{ownerId}` only when absent. Returns whether it was created; never overwrites. */
   createIfAbsent(ownerId: OwnerId, defaults: UserProfileDefaults): Promise<boolean>;

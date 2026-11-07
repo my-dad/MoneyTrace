@@ -5,6 +5,7 @@ import { strictObject } from "./shared";
 const localTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
 export const updateSettingsRequest = strictObject({
+  timezone: z.string().min(1).max(64).optional(),
   reportingCycle: z
     .discriminatedUnion("kind", [
       strictObject({ kind: z.literal("calendarMonth") }),

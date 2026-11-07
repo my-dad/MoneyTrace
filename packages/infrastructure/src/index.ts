@@ -12,6 +12,7 @@ export * from "./firestore/firestore-quota-ledger";
 export * from "./firestore/firestore-ai-usage-recorder";
 export * from "./system/abort-timeout";
 export * from "./firestore/firestore-user-profile-repository";
+export * from "./firestore/firestore-follow-up-repository";
 export * from "./ai/deepseek-provider";
 export * from "./ai/fake-ai-provider";
 export * from "./firestore/firestore-payment-instrument-repository";
