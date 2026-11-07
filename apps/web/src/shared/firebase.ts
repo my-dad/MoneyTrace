@@ -1,5 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 
 const env = (name: string, fallback: string): string => process.env[name] ?? fallback;
@@ -16,6 +17,7 @@ const app = getApps().length > 0
     });
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const functions = getFunctions(app, "asia-south2");
 
 if (process.env.NEXT_PUBLIC_USE_EMULATORS === "1") {
