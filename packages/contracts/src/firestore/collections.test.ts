@@ -46,6 +46,12 @@ const valid = {
     receivedAtMs: 1,
     terminalAtMs: null,
     providerResultsPurged: false,
+    retainedText: "Tk 100 paid",
+    candidate: null,
+    extraction: null,
+    matchedTransactionId: null,
+    resolvedAccountId: null,
+    userConfirmed: false,
   },
   providerCalls: {
     id: "c1",
@@ -237,6 +243,7 @@ describe("owner collection schemas", () => {
   it("user profile and deletion log entries parse and are strict", () => {
     const profile = {
       baseCurrency: "BDT",
+      timezone: "Asia/Dhaka",
       reportingCycle: { kind: "salaryCycle", startDay: 25 },
       notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 },
       retentionPolicyVersion: 1,

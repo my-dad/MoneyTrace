@@ -25,6 +25,12 @@ const alice = asOwnerId("alice");
 const bob = asOwnerId("bob");
 const T0 = 1_700_000_000_000;
 const LEASE = PIPELINE_TIMEOUTS.leaseMs;
+const candidate = {
+  kind: "purchase" as const,
+  amountMinor: 5000,
+  currency: "BDT",
+  occurredAtMs: T0,
+};
 
 const inputOf = (id: string, key = `key-${id}`, hash = `hash-${id}`): SourceEventInput => ({
   sourceEventId: asSourceEventId(id),
@@ -32,6 +38,7 @@ const inputOf = (id: string, key = `key-${id}`, hash = `hash-${id}`): SourceEven
   sourceHash: hash,
   idempotencyKey: key,
   receivedAtMs: T0,
+  retainedText: "Tk 100 paid",
 });
 
 /** A follow-up output with the deterministic ID a stage would use. */
@@ -551,6 +558,79 @@ export function describeSourceEventContract(
       const reopened = await repo.get(alice, id);
       expect(reopened).toMatchObject({ status: "received" });
       expect(reopened).not.toHaveProperty("deadLetterReason");
+    });
+    it("eventPatch commits with the status", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, {
+        ...commitWith(null),
+        eventPatch: { retainedText: "masked", resolvedAccountId: "acct-1" },
+      });
+      expect(await repo.get(alice, id)).toMatchObject({
+        status: "normalized",
+        retainedText: "masked",
+        resolvedAccountId: "acct-1",
+      });
+    });
+
+    it("eventPatch is discarded on a stale claim", async () => {
+      const claim = await claimNormalize();
+      await repo.reopen(alice, id, claim.version, T0 + LEASE);
+      expect(
+        await repo.commitStage(alice, claim, {
+          ...commitWith(null),
+          eventPatch: { retainedText: "late" },
+        }),
+      ).toBe("staleClaim");
+      expect(await repo.get(alice, id)).toMatchObject({ retainedText: "Tk 100 paid" });
+    });
+
+    it("keeps eventPatch fields across later transitions", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [],
+        eventPatch: { candidate },
+      });
+      const parked = await repo.get(alice, id);
+      await repo.reopen(alice, id, parked?.version ?? -1, T0);
+      expect(await repo.get(alice, id)).toMatchObject({ status: "received", candidate });
+    });
+
+    it("applyUserDecision records the answer on a pending event without changing status", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [],
+      });
+      expect(
+        await repo.applyUserDecision(alice, id, {
+          candidate,
+          userConfirmed: true,
+          resolvedAccountId: "acct-9",
+        }),
+      ).toBe("applied");
+      expect(await repo.get(alice, id)).toMatchObject({
+        status: "pending",
+        userConfirmed: true,
+        resolvedAccountId: "acct-9",
+        candidate,
+      });
+    });
+
+    it("applyUserDecision is refused unless the event is pending", async () => {
+      expect(await repo.applyUserDecision(alice, id, { candidate, userConfirmed: true })).toBe(
+        "stale",
+      );
+      expect(await repo.get(alice, id)).toMatchObject({ userConfirmed: false, candidate: null });
+    });
+
+    it("a candidate with an unknown currency round-trips", async () => {
+      const claim = await claimNormalize();
+      const usd = { ...candidate, currency: "USD" };
+      await repo.commitStage(alice, claim, { ...commitWith(null), eventPatch: { candidate: usd } });
+      expect(await repo.get(alice, id)).toMatchObject({ candidate: usd });
     });
   });
 }

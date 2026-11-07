@@ -64,6 +64,65 @@ const paymentInstruments = z
   })
   .strict();
 
+export const candidateSchema = z
+  .object({
+    kind: z.enum([
+      "withdrawal",
+      "cardTransaction",
+      "cardPurchase",
+      "cardRepayment",
+      "purchase",
+      "income",
+      "fee",
+      "refund",
+      "transfer",
+      "unclassifiedCredit",
+      "unclassifiedDebit",
+    ]),
+    amountMinor: positiveMinorAmount,
+    feeMinor: positiveMinorAmount.optional(),
+    /** A plain code, not the supported list: a foreign amount must survive to the decide stage. */
+    currency: z.string().regex(/^[A-Z]{3}$/),
+    occurredAtMs: epochMs.nullable(),
+    dateOnly: z.boolean().optional(),
+    provider: z.string().min(1).max(32).optional(),
+    instrumentMask: z
+      .string()
+      .regex(/^\d{3,6}$/)
+      .optional(),
+    destinationMask: z
+      .string()
+      .regex(/^\d{3,6}$/)
+      .optional(),
+    counterparty: z.string().min(1).max(200).optional(),
+    category: z
+      .string()
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+      .max(64)
+      .optional(),
+    reference: z.string().min(1).max(64).optional(),
+    balanceAfterMinor: minorAmount.optional(),
+  })
+  .strict();
+
+const extractionSchema = z
+  .object({
+    source: z.enum(["deterministicParser", "ai"]).nullable(),
+    parser: z
+      .object({ name: z.string().min(1), version: z.string().min(1) })
+      .strict()
+      .optional(),
+    ai: z
+      .object({ model: z.string().min(1), promptVersion: z.string().min(1) })
+      .strict()
+      .optional(),
+    confidenceBp: z.number().int().min(0).max(10000),
+    notFinancialReason: z.string().min(1).max(64).optional(),
+    parsersConflict: z.boolean().optional(),
+    retriedAfterUnknown: z.boolean().optional(),
+  })
+  .strict();
+
 const sourceEvents = z
   .object({
     id: documentId,
@@ -99,6 +158,13 @@ const sourceEvents = z
     receivedAtMs: epochMs,
     terminalAtMs: epochMs.nullable(),
     providerResultsPurged: z.boolean(),
+    /** Evidence with identifiers masked, kept for correction and export. */
+    retainedText: z.string().max(10000),
+    candidate: candidateSchema.nullable(),
+    extraction: extractionSchema.nullable(),
+    matchedTransactionId: documentId.nullable(),
+    resolvedAccountId: documentId.nullable(),
+    userConfirmed: z.boolean(),
   })
   .strict();
 
@@ -131,6 +197,11 @@ const transactions = z
     currency: currencyCode,
     sourceEventIds: ids,
     actor: z.string().min(1).max(128),
+    category: z
+      .string()
+      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+      .max(64)
+      .optional(),
     rationale: text.optional(),
     correctionOf: documentId.optional(),
     reversedBy: documentId.optional(),
@@ -403,6 +474,7 @@ export const userProfileSchema = z
   .object({
     displayName: name.optional(),
     baseCurrency: currencyCode,
+    timezone: z.string().min(1).max(64),
     reportingCycle: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("calendarMonth") }).strict(),
       z

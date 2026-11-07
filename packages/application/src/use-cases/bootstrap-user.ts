@@ -14,6 +14,7 @@ export class BootstrapUser {
   async execute(input: { ownerId: OwnerId }): Promise<{ created: boolean }> {
     const created = await this.deps.profiles.createIfAbsent(input.ownerId, {
       baseCurrency: "BDT",
+      timezone: "Asia/Dhaka",
       reportingCycle: { kind: "calendarMonth" },
       notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 },
       retentionPolicyVersion: DEFAULT_RETENTION_POLICY.version,

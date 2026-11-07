@@ -11,3 +11,5 @@ export * from "./ledger/transaction";
 export * from "./pipeline/source-event";
 export * from "./pipeline/provider-call";
 export * from "./decision/confidence-policy";
+export * from "./evidence/sensitive";
+export * from "./evidence/candidate";

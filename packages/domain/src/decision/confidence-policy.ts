@@ -9,6 +9,8 @@ export type DecisionInput = {
   source: "deterministicParser" | "ai";
   confidenceBp: number;
   retriedAfterUnknownInChain: boolean;
+  currencySupported: boolean;
+  userConfirmed: boolean;
 };
 
 /** Thresholds are basis points. A value above 10000 can never be reached, so it disables AI auto-post. */
@@ -52,13 +54,17 @@ export function decide(input: DecisionInput, config: ConfidenceConfig): Decision
   }
   if (!input.extractionUsable) return { outcome: "failed", rule: "extractionUnusable" };
   if (!input.invariantsPass) return { outcome: "failed", rule: "invariantsFailed" };
+  if (!input.currencySupported)
+    return { outcome: "needsClarification", rule: "currencyUnsupported" };
   if (input.parsersConflict) return { outcome: "needsClarification", rule: "parsersConflict" };
-  if (input.retriedAfterUnknownInChain)
+  if (input.retriedAfterUnknownInChain && !input.userConfirmed)
     return { outcome: "needsClarification", rule: "retriedAfterUnknown" };
   if (!input.accountMappingUnambiguous)
     return { outcome: "needsClarification", rule: "accountMappingAmbiguous" };
   if (input.unresolvedDuplicateCandidate)
     return { outcome: "needsClarification", rule: "duplicateCandidateUnresolved" };
+  // A confirmation answers the question; it never overrides the checks above.
+  if (input.userConfirmed) return { outcome: "autoPost", rule: "userConfirmed" };
   if (input.source === "deterministicParser")
     return { outcome: "autoPost", rule: "deterministicClear" };
   if (input.confidenceBp >= config.aiAutoPostThresholdBp)

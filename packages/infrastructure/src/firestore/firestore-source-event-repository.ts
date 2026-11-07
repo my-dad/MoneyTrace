@@ -5,6 +5,7 @@ import {
   decideClaim,
   decidePark,
   decideReopen,
+  decideUserDecision,
   holdsClaim,
   newSourceEvent,
   sourceHashRecordId,
@@ -21,6 +22,7 @@ import {
   type SourceEventRepository,
   type StageClaim,
   type StageCommit,
+  type UserDecision,
 } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import {
@@ -231,6 +233,14 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     return this.transition(ownerId, id, "parked", (e) =>
       decidePark(e, expectedVersion, parking, nowMs),
     );
+  }
+
+  applyUserDecision(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    decision: UserDecision,
+  ): Promise<"applied" | "stale"> {
+    return this.transition(ownerId, id, "applied", (e) => decideUserDecision(e, decision));
   }
 
   private transition<R extends string>(

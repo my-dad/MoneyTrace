@@ -24,7 +24,7 @@ Fields: id, kind (debitCard|creditCard), maskedIdentifier, linkedAccountId, stat
 
 Path: `users/{ownerId}/sourceEvents/{docId}`
 
-Fields: id, sourceType (sms|receipt|chat|csvImport), sourceHash, idempotencyKey, status, pendingReason?, deadLetterReason?, stageAttempt, claim {workerId, stage, leaseExpiresAtMs} or null, parkedStage or null, version, receivedAtMs, terminalAtMs or null, providerResultsPurged.
+Fields: id, sourceType (sms|receipt|chat|csvImport), sourceHash, idempotencyKey, status, pendingReason?, deadLetterReason?, stageAttempt, claim {workerId, stage, leaseExpiresAtMs} or null, parkedStage or null, version, receivedAtMs, terminalAtMs or null, providerResultsPurged, retainedText (identifiers masked), candidate or null, extraction or null, matchedTransactionId or null, resolvedAccountId or null, userConfirmed.
 
 ### providerCalls
 

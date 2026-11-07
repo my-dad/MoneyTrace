@@ -1,6 +1,7 @@
 import type { OwnerCollectionName } from "@moneytrace/contracts";
 import type {
   DeadLetterReason,
+  CandidateTransaction,
   OwnerId,
   PendingReason,
   PipelineStage,
@@ -28,6 +29,37 @@ export type SourceEventRecord = {
   receivedAtMs: number;
   terminalAtMs: number | null;
   providerResultsPurged: boolean;
+  retainedText: string;
+  candidate: CandidateTransaction | null;
+  extraction: Extraction | null;
+  matchedTransactionId: string | null;
+  resolvedAccountId: string | null;
+  userConfirmed: boolean;
+};
+
+export type Extraction = {
+  source: "deterministicParser" | "ai" | null;
+  parser?: { name: string; version: string };
+  ai?: { model: string; promptVersion: string };
+  confidenceBp: number;
+  notFinancialReason?: string;
+  parsersConflict?: boolean;
+  retriedAfterUnknown?: boolean;
+};
+
+/** Event fields a stage may set, written in the same transaction as its status. */
+export type SourceEventPatch = {
+  retainedText?: string;
+  candidate?: CandidateTransaction | null;
+  extraction?: Extraction | null;
+  matchedTransactionId?: string | null;
+  resolvedAccountId?: string | null;
+};
+
+export type UserDecision = {
+  candidate: CandidateTransaction;
+  userConfirmed: true;
+  resolvedAccountId?: string | null;
 };
 
 export type SourceEventInput = {
@@ -36,6 +68,8 @@ export type SourceEventInput = {
   sourceHash: string;
   idempotencyKey: string;
   receivedAtMs: number;
+  /** Evidence with identifiers already masked. */
+  retainedText?: string;
 };
 
 export type StageClaim = {
@@ -59,6 +93,7 @@ export type StageCommit = {
   pendingReason?: PendingReason;
   deadLetterReason?: DeadLetterReason;
   outputs: readonly StageOutput[];
+  eventPatch?: SourceEventPatch;
 };
 
 export type Parking =
@@ -108,6 +143,13 @@ export type SourceEventRepository = {
     commit: StageCommit,
   ): Promise<"committed" | "staleClaim">;
   /** Expired claims across all owners, oldest lease first. */
+  /** Records the user's answer on a `pending` event. The caller then reopens it. */
+  applyUserDecision(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    decision: UserDecision,
+  ): Promise<"applied" | "stale">;
+
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]>;
   reopen(
     ownerId: OwnerId,

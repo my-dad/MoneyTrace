@@ -13,6 +13,7 @@ import type {
   StageClaim,
   StageCommit,
   StageOutput,
+  UserDecision,
 } from "./ports/source-event-repository";
 import { PIPELINE_TIMEOUTS } from "./pipeline/timeouts";
 
@@ -42,6 +43,12 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     receivedAtMs: input.receivedAtMs,
     terminalAtMs: null,
     providerResultsPurged: false,
+    retainedText: input.retainedText ?? "",
+    candidate: null,
+    extraction: null,
+    matchedTransactionId: null,
+    resolvedAccountId: null,
+    userConfirmed: false,
   };
 }
 
@@ -122,6 +129,12 @@ function withoutClaimAndReasons(e: SourceEventRecord): SourceEventRecord {
     receivedAtMs: e.receivedAtMs,
     terminalAtMs: e.terminalAtMs,
     providerResultsPurged: e.providerResultsPurged,
+    retainedText: e.retainedText,
+    candidate: e.candidate,
+    extraction: e.extraction,
+    matchedTransactionId: e.matchedTransactionId,
+    resolvedAccountId: e.resolvedAccountId,
+    userConfirmed: e.userConfirmed,
   };
 }
 
@@ -134,6 +147,7 @@ export function applyCommit(
   const parks = commit.nextStatus === "pending" || commit.nextStatus === "deadLetter";
   return {
     ...withoutClaimAndReasons(event),
+    ...commit.eventPatch,
     status: commit.nextStatus,
     ...(commit.pendingReason !== undefined ? { pendingReason: commit.pendingReason } : {}),
     ...(commit.deadLetterReason !== undefined ? { deadLetterReason: commit.deadLetterReason } : {}),
@@ -218,6 +232,23 @@ export function decideReopen(
     parkedStage: null,
     version: event.version + 1,
     terminalAtMs: null,
+  };
+}
+
+/** Only a parked-for-the-user event accepts an answer, and the answer never changes its status. */
+export function decideUserDecision(
+  event: SourceEventRecord | null,
+  decision: UserDecision,
+): SourceEventRecord | null {
+  if (event === null || event.status !== "pending" || event.claim !== null) return null;
+  return {
+    ...event,
+    candidate: decision.candidate,
+    userConfirmed: decision.userConfirmed,
+    ...(decision.resolvedAccountId !== undefined
+      ? { resolvedAccountId: decision.resolvedAccountId }
+      : {}),
+    version: event.version + 1,
   };
 }
 

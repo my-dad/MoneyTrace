@@ -87,6 +87,12 @@ export function sourceEventToDoc(e: SourceEventRecord): Record<string, unknown> 
     receivedAtMs: e.receivedAtMs,
     terminalAtMs: e.terminalAtMs,
     providerResultsPurged: e.providerResultsPurged,
+    retainedText: e.retainedText,
+    candidate: e.candidate,
+    extraction: e.extraction,
+    matchedTransactionId: e.matchedTransactionId,
+    resolvedAccountId: e.resolvedAccountId,
+    userConfirmed: e.userConfirmed,
   });
 }
 
@@ -107,5 +113,11 @@ export function toSourceEventRecord(data: unknown): SourceEventRecord {
     receivedAtMs: d.receivedAtMs,
     terminalAtMs: d.terminalAtMs,
     providerResultsPurged: d.providerResultsPurged,
+    retainedText: d.retainedText,
+    candidate: d.candidate as SourceEventRecord["candidate"],
+    extraction: d.extraction as SourceEventRecord["extraction"],
+    matchedTransactionId: d.matchedTransactionId,
+    resolvedAccountId: d.resolvedAccountId,
+    userConfirmed: d.userConfirmed,
   };
 }

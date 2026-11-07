@@ -2,6 +2,7 @@ import type { OwnerId } from "@moneytrace/domain";
 
 export type UserProfileDefaults = {
   baseCurrency: "BDT";
+  timezone: string;
   reportingCycle: { kind: "calendarMonth" };
   notifications: {
     digestLocalTime: string;

@@ -12,11 +12,46 @@ const clear: DecisionInput = {
   source: "deterministicParser",
   confidenceBp: 0,
   retriedAfterUnknownInChain: false,
+  currencySupported: true,
+  userConfirmed: false,
 };
 const ai: DecisionInput = { ...clear, source: "ai", confidenceBp: 10000 };
 const invalidConfig = expect.objectContaining({ code: "invalidConfig" }) as Error;
 
 describe("decide", () => {
+  it("a user confirmation auto-posts an AI candidate below the threshold", () => {
+    expect(decide({ ...ai, confidenceBp: 100, userConfirmed: true }, config)).toEqual({
+      outcome: "autoPost",
+      rule: "userConfirmed",
+    });
+  });
+  it("a user confirmation overrides a retried-after-unknown chain, because that is why it asked", () => {
+    expect(
+      decide({ ...clear, retriedAfterUnknownInChain: true, userConfirmed: true }, config),
+    ).toEqual({ outcome: "autoPost", rule: "userConfirmed" });
+  });
+  it.each([
+    [{ invariantsPass: false }, "failed", "invariantsFailed"],
+    [{ extractionUsable: false }, "failed", "extractionUnusable"],
+    [{ currencySupported: false }, "needsClarification", "currencyUnsupported"],
+    [{ accountMappingUnambiguous: false }, "needsClarification", "accountMappingAmbiguous"],
+    [{ unresolvedDuplicateCandidate: true }, "needsClarification", "duplicateCandidateUnresolved"],
+    [{ parsersConflict: true }, "needsClarification", "parsersConflict"],
+  ])("a user confirmation does not override %o", (override, outcome, rule) => {
+    expect(decide({ ...clear, ...override, userConfirmed: true }, config)).toEqual({
+      outcome,
+      rule,
+    });
+  });
+  it("an unsupported currency asks, and comes after the failed rules", () => {
+    expect(decide({ ...clear, currencySupported: false }, config)).toEqual({
+      outcome: "needsClarification",
+      rule: "currencyUnsupported",
+    });
+    expect(
+      decide({ ...clear, currencySupported: false, invariantsPass: false }, config).outcome,
+    ).toBe("failed");
+  });
   it("auto-posts a clear deterministic match", () => {
     expect(decide(clear, config)).toEqual({ outcome: "autoPost", rule: "deterministicClear" });
   });

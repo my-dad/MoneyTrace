@@ -14,7 +14,7 @@ const PROJECT_DEFAULT = "demo-moneytrace";
 
 const FIXED: Partial<Record<OwnerCollectionName, Record<string, unknown>>> = {
   paymentInstruments: { id: "restore-card", kind: "debitCard", maskedIdentifier: "1234", linkedAccountId: ACCOUNT, status: "active", createdAtMs: 1_700_000_000_000 },
-  sourceEvents: { id: "restore-source", sourceType: "sms", sourceHash: "restore-hash", idempotencyKey: "restore-source-key", status: "received", stageAttempt: 0, claim: null, parkedStage: null, version: 0, receivedAtMs: 1_700_000_000_000, terminalAtMs: null, providerResultsPurged: false },
+  sourceEvents: { id: "restore-source", sourceType: "sms", sourceHash: "restore-hash", idempotencyKey: "restore-source-key", status: "received", stageAttempt: 0, claim: null, parkedStage: null, version: 0, receivedAtMs: 1_700_000_000_000, terminalAtMs: null, providerResultsPurged: false, retainedText: "masked evidence", candidate: null, extraction: null, matchedTransactionId: null, resolvedAccountId: null, userConfirmed: false },
   providerCalls: { id: "restore-call", sourceEventId: "restore-source", stage: "interpret", providerId: "restore", retrySafety: "localPure", state: "succeeded", requestKey: "restore-request", attemptCount: 1, userApprovedRetry: false, retriedAfterUnknown: false, result: { amountMinor: 100 }, updatedAtMs: 1_700_000_000_000 },
   idempotencyRecords: { key: "restore-source-key", payloadHash: "restore-payload", createdAtMs: 1_700_000_000_000 },
   cutoverMarkers: { accountId: ACCOUNT, effectiveAtMs: 1_700_000_000_000, transactionId: `opening-${ACCOUNT}` },

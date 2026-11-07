@@ -10,6 +10,7 @@ const PROJECT_ID = "demo-moneytrace";
 const OWNER = "restore-drill";
 const PROFILE = {
   baseCurrency: "BDT",
+  timezone: "Asia/Dhaka",
   reportingCycle: { kind: "calendarMonth" },
   notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 },
   retentionPolicyVersion: 1,
@@ -18,7 +19,7 @@ const PROFILE = {
 const VALID: Record<OwnerCollectionName, Record<string, unknown>> = {
   accounts: { id: "bank-1", kind: "bank", name: "Restore bank", currency: "BDT", status: "active", createdAtMs: 1 },
   paymentInstruments: { id: "card-1", kind: "debitCard", maskedIdentifier: "1234", linkedAccountId: "bank-1", status: "active", createdAtMs: 1 },
-  sourceEvents: { id: "source-1", sourceType: "sms", sourceHash: "restore-hash", idempotencyKey: "restore-key", status: "received", stageAttempt: 0, claim: null, parkedStage: null, version: 0, receivedAtMs: 1, terminalAtMs: null, providerResultsPurged: false },
+  sourceEvents: { id: "source-1", sourceType: "sms", sourceHash: "restore-hash", idempotencyKey: "restore-key", status: "received", stageAttempt: 0, claim: null, parkedStage: null, version: 0, receivedAtMs: 1, terminalAtMs: null, providerResultsPurged: false, retainedText: "masked evidence", candidate: null, extraction: null, matchedTransactionId: null, resolvedAccountId: null, userConfirmed: false },
   providerCalls: { id: "call-1", sourceEventId: "source-1", stage: "interpret", providerId: "restore", retrySafety: "localPure", state: "succeeded", requestKey: "restore-request", attemptCount: 1, userApprovedRetry: false, retriedAfterUnknown: false, result: { amountMinor: 1 }, updatedAtMs: 1 },
   transactions: { id: "restore-tx", state: "posted", intentType: "openingBalance", occurredAtMs: 1, currency: "BDT", sourceEventIds: [], actor: "restore-drill", committedAtMs: 1 },
   ledgerEntries: { id: "restore-tx:0", transactionId: "restore-tx", accountId: "bank-1", accountKind: "bank", side: "debit", amountMinor: 1, currency: "BDT", occurredAtMs: 1 },

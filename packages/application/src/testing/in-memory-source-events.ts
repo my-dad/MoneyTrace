@@ -16,6 +16,7 @@ import type {
   SourceEventRepository,
   StageClaim,
   StageCommit,
+  UserDecision,
 } from "../ports/source-event-repository";
 import {
   applyCommit,
@@ -24,6 +25,7 @@ import {
   decideClaim,
   decidePark,
   decideReopen,
+  decideUserDecision,
   holdsClaim,
   isLeaseExpired,
   newSourceEvent,
@@ -186,6 +188,18 @@ export class InMemorySourceEvents implements SourceEventRepository {
     if (next === null) return Promise.resolve("stale");
     d.events.set(id, next);
     return Promise.resolve("parked");
+  }
+
+  applyUserDecision(
+    ownerId: OwnerId,
+    id: SourceEventId,
+    decision: UserDecision,
+  ): Promise<"applied" | "stale"> {
+    const d = this.data(ownerId);
+    const next = decideUserDecision(d.events.get(id) ?? null, decision);
+    if (next === null) return Promise.resolve("stale");
+    d.events.set(id, next);
+    return Promise.resolve("applied");
   }
 
   /** Synchronous access for sibling fakes that must stay atomic with event state. */
