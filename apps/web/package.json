@@ -22,6 +22,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts",
-    "build": "next build"
+    "build": "next build",
+    "start": "next start"
   }
 }

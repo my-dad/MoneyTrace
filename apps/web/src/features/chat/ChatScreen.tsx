@@ -16,6 +16,7 @@ import { buildChatTimeline } from "./chat-view-model";
 import styles from "./chat.module.css";
 import { EvidenceBubble } from "./EvidenceBubble";
 import { QuestionCard } from "./QuestionCard";
+import { useOnlineStatus } from "../shell/OfflineBanner";
 
 export type ChatCommands = Pick<
   Commands,
@@ -58,6 +59,7 @@ export function ChatScreen({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<{ id: string; duplicate: boolean } | null>(null);
+  const online = useOnlineStatus();
   // Survives a failed send, so resending the same text can't record it twice.
   const attempt = useRef<{ text: string; key: string } | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -206,7 +208,7 @@ export function ChatScreen({
           onSend={() => {
             void send();
           }}
-          disabled={sending}
+          disabled={sending || !online}
           label={CHAT_COPY.composerLabel}
           placeholder={CHAT_COPY.composerPlaceholder}
         />

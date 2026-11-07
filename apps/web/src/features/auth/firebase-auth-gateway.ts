@@ -2,6 +2,7 @@ import { COMMANDS } from "@moneytrace/contracts";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithPopup,
   signOut,
   type User,
@@ -24,7 +25,11 @@ export function createFirebaseAuthGateway(): AuthGateway {
       });
     },
     async signIn() {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      if (process.env.NEXT_PUBLIC_USE_EMULATORS === "1") {
+        await signInAnonymously(auth);
+      } else {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      }
     },
     async signOut() {
       await signOut(auth);
