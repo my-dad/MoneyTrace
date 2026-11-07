@@ -13,3 +13,5 @@ export * from "./pipeline/provider-call";
 export * from "./decision/confidence-policy";
 export * from "./evidence/sensitive";
 export * from "./evidence/candidate";
+export * from "./evidence/sms-parser";
+export * from "./evidence/matching";
