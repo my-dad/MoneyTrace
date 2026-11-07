@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { OwnerCollectionName } from "@moneytrace/contracts";
+import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import { asOwnerId, asSourceEventId, type OwnerId, type SourceEventId } from "@moneytrace/domain";
 import { PIPELINE_TIMEOUTS } from "../pipeline/timeouts";
 import type {
@@ -34,7 +35,11 @@ const inputOf = (id: string, key = `key-${id}`, hash = `hash-${id}`): SourceEven
 });
 
 /** A follow-up output with the deterministic ID a stage would use. */
-export const followUpOutput = (eventId: string, stage: "match" | "normalize" = "normalize") => {
+export const followUpOutput = (
+  eventId: string,
+  stage: "match" | "normalize" = "normalize",
+  question = "Where did this cash go?",
+) => {
   const id = stageOutputId(eventId, stage, "followUp");
   return {
     collection: "followUps" as const,
@@ -42,7 +47,7 @@ export const followUpOutput = (eventId: string, stage: "match" | "normalize" = "
     data: {
       id,
       trigger: "withdrawalDestination",
-      question: "Where did this cash go?",
+      question,
       dueAtMs: T0 + 86_400_000,
       snoozedUntilMs: null,
       state: "open",
@@ -110,14 +115,42 @@ export function describeSourceEventContract(
       });
     });
 
-    it("refuses while a live claim exists, and allows it once the lease expires", async () => {
-      await claimNormalize();
+    it("refuses while any claim is held, even an expired one: only reopen clears it", async () => {
+      const first = await claimNormalize();
       expect(await repo.claim(alice, id, "normalize", "w2", T0 + LEASE - 1)).toEqual({
         status: "notClaimable",
         reason: "liveClaim",
       });
-      const second = await repo.claim(alice, id, "normalize", "w2", T0 + LEASE);
-      expect(second.status).toBe("claimed");
+      expect(await repo.claim(alice, id, "normalize", "w2", T0 + LEASE)).toEqual({
+        status: "notClaimable",
+        reason: "liveClaim",
+      });
+      expect(await repo.get(alice, id)).toMatchObject({
+        stageAttempt: 0,
+        version: first.version,
+        claim: { workerId: "w1" },
+      });
+    });
+
+    it("repeated crashes cannot go past the attempt count without a reopen", async () => {
+      await claimNormalize();
+      for (let i = 1; i <= 8; i++) {
+        const r = await repo.claim(alice, id, "normalize", `w${String(i)}`, T0 + LEASE * (i + 1));
+        expect(r.status).toBe("notClaimable");
+      }
+      expect(await repo.get(alice, id)).toMatchObject({ stageAttempt: 0 });
+    });
+
+    it("a re-claim by the same worker after reopen does not revive the old claim", async () => {
+      const old = await claimNormalize("w1");
+      await repo.reopen(alice, id, old.version, T0 + LEASE);
+      const fresh = await claimNormalize("w1", T0 + LEASE);
+      expect(fresh.version).toBeGreaterThan(old.version);
+      expect(await repo.commitStage(alice, old, commitWith(followUpOutput("evt-1")))).toBe(
+        "staleClaim",
+      );
+      expect(await outputsOf(alice, "followUps")).toHaveLength(0);
+      expect(await repo.commitStage(alice, fresh, commitWith(null))).toBe("committed");
     });
 
     it("allows a new claim after reopen, with a higher stageAttempt", async () => {
@@ -223,8 +256,9 @@ export function describeSourceEventContract(
       expect(await repo.get(alice, id)).toMatchObject({ status: "received" });
     });
 
-    it("a commit from a replaced claim holder is staleClaim", async () => {
+    it("a commit from a reopened and re-claimed holder is staleClaim", async () => {
       const first = await claimNormalize("w1");
+      await repo.reopen(alice, id, first.version, T0 + LEASE);
       await claimNormalize("w2", T0 + LEASE);
       expect(await repo.commitStage(alice, first, commitWith(followUpOutput("evt-1")))).toBe(
         "staleClaim",
@@ -284,16 +318,36 @@ export function describeSourceEventContract(
       });
     });
 
-    it("commit refuses outputs aimed at the ledger or at sourceEvents", async () => {
+    it("commit refuses every collection outside the output allowlist", async () => {
       const claim = await claimNormalize();
-      for (const collection of ["transactions", "ledgerEntries", "sourceEvents"] as const) {
-        const out = { collection, docId: "x", data: {} } satisfies StageOutput;
-        await expect(repo.commitStage(alice, claim, commitWith(out))).rejects.toThrow();
+      const allowed = ["followUps", "decisionRecords", "conversationMessages", "aiUsage"];
+      const excluded = Object.keys(OWNER_COLLECTIONS).filter((c) => !allowed.includes(c));
+      expect(excluded.length).toBeGreaterThan(10);
+      for (const collection of excluded) {
+        const out = {
+          collection,
+          docId: stageOutputId("evt-1", "normalize", "x"),
+          data: {},
+        } as unknown as StageOutput;
+        await expect(repo.commitStage(alice, claim, commitWith(out))).rejects.toMatchObject({
+          code: "invalidIntent",
+        });
       }
       expect(await repo.get(alice, id)).toMatchObject({
         status: "received",
         claim: { workerId: "w1" },
       });
+    });
+
+    it("commit refuses an output whose doc ID is not prefixed by event and stage", async () => {
+      const claim = await claimNormalize();
+      for (const docId of ["other:normalize:followUp", "evt-1:match:followUp", "evt-1:normalize"]) {
+        const bad: StageOutput = { ...followUpOutput("evt-1"), docId };
+        await expect(repo.commitStage(alice, claim, commitWith(bad))).rejects.toMatchObject({
+          code: "invalidIntent",
+        });
+      }
+      expect(await outputsOf(alice, "followUps")).toHaveLength(0);
     });
 
     it("commit refuses an output collection that does not exist", async () => {
@@ -354,16 +408,149 @@ export function describeSourceEventContract(
       expect(await repo.get(alice, asSourceEventId("evt-h2"))).toBeNull();
     });
 
-    it("rejects an idempotency key reused with a different source hash", async () => {
+    it("reports idempotencyConflict for a key reused with a different source hash", async () => {
+      expect(await repo.create(alice, inputOf("evt-9", "key-evt-1", "other-hash"))).toEqual({
+        status: "idempotencyConflict",
+      });
+      expect(await repo.get(alice, asSourceEventId("evt-9"))).toBeNull();
+    });
+
+    it("never resets an existing event on an ID collision", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, { nextStatus: "posted", outputs: [] });
+      const before = await repo.get(alice, id);
       await expect(
-        repo.create(alice, inputOf("evt-9", "key-evt-1", "other-hash")),
+        repo.create(alice, inputOf("evt-1", "fresh-key", "fresh-hash")),
       ).rejects.toMatchObject({ code: "invalidIntent" });
+      expect(await repo.get(alice, id)).toEqual(before);
+      expect(
+        await repo.create(alice, inputOf("evt-other", "fresh-key", "fresh-hash")),
+      ).toMatchObject({ status: "created" });
+    });
+
+    it("parallel creates of one input produce one event", async () => {
+      const input = inputOf("evt-par", "key-par", "hash-par");
+      const results = await Promise.all(
+        Array.from({ length: 10 }, () => repo.create(alice, input)),
+      );
+      expect(results.filter((r) => r.status === "created")).toHaveLength(1);
+      expect(results.filter((r) => r.status === "duplicate")).toHaveLength(9);
+    }, 120_000);
+
+    it("validates worker ID and idempotency inputs the same way everywhere", async () => {
+      await expect(repo.claim(alice, id, "normalize", "", T0)).rejects.toMatchObject({
+        code: "invalidIntent",
+      });
+      await expect(repo.claim(alice, id, "normalize", "w".repeat(129), T0)).rejects.toMatchObject({
+        code: "invalidIntent",
+      });
+      for (const bad of [
+        inputOf("evt-v1", "a/b"),
+        inputOf("evt-v2", ""),
+        inputOf("evt-v3", "k", ""),
+        inputOf("evt-v4", "k", "h".repeat(129)),
+      ]) {
+        await expect(repo.create(alice, bad)).rejects.toMatchObject({ code: "invalidIntent" });
+      }
     });
 
     it("a claim in one owner does not touch another owner's event of the same ID", async () => {
       await repo.create(bob, inputOf("evt-1"));
       await claimNormalize();
       expect(await repo.get(bob, id)).toMatchObject({ claim: null, version: 0 });
+    });
+
+    it("keeps an output that already exists and still advances the status", async () => {
+      const first = await claimNormalize();
+      await repo.commitStage(alice, first, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [followUpOutput("evt-1", "normalize", "original answer")],
+      });
+      const parked = await repo.get(alice, id);
+      await repo.reopen(alice, id, parked?.version ?? -1, T0);
+      const again = await claimNormalize("w2", T0);
+      expect(
+        await repo.commitStage(
+          alice,
+          again,
+          commitWith(followUpOutput("evt-1", "normalize", "overwritten")),
+        ),
+      ).toBe("committed");
+      const docs = await outputsOf(alice, "followUps");
+      expect(docs).toHaveLength(1);
+      expect(docs[0]).toMatchObject({ question: "original answer" });
+      expect(await repo.get(alice, id)).toMatchObject({ status: "normalized" });
+    });
+
+    it("stageAttempt is per stage: it resets on advance and is kept across parking", async () => {
+      const c1 = await claimNormalize();
+      await repo.reopen(alice, id, c1.version, T0 + LEASE);
+      const c2 = await claimNormalize("w2", T0 + LEASE);
+      expect(c2.stageAttempt).toBe(1);
+      await repo.commitStage(alice, c2, {
+        nextStatus: "pending",
+        pendingReason: "awaitingClarification",
+        outputs: [],
+      });
+      expect(await repo.get(alice, id)).toMatchObject({ stageAttempt: 1 });
+      const parked = await repo.get(alice, id);
+      await repo.reopen(alice, id, parked?.version ?? -1, T0);
+      expect(await repo.get(alice, id)).toMatchObject({ stageAttempt: 2 });
+      const c3 = await claimNormalize("w3", T0);
+      await repo.commitStage(alice, c3, commitWith(null, "normalized"));
+      expect(await repo.get(alice, id)).toMatchObject({ stageAttempt: 0 });
+    });
+
+    it("refuses to reopen a terminal event", async () => {
+      const claim = await claimNormalize();
+      await repo.commitStage(alice, claim, { nextStatus: "posted", outputs: [] });
+      const done = await repo.get(alice, id);
+      expect(await repo.reopen(alice, id, done?.version ?? -1, T0 + LEASE)).toBe("stale");
+      expect(await repo.get(alice, id)).toMatchObject({ status: "posted" });
+    });
+
+    it("refuses to reopen an event with neither a claim nor a parked stage", async () => {
+      expect(await repo.reopen(alice, id, 0, T0)).toBe("stale");
+      expect(await repo.get(alice, id)).toMatchObject({ status: "received", version: 0 });
+    });
+
+    it("refuses to park an event that holds no claim", async () => {
+      expect(
+        await repo.park(alice, id, 0, { status: "pending", reason: "awaitingClarification" }, T0),
+      ).toBe("stale");
+    });
+
+    it("a late commit after park is staleClaim and writes no outputs", async () => {
+      const claim = await claimNormalize();
+      await repo.park(
+        alice,
+        id,
+        claim.version,
+        { status: "deadLetter", reason: "stageFailed" },
+        T0 + LEASE,
+      );
+      expect(await repo.commitStage(alice, claim, commitWith(followUpOutput("evt-1")))).toBe(
+        "staleClaim",
+      );
+      expect(await outputsOf(alice, "followUps")).toHaveLength(0);
+      expect(await repo.get(alice, id)).toMatchObject({ status: "deadLetter" });
+    });
+
+    it("clears deadLetterReason on reopen", async () => {
+      const claim = await claimNormalize();
+      await repo.park(
+        alice,
+        id,
+        claim.version,
+        { status: "deadLetter", reason: "stageFailed" },
+        T0 + LEASE,
+      );
+      const parked = await repo.get(alice, id);
+      await repo.reopen(alice, id, parked?.version ?? -1, T0 + LEASE);
+      const reopened = await repo.get(alice, id);
+      expect(reopened).toMatchObject({ status: "received" });
+      expect(reopened).not.toHaveProperty("deadLetterReason");
     });
   });
 }

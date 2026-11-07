@@ -4,6 +4,7 @@ import {
   followUpOutput,
 } from "@moneytrace/application/testing";
 import { runStage } from "@moneytrace/application";
+import { CapturingLogger } from "@moneytrace/application/testing";
 import { OWNER_COLLECTIONS, type OwnerCollectionName } from "@moneytrace/contracts";
 import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
 import { initializeApp, getApps } from "firebase-admin/app";
@@ -23,6 +24,7 @@ process.env["METADATA_SERVER_DETECTION"] = "none";
 const db: Firestore = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
 /** Contended Firestore transactions retry with a 1s-and-growing backoff, so they are slow by design. */
 const CONTENTION_TIMEOUT_MS = 120_000;
+const logger = new CapturingLogger();
 const clock = { nowMs: () => 1_700_000_001_000 };
 
 async function clearFirestore(): Promise<void> {
@@ -44,7 +46,7 @@ async function readCollection(
 async function makeHarness() {
   await clearFirestore();
   return {
-    repo: new FirestoreSourceEventRepository(db, clock),
+    repo: new FirestoreSourceEventRepository(db, clock, logger),
     outputsOf: readCollection,
   };
 }
@@ -76,7 +78,7 @@ describe("firestore source event repository", () => {
         await repo.commitStage(ownerId, c.claim, commitWith(null, next));
       }
 
-      const deps = { sourceEvents: repo, clock };
+      const deps = { sourceEvents: repo, clock, logger };
       let invocations = 0;
       const results = await Promise.all(
         Array.from({ length: 10 }, (_, i) =>
@@ -141,5 +143,31 @@ describe("firestore source event repository", () => {
     });
     const snap = await db.doc(ownerPath(ownerId, "sourceEvents", sourceEventId)).get();
     expect(snap.data()).toMatchObject({ claim: null, parkedStage: null, terminalAtMs: null });
+  });
+
+  it("one malformed event does not stop recovery: it is skipped and logged", async () => {
+    const { repo } = await makeHarness();
+    logger.events.length = 0;
+    await repo.create(ownerId, {
+      sourceEventId,
+      sourceType: "sms",
+      sourceHash: "h",
+      idempotencyKey: "k",
+      receivedAtMs: clock.nowMs(),
+    });
+    const c = await repo.claim(ownerId, sourceEventId, "normalize", "w1", clock.nowMs());
+    if (c.status !== "claimed") throw new Error("claim failed");
+    // Expired lease, but not a valid event document.
+    await db
+      .doc(ownerPath(ownerId, "sourceEvents", "evt-bad"))
+      .set({ id: "evt-bad", claim: { leaseExpiresAtMs: 1 } });
+    const rows = await repo.listExpiredClaims(clock.nowMs() + 1_000_000, 10);
+    expect(rows.map((r) => r.sourceEventId)).toEqual([sourceEventId]);
+    expect(logger.events).toHaveLength(1);
+    expect(logger.events[0]).toMatchObject({
+      level: "warn",
+      event: "pipeline.malformedSourceEvent",
+    });
+    expect(logger.events[0]?.fields["sourceEventId"]).toBe("evt-bad");
   });
 });

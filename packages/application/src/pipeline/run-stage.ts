@@ -1,4 +1,9 @@
-import type { OwnerId, PipelineStage, SourceEventId } from "@moneytrace/domain";
+import {
+  DomainError,
+  type OwnerId,
+  type PipelineStage,
+  type SourceEventId,
+} from "@moneytrace/domain";
 import type { Clock } from "../ports/clock";
 import type { Logger } from "../ports/logger";
 import type {
@@ -10,7 +15,7 @@ import type {
 export type RunStageDeps = {
   sourceEvents: SourceEventRepository;
   clock: Clock;
-  logger?: Logger;
+  logger: Logger;
 };
 
 export type RunStageInput = {
@@ -27,8 +32,10 @@ export type RunStageResult = {
 
 /**
  * Claim, do the work, commit. Losing the claim race is a silent skip. If the work throws or asks
- * to retry later, nothing is committed and the claim stays until its lease expires, so recovery
- * (not a tight retry loop) decides what happens next.
+ * to retry later, nothing is committed and the claim stays held. A held claim blocks every other
+ * worker, even after its lease expires; only the recovery job's `reopen` (which counts the
+ * attempt) or `park` releases it, so a redelivered trigger cannot loop a crashing stage. A failing
+ * `commitStage` propagates with the claim kept, for the same reason.
  */
 export async function runStage(deps: RunStageDeps, input: RunStageInput): Promise<RunStageResult> {
   const { ownerId, sourceEventId, stage, workerId, work } = input;
@@ -45,10 +52,12 @@ export async function runStage(deps: RunStageDeps, input: RunStageInput): Promis
   try {
     outcome = await work(claimed.claim);
   } catch (error) {
-    deps.logger?.warn("pipeline.stageWorkFailed", {
+    // Name and code only: messages can carry document text.
+    deps.logger.warn("pipeline.stageWorkFailed", {
       stage,
       sourceEventId,
       errorName: error instanceof Error ? error.name : "unknown",
+      ...(error instanceof DomainError ? { errorCode: error.code } : {}),
     });
     return { status: "leftForRecovery" };
   }

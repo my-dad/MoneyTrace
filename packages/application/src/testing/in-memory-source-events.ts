@@ -8,6 +8,7 @@ import {
 import type { Clock } from "../ports/clock";
 import type {
   ClaimResult,
+  CreateResult,
   ExpiredClaim,
   Parking,
   SourceEventInput,
@@ -19,6 +20,7 @@ import type {
 import {
   applyCommit,
   assertCommitReasons,
+  assertCreateInput,
   decideClaim,
   decidePark,
   decideReopen,
@@ -64,31 +66,24 @@ export class InMemorySourceEvents implements SourceEventRepository {
     return d;
   }
 
-  create(
-    ownerId: OwnerId,
-    input: SourceEventInput,
-  ): Promise<{ status: "created" | "duplicate"; sourceEventId: SourceEventId }> {
+  create(ownerId: OwnerId, input: SourceEventInput): Promise<CreateResult> {
     return attempt(() => this.createNow(ownerId, input));
   }
 
-  private createNow(
-    ownerId: OwnerId,
-    input: SourceEventInput,
-  ): { status: "created" | "duplicate"; sourceEventId: SourceEventId } {
+  private createNow(ownerId: OwnerId, input: SourceEventInput): CreateResult {
+    assertCreateInput(input);
     const d = this.data(ownerId);
     const byKey = d.records.get(sourceKeyRecordId(input.idempotencyKey));
     if (byKey !== undefined) {
-      if (byKey.sourceHash !== input.sourceHash) {
-        throw new DomainError(
-          "invalidIntent",
-          "idempotency key reused with a different source hash",
-        );
-      }
+      if (byKey.sourceHash !== input.sourceHash) return { status: "idempotencyConflict" };
       return { status: "duplicate", sourceEventId: byKey.sourceEventId };
     }
     const byHash = d.records.get(sourceHashRecordId(input.sourceHash));
     if (byHash !== undefined) {
       return { status: "duplicate", sourceEventId: byHash.sourceEventId };
+    }
+    if (d.events.has(input.sourceEventId)) {
+      throw new DomainError("invalidIntent", "a source event with that ID already exists");
     }
     const stored = { sourceEventId: input.sourceEventId, sourceHash: input.sourceHash };
     d.records.set(sourceKeyRecordId(input.idempotencyKey), stored);
@@ -109,11 +104,13 @@ export class InMemorySourceEvents implements SourceEventRepository {
     workerId: string,
     nowMs: number,
   ): Promise<ClaimResult> {
-    const d = this.data(ownerId);
-    const decision = decideClaim(d.events.get(id) ?? null, stage, workerId, nowMs);
-    if (!decision.ok) return Promise.resolve(decision.result);
-    d.events.set(id, decision.event);
-    return Promise.resolve({ status: "claimed", claim: decision.claim });
+    return attempt(() => {
+      const d = this.data(ownerId);
+      const decision = decideClaim(d.events.get(id) ?? null, stage, workerId, nowMs);
+      if (!decision.ok) return decision.result;
+      d.events.set(id, decision.event);
+      return { status: "claimed", claim: decision.claim };
+    });
   }
 
   commitStage(
@@ -130,11 +127,15 @@ export class InMemorySourceEvents implements SourceEventRepository {
     commit: StageCommit,
   ): "committed" | "staleClaim" {
     assertCommitReasons(commit);
-    const outputs = validateOutputs(commit.outputs);
+    const outputs = validateOutputs(commit.outputs, claim.sourceEventId, claim.stage);
     const d = this.data(ownerId);
     const event = d.events.get(claim.sourceEventId) ?? null;
     if (event === null || !holdsClaim(event, claim)) return "staleClaim";
-    for (const o of outputs) d.outputs.set(`${o.collection}/${o.docId}`, { ...o.data });
+    for (const o of outputs) {
+      const key = `${o.collection}/${o.docId}`;
+      // Create-if-absent: a retried stage must not overwrite what a user or later stage changed.
+      if (!d.outputs.has(key)) d.outputs.set(key, { ...o.data });
+    }
     d.events.set(event.id, applyCommit(event, commit, this.clock.nowMs()));
     return "committed";
   }

@@ -1,6 +1,7 @@
 import {
   applyCommit,
   assertCommitReasons,
+  assertCreateInput,
   decideClaim,
   decidePark,
   decideReopen,
@@ -10,6 +11,8 @@ import {
   sourceKeyRecordId,
   validateOutputs,
   type Clock,
+  type CreateResult,
+  type Logger,
   type ClaimResult,
   type ExpiredClaim,
   type Parking,
@@ -33,7 +36,7 @@ import { ownerPath } from "./paths";
 import { sourceEventToDoc, toSourceEventRecord } from "./records";
 
 const MAX_ATTEMPTS = 5;
-/** gRPC ABORTED: the transaction lost to contention on every attempt. */
+/** gRPC ABORTED: the SDK gave up retrying a contended transaction. */
 const ABORTED = 10;
 
 const isAborted = (error: unknown): boolean =>
@@ -47,10 +50,12 @@ const isAborted = (error: unknown): boolean =>
 export class FirestoreSourceEventRepository implements SourceEventRepository {
   private readonly db: Firestore;
   private readonly clock: Clock;
+  private readonly logger: Logger;
 
-  constructor(db: Firestore, clock: Clock) {
+  constructor(db: Firestore, clock: Clock, logger: Logger) {
     this.db = db;
     this.clock = clock;
+    this.logger = logger;
   }
 
   private eventRef(ownerId: OwnerId, id: string) {
@@ -66,10 +71,8 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     return s.exists ? toSourceEventRecord(s.data()) : null;
   }
 
-  async create(
-    ownerId: OwnerId,
-    input: SourceEventInput,
-  ): Promise<{ status: "created" | "duplicate"; sourceEventId: SourceEventId }> {
+  async create(ownerId: OwnerId, input: SourceEventInput): Promise<CreateResult> {
+    assertCreateInput(input);
     const keyRef = this.db.doc(
       ownerPath(ownerId, "idempotencyRecords", sourceKeyRecordId(input.idempotencyKey)),
     );
@@ -79,21 +82,24 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     const eventRef = this.eventRef(ownerId, input.sourceEventId);
     return this.db.runTransaction(
       async (t) => {
-        const [byKey, byHash] = await Promise.all([t.get(keyRef), t.get(hashRef)]);
+        const [byKey, byHash, existing] = await Promise.all([
+          t.get(keyRef),
+          t.get(hashRef),
+          t.get(eventRef),
+        ]);
         if (byKey.exists) {
           const seen = OWNER_COLLECTIONS.idempotencyRecords.parse(byKey.data());
-          if (seen.payloadHash !== input.sourceHash) {
-            throw new DomainError(
-              "invalidIntent",
-              "idempotency key reused with a different source hash",
-            );
-          }
+          if (seen.payloadHash !== input.sourceHash)
+            return { status: "idempotencyConflict" as const };
           return duplicateOf(seen.sourceEventId);
         }
         if (byHash.exists) {
           return duplicateOf(
             OWNER_COLLECTIONS.idempotencyRecords.parse(byHash.data()).sourceEventId,
           );
+        }
+        if (existing.exists) {
+          throw new DomainError("invalidIntent", "a source event with that ID already exists");
         }
         const record = (key: string) =>
           OWNER_COLLECTIONS.idempotencyRecords.parse({
@@ -150,14 +156,17 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     commit: StageCommit,
   ): Promise<"committed" | "staleClaim"> {
     assertCommitReasons(commit);
-    const outputs = validateOutputs(commit.outputs);
+    const outputs = validateOutputs(commit.outputs, claim.sourceEventId, claim.stage);
     return this.db.runTransaction(
       async (t) => {
         const event = await this.read(t, ownerId, claim.sourceEventId);
         if (event === null || !holdsClaim(event, claim)) return "staleClaim" as const;
-        for (const o of outputs) {
-          t.set(this.db.doc(ownerPath(ownerId, o.collection, o.docId)), o.data);
-        }
+        // Create-if-absent: all reads precede the writes, and an existing output is kept.
+        const refs = outputs.map((o) => this.db.doc(ownerPath(ownerId, o.collection, o.docId)));
+        const existing = refs.length === 0 ? [] : await t.getAll(...refs);
+        outputs.forEach((o, i) => {
+          if (!existing[i]?.exists) t.set(refs[i] as (typeof refs)[number], o.data);
+        });
         t.set(
           this.eventRef(ownerId, event.id),
           sourceEventToDoc(applyCommit(event, commit, this.clock.nowMs())),
@@ -180,7 +189,17 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     for (const doc of snap.docs) {
       const owner = doc.ref.parent.parent;
       if (owner?.parent.id !== "users") continue;
-      const e = toSourceEventRecord(doc.data());
+      let e: SourceEventRecord;
+      try {
+        e = toSourceEventRecord(doc.data());
+      } catch (error) {
+        // One bad document must not stop recovery of the others.
+        this.logger.warn("pipeline.malformedSourceEvent", {
+          sourceEventId: doc.id,
+          errorName: error instanceof Error ? error.name : "unknown",
+        });
+        continue;
+      }
       if (e.claim === null) continue;
       rows.push({
         ownerId: asOwnerId(owner.id),

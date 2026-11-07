@@ -49,17 +49,35 @@ export type ClaimDecision =
   | { ok: true; event: SourceEventRecord; claim: StageClaim }
   | { ok: false; result: Extract<ClaimResult, { status: "notClaimable" }> };
 
+const invalid = (message: string): DomainError => new DomainError("invalidIntent", message);
+
+export function assertWorkerId(workerId: string): void {
+  if (workerId.length < 1 || workerId.length > 128) throw invalid("invalid worker id");
+}
+
+const DOC_ID = /^[A-Za-z0-9_:.-]{1,128}$/;
+
+/** The same limits as the stored schema, so a bad input fails identically in every adapter. */
+export function assertCreateInput(input: SourceEventInput): void {
+  const safe = (v: string): boolean => DOC_ID.test(v) && v !== "." && v !== "..";
+  if (!safe(input.idempotencyKey)) throw invalid("invalid idempotency key");
+  if (!safe(input.sourceHash)) throw invalid("invalid source hash");
+}
+
 export function decideClaim(
   event: SourceEventRecord | null,
   stage: PipelineStage,
   workerId: string,
   nowMs: number,
 ): ClaimDecision {
+  assertWorkerId(workerId);
   if (event === null) return { ok: false, result: { status: "notClaimable", reason: "notFound" } };
   if (event.status !== STAGE_INPUT_STATUS[stage]) {
     return { ok: false, result: { status: "notClaimable", reason: "wrongStatus" } };
   }
-  if (event.claim !== null && !isLeaseExpired(event.claim.leaseExpiresAtMs, nowMs)) {
+  // Any held claim blocks, expired or not: only `reopen` clears one, and it bumps stageAttempt,
+  // so the attempt bound cannot be bypassed by redelivered triggers taking over a crashed stage.
+  if (event.claim !== null) {
     return { ok: false, result: { status: "notClaimable", reason: "liveClaim" } };
   }
   const leaseExpiresAtMs = nowMs + PIPELINE_TIMEOUTS.leaseMs;
@@ -119,37 +137,43 @@ export function applyCommit(
     status: commit.nextStatus,
     ...(commit.pendingReason !== undefined ? { pendingReason: commit.pendingReason } : {}),
     ...(commit.deadLetterReason !== undefined ? { deadLetterReason: commit.deadLetterReason } : {}),
+    // stageAttempt is per stage: kept while parked, reset when the event advances.
+    stageAttempt: parks ? event.stageAttempt : 0,
     parkedStage: parks ? (event.claim?.stage ?? null) : null,
     version: event.version + 1,
     terminalAtMs: isTerminal(commit.nextStatus) ? nowMs : null,
   };
 }
 
-/** Outputs are validated here, once, for every adapter. Returns the parsed documents. */
-const FORBIDDEN_OUTPUT_COLLECTIONS: ReadonlySet<string> = new Set([
-  "sourceEvents",
-  "transactions",
-  "ledgerEntries",
-  "balances",
-  "idempotencyRecords",
-  "cutoverMarkers",
+/** Stage outputs are evidence-side records only; the ledger is written solely by LedgerWriter. */
+const OUTPUT_COLLECTIONS: ReadonlySet<string> = new Set([
+  "followUps",
+  "decisionRecords",
+  "conversationMessages",
+  "aiUsage",
 ]);
 
 const isSafeDocId = (id: string): boolean =>
-  /^[A-Za-z0-9_:.-]{1,128}$/.test(id) && id !== "." && id !== ".." && !/^__.*__$/.test(id);
+  DOC_ID.test(id) && id !== "." && id !== ".." && !/^__.*__$/.test(id);
 
+/** Outputs are validated here, once, for every adapter. Returns the parsed documents. */
 export function validateOutputs(
   outputs: readonly StageOutput[],
+  sourceEventId: string,
+  stage: PipelineStage,
 ): { collection: StageOutput["collection"]; docId: string; data: Record<string, unknown> }[] {
   const seen = new Set<string>();
+  const prefix = `${sourceEventId}:${stage}:`;
   return outputs.map((o) => {
-    const known = Object.hasOwn(OWNER_COLLECTIONS, o.collection);
-    if (!known || FORBIDDEN_OUTPUT_COLLECTIONS.has(o.collection)) {
-      throw new DomainError("invalidIntent", "a stage output may not target that collection");
+    if (!OUTPUT_COLLECTIONS.has(o.collection)) {
+      throw invalid("a stage output may not target that collection");
     }
     if (!isSafeDocId(o.docId)) throw new DomainError("invalidId", "invalid stage output doc ID");
+    if (!o.docId.startsWith(prefix) || o.docId.length === prefix.length) {
+      throw invalid("a stage output doc ID must start with its event and stage");
+    }
     const id = `${o.collection}/${o.docId}`;
-    if (seen.has(id)) throw new DomainError("invalidIntent", "duplicate stage output document");
+    if (seen.has(id)) throw invalid("duplicate stage output document");
     seen.add(id);
     const data = OWNER_COLLECTIONS[o.collection].parse(o.data) as Record<string, unknown>;
     return { collection: o.collection, docId: o.docId, data };
@@ -184,6 +208,7 @@ export function decideReopen(
   if (event === null || event.version !== expectedVersion || hasLiveClaim(event, nowMs)) {
     return null;
   }
+  if (isTerminal(event.status)) return null;
   const stage: PipelineStage | null = event.claim?.stage ?? event.parkedStage;
   if (stage === null) return null;
   return {

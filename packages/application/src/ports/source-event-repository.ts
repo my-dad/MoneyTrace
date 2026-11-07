@@ -72,18 +72,28 @@ export type ExpiredClaim = {
   stageAttempt: number;
 };
 
+export type CreateResult =
+  | { status: "created" | "duplicate"; sourceEventId: SourceEventId }
+  | { status: "idempotencyConflict" };
+
 export type ClaimResult =
   | { status: "claimed"; claim: StageClaim }
   | { status: "notClaimable"; reason: "wrongStatus" | "liveClaim" | "notFound" };
 
 /**
+ * Claim rules: `claim` refuses while the event holds any claim, expired or not. Only `reopen`
+ * clears a claim, and only once it has expired. Workers that cannot finish commit into `pending`
+ * or `deadLetter` through `commitStage`; `park` is for the recovery job alone.
+ *
  * Every method is atomic. A lease is expired when `leaseExpiresAtMs <= nowMs`, in every method.
  */
 export type SourceEventRepository = {
-  create(
-    ownerId: OwnerId,
-    input: SourceEventInput,
-  ): Promise<{ status: "created" | "duplicate"; sourceEventId: SourceEventId }>;
+  /**
+   * `idempotencyConflict`: the key was used before with a different source hash. An input whose
+   * event ID already exists under a different key and hash throws `invalidIntent`; an existing
+   * event is never reset.
+   */
+  create(ownerId: OwnerId, input: SourceEventInput): Promise<CreateResult>;
   get(ownerId: OwnerId, id: SourceEventId): Promise<SourceEventRecord | null>;
   claim(
     ownerId: OwnerId,
@@ -105,6 +115,7 @@ export type SourceEventRepository = {
     expectedVersion: number,
     nowMs: number,
   ): Promise<"reopened" | "stale">;
+  /** Recovery-only: parks an event whose claim has expired. Workers use `commitStage` instead. */
   park(
     ownerId: OwnerId,
     id: SourceEventId,

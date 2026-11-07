@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
-import { FakeClock } from "../testing/fakes";
+import { DomainError, asOwnerId, asSourceEventId } from "@moneytrace/domain";
+import { CapturingLogger, FakeClock } from "../testing/fakes";
 import { InMemorySourceEvents } from "../testing/in-memory-source-events";
 import { commitWith, followUpOutput } from "../testing/source-event-contract";
 import { PIPELINE_TIMEOUTS } from "./timeouts";
@@ -19,7 +19,8 @@ async function setup() {
     idempotencyKey: "k",
     receivedAtMs: clock.nowMs(),
   });
-  return { clock, sourceEvents, deps: { sourceEvents, clock } };
+  const logger = new CapturingLogger();
+  return { clock, sourceEvents, logger, deps: { sourceEvents, clock, logger } };
 }
 
 const base = { ownerId, sourceEventId, stage: "normalize", workerId: "w1" } as const;
@@ -82,20 +83,63 @@ describe("runStage", () => {
     });
   });
 
-  it("reports staleClaim when the lease was taken over during the work", async () => {
+  it("logs the DomainError code and name, never the message", async () => {
+    const { deps, logger } = await setup();
+    await runStage(deps, {
+      ...base,
+      work: () => Promise.reject(new DomainError("invalidIntent", "raw sms text 01712345678")),
+    });
+    expect(logger.events).toEqual([
+      {
+        level: "warn",
+        event: "pipeline.stageWorkFailed",
+        fields: {
+          stage: "normalize",
+          sourceEventId: "evt-1",
+          errorName: "DomainError",
+          errorCode: "invalidIntent",
+        },
+      },
+    ]);
+  });
+
+  it("logs a plain error by name only", async () => {
+    const { deps, logger } = await setup();
+    await runStage(deps, { ...base, work: () => Promise.reject(new TypeError("secret")) });
+    expect(logger.events[0]?.fields).toEqual({
+      stage: "normalize",
+      sourceEventId: "evt-1",
+      errorName: "TypeError",
+    });
+  });
+
+  it("a commitStage failure propagates and the claim is kept", async () => {
+    const { deps, sourceEvents } = await setup();
+    const failing = {
+      claim: sourceEvents.claim.bind(sourceEvents),
+      commitStage: () => Promise.reject(new Error("commit failed")),
+    } as unknown as typeof sourceEvents;
+    await expect(
+      runStage(
+        { ...deps, sourceEvents: failing },
+        { ...base, work: () => Promise.resolve(commitWith(null)) },
+      ),
+    ).rejects.toThrow("commit failed");
+    expect(await sourceEvents.get(ownerId, sourceEventId)).toMatchObject({
+      status: "received",
+      claim: { workerId: "w1" },
+    });
+  });
+
+  it("reports staleClaim when the stage was reopened during the work", async () => {
     const { deps, clock, sourceEvents } = await setup();
     const result = await runStage(deps, {
       ...base,
-      work: async () => {
+      work: async (claim) => {
         clock.advance(PIPELINE_TIMEOUTS.leaseMs + 1);
-        const taken = await sourceEvents.claim(
-          ownerId,
-          sourceEventId,
-          "normalize",
-          "w2",
-          clock.nowMs(),
-        );
-        expect(taken.status).toBe("claimed");
+        expect(
+          await sourceEvents.reopen(ownerId, sourceEventId, claim.version, clock.nowMs()),
+        ).toBe("reopened");
         return commitWith(followUpOutput("evt-1"));
       },
     });
