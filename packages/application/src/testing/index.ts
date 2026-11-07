@@ -8,3 +8,4 @@ export * from "./in-memory-provider-calls";
 export * from "./in-memory-quota";
 export * from "./fake-provider";
 export * from "./provider-call-contract";
+export * from "./ai-provider-contract";

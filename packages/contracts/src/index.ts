@@ -12,3 +12,4 @@ export * from "./commands/upload";
 export * from "./commands/lifecycle";
 export * from "./commands/registry";
 export * from "./triggers";
+export * from "./ai-interpretation";
