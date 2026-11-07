@@ -77,7 +77,7 @@ Primary persona: Individual managing several accounts and cards, personal and ho
 
 11. Identify withdrawal as bank-to-cash transfer, not expense.
 
-12. Confirm or infer with evidence the destination wallet; if unknown, keep pending and ask.
+12. Confirm or infer with evidence the destination wallet; if unknown, post to a system wallet labelled as cash with no place set, and ask (CR-004).
 
 13. Track wallet balances, family-held cash transfers, and subsequent purchases without treating cash custody as spending.
 
@@ -307,3 +307,27 @@ Status: Accepted by Mabrur (Spark decision recorded in commit `f24b098`; split r
 | Cost impact | No Firebase bill before 0B. Backups and the first restore drill are postponed, so no real data may exist until they pass. |
 | Delivery impact | Phase 1 may start after 0A and runs on emulators. The Delhi region remains unproven for triggers and schedules until the 0B smoke test, and the Firestore location is permanent, so no dev or prod database is created before it passes. Phase 4 cannot begin its user pilot before 0B passes. |
 | Acceptance criteria | The 0A and 0B exit gates in section 16. The full 0B control list is in `docs/runbooks/firebase-environments.md`. |
+
+## CR-003: Start Phase 1 before the 0A reviews finish (2026-11-07)
+
+Status: Accepted by Mabrur on 2026-11-07.
+
+| Field | Record |
+|---|---|
+| Proposed change | Phase 1 starts without the 0A gate's task-review and whole-branch-review item. The Task 12 review, and review of the web sign-in and restore drill tooling, have not completed. All other 0A items stand. |
+| Rationale | Mabrur's decision to keep delivery moving. |
+| Security impact | The callables are the security boundary and have had no completed independent review. Their tests pass, but defects a review would catch may remain. CR-002 still bars deployment and real financial data until 0B. |
+| Cost impact | Saves review usage now. Defects found later cost more to fix once Phase 1 builds on them. |
+| Acceptance criteria | The outstanding reviews are completed no later than the Phase 1 exit, and before 0B. |
+
+## CR-004: Post withdrawals at once to a system wallet (2026-11-07)
+
+Status: Accepted by Mabrur on 2026-11-07, with the Phase 1 plan.
+
+| Field | Record |
+|---|---|
+| Proposed change | A withdrawal SMS posts immediately as bank to a system cash wallet, `Cash · place not set`, then asks where the cash went. Journey 5.3 step 12 previously said to keep it pending. |
+| Rationale | The bank has already been debited, so a pending state would show a wrong bank balance until answered. The design mockup shows "Recorded" followed by the question. |
+| Security impact | None. |
+| Cost impact | None. |
+| Acceptance criteria | Gate 25, with the Home summary showing the amount as not yet explained and never as spending. |

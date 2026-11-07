@@ -44,3 +44,6 @@ firestore-debug.log
 *service-account*.json
 drill-expected.json
 jdk-21/
+
+# real SMS samples, never commit
+sms-pattern.md
