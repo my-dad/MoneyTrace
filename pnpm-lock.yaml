@@ -172,6 +172,9 @@ importers:
       '@moneytrace/contracts':
         specifier: workspace:*
         version: link:packages/contracts
+      '@moneytrace/infrastructure':
+        specifier: workspace:*
+        version: link:packages/infrastructure
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5

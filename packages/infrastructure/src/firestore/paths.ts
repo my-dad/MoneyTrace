@@ -1,10 +1,15 @@
 import type { OwnerCollectionName } from "@moneytrace/contracts";
+import { DomainError } from "@moneytrace/domain";
 
 const SEGMENT = /^[A-Za-z0-9_:.-]{1,256}$/;
+/** Firestore reserves document IDs of the form `__.*__`. */
+const RESERVED = /^__.*__$/;
 
 function segment(kind: string, s: string): string {
   // A segment with a slash, or "." / "..", would address a different document than intended.
-  if (!SEGMENT.test(s) || s === "." || s === "..") throw new Error(`invalid ${kind} path segment`);
+  if (!SEGMENT.test(s) || s === "." || s === ".." || RESERVED.test(s)) {
+    throw new DomainError("invalidId", `invalid ${kind} path segment`);
+  }
   return s;
 }
 

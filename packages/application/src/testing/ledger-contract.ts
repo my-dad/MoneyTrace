@@ -128,13 +128,15 @@ const openingCorrection = (
   originalAmount: number,
   replacementAmount: number,
   effectiveMs: number,
+  /** The date the original opening was committed at; its reversal must carry the same one. */
+  originalMs = EFFECTIVE,
 ): CorrectionCommit => ({
   idempotencyKey: asIdempotencyKey(key),
   payloadHash: `hash-${key}`,
   originalTransactionId: asTransactionId(original),
   reversal: record(`${original}:rev`, {
     intentType: "openingBalance",
-    occurredAtMs: EFFECTIVE,
+    occurredAtMs: originalMs,
     correctionOf: asTransactionId(original),
   }),
   reversalEntries:
@@ -741,7 +743,11 @@ export function describeLedgerContract(
       );
 
       // Reversing the activity does not free the boundary: its entries still count.
-      const reverseActivity = correctionOf("c1", "tx-1", null);
+      const base = correctionOf("c1", "tx-1", null);
+      const reverseActivity: CorrectionCommit = {
+        ...base,
+        reversal: { ...base.reversal, occurredAtMs: EFFECTIVE + 10 },
+      };
       await writer.commitCorrection(alice, reverseActivity);
       await expect(
         forward("f3", "opening-cash-1", 100_000, 120_000, EFFECTIVE + 20),
@@ -760,7 +766,14 @@ export function describeLedgerContract(
       );
       const second = await writer.commitCorrection(
         alice,
-        openingCorrection("f2", "opening-cash-1:repl", 110_000, 120_000, EFFECTIVE + 2000),
+        openingCorrection(
+          "f2",
+          "opening-cash-1:repl",
+          110_000,
+          120_000,
+          EFFECTIVE + 2000,
+          EFFECTIVE + 1000,
+        ),
       );
       expect(second.status).toBe("committed");
       expect(await reader.getBalance(alice, cash.id)).toBe(120_000);
@@ -807,6 +820,66 @@ export function describeLedgerContract(
       };
       await expect(writer.commitCorrection(alice, bad)).rejects.toThrow(code("invalidIntent"));
       expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+    });
+
+    it("rejects a non-opening commit that carries a cutover marker", async () => {
+      const bad: LedgerCommit = {
+        ...commitOf("k1", "tx-1", 100),
+        cutoverMarker: {
+          accountId: cash.id,
+          effectiveAt: LedgerDate.fromEpochMs(1_700_000_000_000),
+        },
+      };
+      await expect(writer.commit(alice, bad)).rejects.toThrow(code("invalidIntent"));
+      expect(await reader.getTransaction(alice, bad.transaction.id)).toBeNull();
+      expect(await reader.getCutoverMarkers(alice, [cash.id])).toEqual([]);
+      expect(await reader.getBalance(alice, cash.id)).toBe(0);
+    });
+
+    it("rejects an opening whose entries are not on the marker's account", async () => {
+      const bad: LedgerCommit = {
+        ...openingCommit(100),
+        cutoverMarker: { accountId: bank.id, effectiveAt: LedgerDate.fromEpochMs(EFFECTIVE) },
+      };
+      await expect(writer.commit(alice, bad)).rejects.toThrow(code("invalidIntent"));
+      expect(await reader.getCutoverMarkers(alice, [bank.id, cash.id])).toEqual([]);
+      expect(await reader.getBalance(alice, cash.id)).toBe(0);
+      expect(await reader.getTransaction(alice, bad.transaction.id)).toBeNull();
+    });
+
+    it("rejects a reversal dated differently from, or of another intent than, the original", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const base = correctionOf("c1", "tx-1", null);
+      const redated: CorrectionCommit = {
+        ...base,
+        reversal: { ...base.reversal, occurredAtMs: base.reversal.occurredAtMs + 1 },
+      };
+      await expect(writer.commitCorrection(alice, redated)).rejects.toThrow(code("invalidIntent"));
+      const retyped: CorrectionCommit = {
+        ...base,
+        reversal: { ...base.reversal, intentType: "transfer" },
+      };
+      await expect(writer.commitCorrection(alice, retyped)).rejects.toThrow(code("invalidIntent"));
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+      expect(await reader.recomputeBalance(alice, cash.id)).toBe(500_000);
+      expect((await reader.getTransaction(alice, asTransactionId("tx-1")))?.state).toBe("posted");
+    });
+
+    it("rejects a replacement that reuses the reversal's id", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const base = correctionOf("c1", "tx-1", 300_000);
+      const replacement = base.replacement;
+      if (replacement === undefined) throw new Error("replacement expected");
+      const bad: CorrectionCommit = {
+        ...base,
+        replacement: {
+          ...replacement,
+          transaction: { ...replacement.transaction, id: base.reversal.id },
+        },
+      };
+      await expect(writer.commitCorrection(alice, bad)).rejects.toThrow(code("invalidIntent"));
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+      expect(await reader.recomputeBalance(alice, cash.id)).toBe(500_000);
     });
 
     it("stores accounts per owner and omits unknown ids", async () => {

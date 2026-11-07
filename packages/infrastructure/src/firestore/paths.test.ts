@@ -10,9 +10,13 @@ describe("ownerPath", () => {
   });
 
   it("refuses segments that could address another path", () => {
-    expect(() => ownerPath("al/ice", "accounts")).toThrow();
-    expect(() => ownerPath("alice", "accounts", "a/b")).toThrow();
-    expect(() => ownerPath("alice", "accounts", "..")).toThrow();
-    expect(() => ownerPath("", "accounts")).toThrow();
+    const invalid = expect.objectContaining({ code: "invalidId" }) as Error;
+    expect(() => ownerPath("al/ice", "accounts")).toThrow(invalid);
+    expect(() => ownerPath("alice", "accounts", "a/b")).toThrow(invalid);
+    expect(() => ownerPath("alice", "accounts", ".")).toThrow(invalid);
+    expect(() => ownerPath("alice", "accounts", "..")).toThrow(invalid);
+    expect(() => ownerPath("", "accounts")).toThrow(invalid);
+    expect(() => ownerPath("alice", "accounts", "__x__")).toThrow(invalid);
+    expect(() => ownerPath("__x__", "accounts")).toThrow(invalid);
   });
 });

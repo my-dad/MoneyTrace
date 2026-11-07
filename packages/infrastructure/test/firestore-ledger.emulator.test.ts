@@ -28,6 +28,8 @@ const emulatorHost: string = host;
 process.env["METADATA_SERVER_DETECTION"] = "none";
 
 const db: Firestore = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
+/** Contended Firestore transactions retry with a 1s-and-growing backoff, so they are slow by design. */
+const CONTENTION_TIMEOUT_MS = 120_000;
 const clock = { nowMs: () => 1_700_000_001_000 };
 
 async function clearFirestore(): Promise<void> {
@@ -171,6 +173,84 @@ describe("firestore ledger adapters", () => {
     const record = await db.doc(ownerPath(owner, "idempotencyRecords", "ledger:k2")).get();
     expect(record.exists).toBe(false);
   });
+
+  it("a failure at commit time leaves no partial writes", async () => {
+    // The second entry already exists, so `create` fails only when the transaction commits,
+    // after the transaction, the first entry, both balances and the record have been staged.
+    await db.doc(ownerPath(owner, "ledgerEntries", "tx-x:2")).set({ planted: true });
+    const doomed = commitOf("kx", "tx-x", 100);
+    await expect(writer.commit(owner, doomed)).rejects.toThrow();
+    const absent = async (collection: OwnerCollectionName, id: string): Promise<boolean> =>
+      !(await db.doc(ownerPath(owner, collection, id)).get()).exists;
+    expect(await absent("transactions", "tx-x")).toBe(true);
+    expect(await absent("ledgerEntries", "tx-x:1")).toBe(true);
+    expect(await absent("idempotencyRecords", "ledger:kx")).toBe(true);
+    expect(await absent("balances", cash.id)).toBe(true);
+    expect(await absent("balances", bank.id)).toBe(true);
+  });
+
+  it(
+    "parallel commits with distinct keys on one balance lose no update",
+    async () => {
+      const n = 10;
+      const results = await Promise.all(
+        Array.from({ length: n }, (_, i) =>
+          writer.commit(owner, commitOf(`d${String(i)}`, `tx-d${String(i)}`, 1_000)),
+        ),
+      );
+      expect(results.every((r) => r.status === "committed")).toBe(true);
+      expect(await reader.getBalance(owner, cash.id)).toBe(n * 1_000);
+      expect(await reader.getBalance(owner, bank.id)).toBe(-n * 1_000);
+      expect(await reader.recomputeBalance(owner, cash.id)).toBe(n * 1_000);
+      const snap = await db.doc(ownerPath(owner, "balances", cash.id)).get();
+      expect(snap.get("version")).toBe(n);
+    },
+    CONTENTION_TIMEOUT_MS,
+  );
+
+  it(
+    "an opening racing a posting on the same account never lets both succeed",
+    async () => {
+      for (let i = 0; i < 12; i += 1) {
+        const raced: AccountRef = {
+          id: asAccountId(`race-${String(i)}`),
+          kind: "cash",
+          currency: "BDT",
+        };
+        const at = 1_700_000_000_000;
+        const posting: LedgerCommit = {
+          idempotencyKey: asIdempotencyKey(`race-post-${String(i)}`),
+          payloadHash: "p",
+          transaction: tx(`race-tx-${String(i)}`, { occurredAtMs: at }),
+          entries: [
+            { account: raced, side: "debit", amount: bdt(100) },
+            { account: bank, side: "credit", amount: bdt(100) },
+          ],
+        };
+        const opening: LedgerCommit = {
+          idempotencyKey: asIdempotencyKey(`race-open-${String(i)}`),
+          payloadHash: "o",
+          transaction: tx(`race-open-tx-${String(i)}`, {
+            intentType: "openingBalance",
+            occurredAtMs: at,
+          }),
+          entries: [],
+          cutoverMarker: { accountId: raced.id, effectiveAt: LedgerDate.fromEpochMs(at) },
+        };
+        const [p, o] = await Promise.allSettled([
+          writer.commit(owner, posting),
+          writer.commit(owner, opening),
+        ]);
+        const posted = p.status === "fulfilled";
+        const opened = o.status === "fulfilled";
+        expect(posted !== opened, `round ${String(i)}`).toBe(true);
+        const markers = await reader.getCutoverMarkers(owner, [raced.id]);
+        expect(markers).toHaveLength(opened ? 1 : 0);
+        expect(await reader.getBalance(owner, raced.id)).toBe(posted ? 100 : 0);
+      }
+    },
+    CONTENTION_TIMEOUT_MS,
+  );
 
   it("every stored document validates against its contract schema", async () => {
     await writer.commit(owner, commitOf("k1", "tx-1", 500_000));

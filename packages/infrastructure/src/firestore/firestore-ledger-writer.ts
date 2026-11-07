@@ -1,17 +1,19 @@
-import type {
-  Clock,
-  CorrectionCommit,
-  EntryRecord,
-  LedgerCommit,
-  LedgerCommitResult,
-  LedgerWriter,
-  TransactionRecord,
+import {
+  assertCommitShape,
+  assertCorrectionShape,
+  assertMirrors,
+  type Clock,
+  type CorrectionCommit,
+  type EntryRecord,
+  type LedgerCommit,
+  type LedgerCommitResult,
+  type LedgerWriter,
+  type TransactionRecord,
 } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import {
   DomainError,
   LedgerDate,
-  assertBalanced,
   assertPostingAfterCutover,
   assertTransition,
   asAccountId,
@@ -33,8 +35,14 @@ import type {
 import { ownerPath } from "./paths";
 import { bySequence, toEntryRecord, toTransactionRecord, transactionToDoc } from "./records";
 
-/** Contended transactions are retried by Firestore; parallel replays of one key need headroom. */
-const MAX_ATTEMPTS = 25;
+const MAX_ATTEMPTS = 5;
+
+type BalanceDoc = {
+  accountKind: AccountKind;
+  currency: CurrencyCode;
+  debitMinusCreditMinor: number;
+  version: number;
+};
 
 type Delta = { kind: AccountKind; currency: CurrencyCode; minor: number };
 
@@ -81,17 +89,15 @@ export class FirestoreLedgerWriter implements LedgerWriter {
     return { status: "duplicate", transactionId: asTransactionId(seen.transactionId) };
   }
 
-  /** Stored markers for the real accounts among `entries` (plus `extra`), as the domain guard wants. */
+  /** Stored markers for the real accounts among `entries`, as the domain guard wants. */
   private async readMarkers(
     t: FirestoreTransaction,
     ownerId: OwnerId,
     entries: readonly EntryDraft[],
-    extra?: AccountId,
   ): Promise<CutoverMarker[]> {
     const ids = new Set<AccountId>(
       entries.filter((e) => isRealAccount(e.account)).map((e) => e.account.id),
     );
-    if (extra !== undefined) ids.add(extra);
     if (ids.size === 0) return [];
     const snaps = await t.getAll(...[...ids].map((id) => this.ref(ownerId, "cutoverMarkers", id)));
     const markers: CutoverMarker[] = [];
@@ -182,17 +188,14 @@ export class FirestoreLedgerWriter implements LedgerWriter {
     t: FirestoreTransaction,
     ownerId: OwnerId,
     ids: Iterable<AccountId>,
-  ): Promise<Map<AccountId, { ref: DocumentReference; minor: number; version: number }>> {
+  ): Promise<Map<AccountId, { ref: DocumentReference; data: BalanceDoc | null }>> {
     const refs = [...ids].map((id) => this.ref(ownerId, "balances", id));
-    const out = new Map<AccountId, { ref: DocumentReference; minor: number; version: number }>();
+    const out = new Map<AccountId, { ref: DocumentReference; data: BalanceDoc | null }>();
     if (refs.length === 0) return out;
     for (const s of await t.getAll(...refs)) {
-      const id = asAccountId(s.ref.id);
-      const d = s.exists ? OWNER_COLLECTIONS.balances.parse(s.data()) : null;
-      out.set(id, {
+      out.set(asAccountId(s.ref.id), {
         ref: s.ref,
-        minor: d?.debitMinusCreditMinor ?? 0,
-        version: d?.version ?? 0,
+        data: s.exists ? OWNER_COLLECTIONS.balances.parse(s.data()) : null,
       });
     }
     return out;
@@ -207,17 +210,21 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   ): Promise<void> {
     const balances = await this.readBalances(t, ownerId, touched);
     const deltas = stageWrites();
-    for (const [id, delta] of deltas) {
-      const current = balances.get(id);
-      if (current === undefined) throw new Error("balance read missing");
+    for (const [id, current] of balances) {
+      const delta = deltas.get(id);
+      const prior = current.data;
+      // An account with no entries and no stored balance (an empty opening) has no kind to store.
+      const kind = delta?.kind ?? prior?.accountKind;
+      const currency = delta?.currency ?? prior?.currency;
+      if (kind === undefined || currency === undefined) continue;
       t.set(
         current.ref,
         OWNER_COLLECTIONS.balances.parse({
           accountId: id,
-          accountKind: delta.kind,
-          currency: delta.currency,
-          debitMinusCreditMinor: current.minor + delta.minor,
-          version: current.version + 1,
+          accountKind: kind,
+          currency,
+          debitMinusCreditMinor: (prior?.debitMinusCreditMinor ?? 0) + (delta?.minor ?? 0),
+          version: (prior?.version ?? 0) + 1,
           updatedAtMs: this.clock.nowMs(),
         }),
       );
@@ -264,15 +271,9 @@ export class FirestoreLedgerWriter implements LedgerWriter {
         const replay = await this.replay(t, ownerId, c.idempotencyKey, c.payloadHash);
         if (replay) return replay;
 
-        if (c.transaction.state !== "posted") {
-          throw new DomainError("invalidIntent", "a commit must carry a posted transaction");
-        }
+        assertCommitShape(c);
         const existing = await this.readTx(t, ownerId, c.transaction.id);
         assertTransition(existing?.state ?? null, "posted");
-        if (c.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(c.entries);
-        if (c.transaction.intentType === "openingBalance" && c.cutoverMarker === undefined) {
-          throw new DomainError("invalidIntent", "an opening balance must carry a cutover marker");
-        }
         if (c.transaction.intentType !== "openingBalance") {
           assertPostingAfterCutover(
             c.entries,
@@ -282,9 +283,6 @@ export class FirestoreLedgerWriter implements LedgerWriter {
           );
         }
         if (c.cutoverMarker) {
-          if (c.cutoverMarker.effectiveAt.epochMs !== c.transaction.occurredAtMs) {
-            throw new DomainError("invalidIntent", "marker date must equal the transaction date");
-          }
           const stored = await t.get(
             this.ref(ownerId, "cutoverMarkers", c.cutoverMarker.accountId),
           );
@@ -304,7 +302,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
           }
         }
 
-        await this.applyDeltas(t, ownerId, idsOf(c.entries), () => {
+        await this.applyDeltas(t, ownerId, idsOf(c.entries, c.cutoverMarker), () => {
           const deltas = new Map<AccountId, Delta>();
           this.stage(t, ownerId, c.transaction, c.entries, deltas, existing ? "set" : "create");
           if (c.cutoverMarker) this.stageMarker(t, ownerId, c.cutoverMarker, c.transaction.id);
@@ -332,32 +330,13 @@ export class FirestoreLedgerWriter implements LedgerWriter {
             throw new DomainError("invalidTransition", "a reversal cannot itself be reversed");
           }
         }
-        if (c.reversal.state !== "posted" || c.reversal.correctionOf !== original.id) {
-          throw new DomainError(
-            "invalidIntent",
-            "reversal must be posted and link to the original",
-          );
-        }
+        assertCorrectionShape(original, c);
         const existingReversal = await this.readTx(t, ownerId, c.reversal.id);
         assertTransition(existingReversal?.state ?? null, "posted");
         assertMirrors(await this.readEntries(t, ownerId, original.id), c.reversalEntries);
-        if (c.reversalEntries.length > 0) assertBalanced(c.reversalEntries);
 
         const isOpening = original.intentType === "openingBalance";
-        if (isOpening !== (c.cutoverMarker !== undefined)) {
-          throw new DomainError("invalidIntent", "only an opening correction carries a marker");
-        }
         if (c.cutoverMarker) {
-          const r = c.replacement;
-          if (
-            r === undefined ||
-            r.transaction.occurredAtMs !== c.cutoverMarker.effectiveAt.epochMs
-          ) {
-            throw new DomainError(
-              "invalidIntent",
-              "an opening correction needs a dated replacement",
-            );
-          }
           const accountId = c.cutoverMarker.accountId;
           const currentSnap = await t.get(this.ref(ownerId, "cutoverMarkers", accountId));
           const current = currentSnap.exists
@@ -377,12 +356,6 @@ export class FirestoreLedgerWriter implements LedgerWriter {
         let existingReplacement: TransactionRecord | null = null;
         if (c.replacement) {
           const r = c.replacement;
-          if ((r.transaction.intentType === "openingBalance") !== isOpening) {
-            throw new DomainError("invalidIntent", "replacement kind does not match the original");
-          }
-          if (r.transaction.correctionOf !== original.id) {
-            throw new DomainError("invalidIntent", "replacement must link to the original");
-          }
           if (!isOpening) {
             assertPostingAfterCutover(
               r.entries,
@@ -391,15 +364,14 @@ export class FirestoreLedgerWriter implements LedgerWriter {
               r.requireCutoverMarker === true,
             );
           }
-          if (r.transaction.state !== "posted") {
-            throw new DomainError("invalidIntent", "replacement must be posted");
-          }
           existingReplacement = await this.readTx(t, ownerId, r.transaction.id);
           assertTransition(existingReplacement?.state ?? null, "posted");
-          if (r.entries.length > 0 || c.cutoverMarker === undefined) assertBalanced(r.entries);
         }
 
-        const touched = idsOf([...c.reversalEntries, ...(c.replacement?.entries ?? [])]);
+        const touched = idsOf(
+          [...c.reversalEntries, ...(c.replacement?.entries ?? [])],
+          c.cutoverMarker,
+        );
         await this.applyDeltas(t, ownerId, touched, () => {
           const staged = new Map<AccountId, Delta>();
           t.set(
@@ -456,24 +428,14 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 }
 
-/** The accounts a set of drafts touches, so their balances are read before any write. */
-function idsOf(drafts: readonly EntryDraft[]): Set<AccountId> {
-  return new Set(drafts.map((d) => d.account.id));
-}
-
-/** The reversal must be the stored entries with every side flipped, as a multiset. */
-function assertMirrors(stored: readonly EntryRecord[], reversal: readonly EntryDraft[]): void {
-  const key = (account: string, side: string, minor: number, currency: string): string =>
-    `${account}|${side}|${String(minor)}|${currency}`;
-  const want = stored
-    .map((e) =>
-      key(e.accountId, e.side === "debit" ? "credit" : "debit", e.amountMinor, e.currency),
-    )
-    .sort();
-  const got = reversal
-    .map((e) => key(e.account.id, e.side, e.amount.minor, e.amount.currency))
-    .sort();
-  if (want.length !== got.length || want.some((k, i) => k !== got[i])) {
-    throw new DomainError("invalidIntent", "reversal entries must mirror the stored entries");
-  }
+/**
+ * The accounts whose balances are read before any write: those the entries touch, and an
+ * opening's marker account even when it has no entries. Reading (and rewriting) that balance
+ * document gives the opening a document-level conflict with any concurrent posting there, which
+ * the activity query alone would not guarantee.
+ */
+function idsOf(drafts: readonly EntryDraft[], marker?: CutoverMarker): Set<AccountId> {
+  const ids = new Set(drafts.map((d) => d.account.id));
+  if (marker) ids.add(marker.accountId);
+  return ids;
 }
