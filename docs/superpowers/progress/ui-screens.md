@@ -20,8 +20,9 @@ Read this first when resuming. Updated and committed after every task.
 | Task | State |
 |---|---|
 | 1 App services and fixture mode | Done |
-| 2 Fixture household dataset | Next |
-| 3–14 Mockups and builds A–F | Not started |
+| 2 Fixture household dataset | Done |
+| 3 Mockup A navigation shell | Next |
+| 4–14 Builds A and mockups/builds B–F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -37,7 +38,7 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Task 2: fixture household dataset.
+Task 3: draw mockup A (navigation shell), then stop for Mabrur's approval.
 
 ## Open decisions
 
@@ -45,4 +46,4 @@ None.
 
 ## Last verification
 
-Task 1 (2026-11-12): `pnpm verify` → 75 files, 1281 tests pass, no dependency violations. `pnpm --filter web build` → pass. Guard: fixture build with project `moneytrace-staging` fails with "Fixture mode requires a demo- Firebase project".
+Task 2 (2026-11-12): `pnpm verify` → 76 files, 1289 tests pass, no dependency violations. `pnpm --filter web build` → pass.

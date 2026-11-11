@@ -8,7 +8,7 @@ import { createFirebaseCommands, type Commands } from "./commands";
 import { isFixtureMode } from "./data-source";
 import { createFirebaseReadModelGateway } from "./firebase-read-model-gateway";
 import { createFixtureCommands } from "./fixture-commands";
-import { InMemoryReadModelGateway } from "./in-memory-read-model-gateway";
+import { createFixtureReadModels } from "./fixtures/fixture-read-models";
 import type { ReadModelGateway } from "./read-model-gateway";
 
 export type AppServices = {
@@ -24,7 +24,7 @@ export function createAppServices(): AppServices {
   if (isFixtureMode()) {
     return {
       auth: createFixtureAuthGateway(),
-      readModels: new InMemoryReadModelGateway(),
+      readModels: createFixtureReadModels(),
       commands: createFixtureCommands(),
       fixture: true,
     };
