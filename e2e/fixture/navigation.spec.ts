@@ -22,3 +22,16 @@ test("every tab and header entry opens, with the Demo data marker visible", asyn
   await expect(page).toHaveURL("/reminders");
   await expect(demoMarker(page)).toBeVisible();
 });
+
+test("opening an activity item shows its detail", async ({ page }) => {
+  await page.goto("/activity");
+  await page.getByRole("button", { name: /Transfer: Bank → Cash/ }).click();
+  await expect(page).toHaveURL(/\/activity\?id=se-atm$/);
+  const detail = page.getByRole("region", { name: "Transaction detail" });
+  await expect(detail.getByText("Bank down, cash up · not spending")).toBeVisible();
+  await detail.getByRole("button", { name: "Correct or reverse" }).click();
+  await page.getByRole("radio", { name: "Reverse it" }).check();
+  await page.getByLabel("Why? (required)").fill("Testing the demo");
+  await page.getByRole("button", { name: "Save reversal" }).click();
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveText("Not available yet — demo · nothing was saved");
+});

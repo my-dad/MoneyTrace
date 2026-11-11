@@ -199,7 +199,7 @@ const EVENT_SEEDS: EventSeed[] = [
     text: "Bought groceries at Shwapno for 2150 with the Amex",
     candidate: candidate("cardPurchase", 2_150, "2026-11-01T11:20:00", { counterparty: "Shwapno", category: "groceries" }),
     account: "card-amex",
-    matchedTransactionId: "tx-exp-1",
+    matchedTransactionId: "txn-se-amex-shwapno",
     matchKind: "duplicate",
     ai: true,
   },

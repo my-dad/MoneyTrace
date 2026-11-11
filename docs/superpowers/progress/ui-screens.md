@@ -23,8 +23,10 @@ Read this first when resuming. Updated and committed after every task.
 | 2 Fixture household dataset | Done |
 | 3 Mockup A navigation shell | Done (approved) |
 | 4 Build A navigation shell | Done |
-| 5 Mockup B activity | Drawn; awaiting Mabrur's approval |
-| 6–14 Mockups/builds B–F | Not started |
+| 5 Mockup B activity | Done (approved) |
+| 6 Build B activity | Done |
+| 7 Mockup C accounts and cash | Next |
+| 8–14 Build C, mockups/builds D–F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -32,7 +34,7 @@ Read this first when resuming. Updated and committed after every task.
 | Group | Mockup | Mockup approved | Built | Tests |
 |---|---|---|---|---|
 | A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
-| B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Awaiting Mabrur | — | — |
+| B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
 | C Accounts & Cash | — | — | — | — |
 | D Reports | — | — | — | — |
 | E Settings / Onboarding | — | — | — | — |
@@ -40,11 +42,11 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Mabrur reviews `design/screens/B-activity.html`. On approval: record it here, then Task 6 (build B).
+Task 7: draw mockup C (Accounts & Cash), then stop for Mabrur's approval.
 
 ## Open decisions
 
-Mockup B asks Mabrur to confirm: amounts (out plain, in "+", moves neutral, nothing red); failed and rejected items stay listed; duplicates struck through as "Not counted twice"; Needs answer sends you to Chat; one Correct/Reverse sheet with a required reason; desktop shows list plus detail side by side.
+None.
 
 ## Noted for later (not in this plan)
 
@@ -53,4 +55,4 @@ Mockup B asks Mabrur to confirm: amounts (out plain, in "+", moves neutral, noth
 
 ## Last verification
 
-Task 4 (2026-11-12): `pnpm verify` → 77 files, 1296 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 1 passed. The emulator E2E suite (`pnpm test:e2e`) was not run; it runs at Task 15.
+Task 6 (2026-11-12): `pnpm verify` → 81 files, 1324 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 2 passed. The emulator E2E suite runs at Task 15.
