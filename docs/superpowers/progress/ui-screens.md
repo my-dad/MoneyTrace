@@ -11,8 +11,8 @@ Read this first when resuming. Updated and committed after every task.
 | Stage | State |
 |---|---|
 | Brainstorm and design approval | Done (2026-11-11) |
-| Written spec | Written; awaiting Mabrur's review |
-| Implementation plan | Not started |
+| Written spec | Approved by Mabrur (2026-11-11) |
+| Implementation plan | Written: `docs/superpowers/plans/2026-11-11-ui-screens.md`; awaiting Mabrur's review |
 | Execution method chosen | Not started |
 
 ## Screen groups
@@ -28,7 +28,7 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Mabrur reviews the written spec. Once it's approved, write the implementation plan.
+Mabrur reviews the plan and chooses an execution method. Then Task 1: App services and fixture mode.
 
 ## Open decisions
 
