@@ -331,3 +331,15 @@ Status: Accepted by Mabrur on 2026-11-07, with the Phase 1 plan.
 | Security impact | None. |
 | Cost impact | None. |
 | Acceptance criteria | Gate 25, with the Home summary showing the amount as not yet explained and never as spending. |
+
+## CR-005: Build all UI before further functionality (2026-11-11)
+
+Status: Accepted by Mabrur on 2026-11-11.
+
+| Field | Record |
+|---|---|
+| Proposed change | Before Phase 3 or 0B work, build every section 4 screen plus the reminders inbox in `apps/web`. Screens without a backend use typed fixture data behind a build-time flag. No backend, contract or rules changes are made during this work. CR-003's review deadline moves from Phase 1 exit to "before functionality work resumes", and still applies before 0B. Spec: `docs/superpowers/specs/2026-11-11-ui-screens-design.md`. |
+| Rationale | Mabrur wants to see and validate the whole product's UI before investing in more functionality. |
+| Security impact | Fixture mode skips sign-in, so it is allowed only when the Firebase project ID starts with `demo-`, and the build fails otherwise. Fixture actions never report success. The CR-003 callable reviews are delayed further, but CR-002 still bars deployment and real data. |
+| Cost impact | None. No backend or AI usage. |
+| Acceptance criteria | Every screen group in the spec has an approved mockup and a built screen with component tests. The fixture-mode smoke test passes. `pnpm verify` and `pnpm --filter web build` pass. |
