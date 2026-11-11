@@ -13,6 +13,9 @@ export const COPY = {
   notFinancial: "Nothing recorded · this message didn't move any money",
   rejected: "Rejected · nothing was saved",
   cancelled: "Cancelled · nothing was saved",
+  demoUnavailable: "Not available yet — demo · nothing was saved",
+  notAvailableYet: "Not available yet",
+  demoData: "Demo data",
 } as const;
 
 export const CHAT_COPY = {

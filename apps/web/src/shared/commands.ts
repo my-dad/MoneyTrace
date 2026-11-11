@@ -3,7 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase";
 import type { z } from "zod";
 
-const PHASE_ONE_COMMANDS = [
+export const PHASE_ONE_COMMANDS = [
   "createAccount",
   "recordOpeningBalance",
   "createPaymentInstrument",
