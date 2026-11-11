@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B · Activity / Inbox — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:780px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .scroll { flex:1; overflow:hidden; padding:0 16px; }
+  .top { padding:20px 16px 8px; }
+  .top h2 { margin:0; font-size:24px; font-weight:800; }
+  .top .sub { margin-top:2px; }
+  .sub { font-size:12px; color:var(--mt-caption); }
+  .chips { display:flex; gap:8px; overflow:hidden; padding:8px 16px 12px; }
+  .chip { flex:none; min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .chip.on { background:var(--mt-ink); color:#fff; border-color:var(--mt-ink); }
+  .chip .n { font-size:11px; font-weight:800; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-radius:999px; padding:1px 6px; }
+
+  .day { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:14px 4px 6px; }
+  .list { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+  .item { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .item:first-child { border-top:none; }
+  .item .ic { width:36px; height:36px; border-radius:12px; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); display:grid; place-items:center; flex:none; color:var(--mt-body); }
+  .item .txt { flex:1; min-width:0; }
+  .item .t { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s { font-size:12px; color:var(--mt-caption); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .amt { text-align:right; flex:none; }
+  .item .amt b { display:block; font-size:14px; }
+  .item.dup .t, .item.dup .amt b { color:var(--mt-caption); }
+  .item.dup .amt b { text-decoration:line-through; }
+  .move { color:var(--mt-body); }
+
+  .status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:4px; }
+  .verified { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .pending { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .needs { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .failed { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .neutral { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .tabbar { display:grid; grid-template-columns:repeat(5,1fr); background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px 18px; font-size:11px; color:var(--mt-caption); text-align:center; }
+  .tabbar span { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tabbar .on { color:var(--mt-ink); font-weight:800; box-shadow:inset 0 3px 0 var(--mt-accent); }
+
+  .empty { text-align:center; padding:72px 24px; }
+  .empty .e-ic { width:56px; height:56px; border-radius:18px; margin:0 auto 14px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; }
+  .empty b { display:block; font-size:16px; margin-bottom:6px; }
+  .empty p { margin:0 0 16px; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:999px; font-size:14px; font-weight:700; border:1px solid var(--mt-border-strong); background:var(--mt-surface); color:var(--mt-ink); }
+  .btn.primary { background:var(--mt-accent); color:#fff; border-color:var(--mt-accent); }
+  .btn.block { width:100%; box-sizing:border-box; }
+  .skel { height:56px; border-top:1px solid var(--mt-border-soft); display:flex; align-items:center; gap:12px; padding:0 14px; }
+  .skel i { display:block; height:10px; border-radius:6px; background:var(--mt-border-soft); }
+  .alert { margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-failed-tint); color:var(--mt-failed-text); font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+  /* Detail */
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border-soft); font-weight:700; }
+  .bar .back { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; margin-left:-10px; }
+  .hero { padding:20px 16px 8px; }
+  .hero .kind { font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .hero .big { font-size:32px; font-weight:800; margin:4px 0; }
+  .card { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:10px 16px; }
+  .card h4 { margin:0 0 8px; font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:7px 0; border-top:1px solid var(--mt-border-soft); }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv span:last-child { font-weight:600; text-align:right; }
+  .sms { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); border-radius:12px; padding:10px 12px; color:var(--mt-body); }
+  .note { font-size:12px; color:var(--mt-caption); line-height:1.5; margin-top:8px; }
+  .actions { display:flex; gap:10px; padding:6px 16px 16px; }
+  .info { margin:10px 16px; padding:12px 14px; border-radius:14px; border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; background:var(--mt-surface-soft); }
+
+  /* Sheet */
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:10px 16px 24px; }
+  .grab { width:40px; height:4px; border-radius:4px; background:var(--mt-border-strong); margin:0 auto 14px; }
+  .sheet h3 { margin:0 0 4px; font-size:18px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+  .seg span { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+  .seg .on { border:2px solid var(--mt-ink); }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .input { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; box-sizing:border-box; color:var(--mt-ink); }
+  .input.area { min-height:76px; }
+  .input.err { border-color:var(--mt-failed-text); }
+  .errtxt { font-size:12px; color:var(--mt-failed-text); margin-top:6px; font-weight:600; }
+  .result { margin-top:12px; padding:10px 12px; border-radius:12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:13px; font-weight:700; }
+
+  /* Desktop */
+  .desktop { width:1280px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; display:grid; grid-template-columns:232px 1fr 440px; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .rail { background:var(--mt-surface-soft); border-right:1px solid var(--mt-border); padding:22px 14px; display:flex; flex-direction:column; gap:4px; font-size:14px; }
+  .rail b { margin:0 6px 20px; font-size:16px; }
+  .rail span { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:12px; color:var(--mt-body); }
+  .rail .on { background:var(--mt-surface); border:1px solid var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); color:var(--mt-ink); font-weight:800; }
+  .dmain { padding:24px 28px; overflow:hidden; }
+  .dside { background:var(--mt-surface); border-left:1px solid var(--mt-border); overflow:hidden; }
+  .item.sel { background:var(--mt-accent-tint); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>B · Activity / Inbox</h1>
+    <p>Everything the app has read or recorded, newest first. Each row shows its real state. Only posted items say Recorded or Verified, a duplicate is shown as not counted twice, and a withdrawal is a move between your own accounts, never spending. Figures are the demo household.</p>
+  </header>
+
+  <div class="row">
+    <!-- B1 -->
+    <section>
+      <p class="frame-label">B1 · List · All, grouped by day</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2><div class="sub">12 items · 1–6 Nov</div></div>
+        <div class="chips"><span class="chip on">All</span><span class="chip">Posted</span><span class="chip">Pending</span><span class="chip">Needs answer <span class="n">2</span></span><span class="chip">Duplicates</span></div>
+        <div class="scroll">
+          <div class="day">Today · Fri 6 Nov</div>
+          <div class="list">
+            <div class="item"><div class="ic">!</div><div class="txt"><div class="t">Txn of BDT 750.00 processed…</div><div class="s">SMS · 12:26 pm</div></div><div class="amt"><b>—</b><span class="status failed">Failed · not saved</span></div></div>
+            <div class="item"><div class="ic">?</div><div class="txt"><div class="t">Gave some cash to Ammu</div><div class="s">Chat · 9:00 am</div></div><div class="amt"><b>—</b><span class="status needs">Needs answer</span></div></div>
+          </div>
+          <div class="day">Yesterday · Thu 5 Nov</div>
+          <div class="list">
+            <div class="item"><div class="ic">⇄</div><div class="txt"><div class="t">Transfer: Bank → Cash</div><div class="s">DBBL Savings → Cash · place not set · 7:02 pm</div></div><div class="amt"><b class="move">৳5,000</b><span class="status verified">Verified</span></div></div>
+            <div class="item"><div class="ic">🛺</div><div class="txt"><div class="t">Rickshaw and CNG</div><div class="s">Wallet · Chat · 6:20 pm</div></div><div class="amt"><b>৳650</b><span class="status verified">Verified</span></div></div>
+          </div>
+          <div class="day">Tue 3 Nov</div>
+          <div class="list">
+            <div class="item"><div class="ic">?</div><div class="txt"><div class="t">Agora Dhanmondi</div><div class="s">Card ••9134 · SMS · 6:05 pm</div></div><div class="amt"><b>৳1,870</b><span class="status needs">Needs answer</span></div></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- B2 -->
+    <section>
+      <p class="frame-label">B2 · List · Duplicates filter</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2><div class="sub">1 duplicate</div></div>
+        <div class="chips"><span class="chip">All</span><span class="chip">Posted</span><span class="chip">Pending</span><span class="chip">Needs answer <span class="n">2</span></span><span class="chip on">Duplicates</span></div>
+        <div class="scroll">
+          <div class="day">Sun 1 Nov</div>
+          <div class="list">
+            <div class="item dup"><div class="ic">≡</div><div class="txt"><div class="t">Shwapno · from your chat note</div><div class="s">Matched the Amex SMS at 11:20 am</div></div><div class="amt"><b>৳2,150</b><span class="status neutral">Not counted twice</span></div></div>
+          </div>
+          <p class="note" style="padding:0 4px">A duplicate is evidence for something already recorded. It never adds a second expense.</p>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- B3 -->
+    <section>
+      <p class="frame-label">B3 · Empty · nothing recorded yet</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2></div>
+        <div class="scroll">
+          <div class="empty"><div class="e-ic">≡</div><b>No activity yet</b><p>Paste a bank SMS or describe cash in Chat. Everything you add shows up here with its status.</p><span class="btn primary">Open Chat</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- B4 -->
+    <section>
+      <p class="frame-label">B4 · Empty for a filter</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2></div>
+        <div class="chips"><span class="chip">All</span><span class="chip">Posted</span><span class="chip on">Pending</span><span class="chip">Needs answer</span><span class="chip">Duplicates</span></div>
+        <div class="scroll">
+          <div class="empty"><b>Nothing pending</b><p>Every item has finished processing.</p><span class="btn">Show all</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <!-- B5 -->
+    <section>
+      <p class="frame-label">B5 · Loading</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2><div class="sub" role="status">Loading your activity…</div></div>
+        <div class="scroll"><div class="list" style="margin-top:12px">
+          <div class="skel" style="border-top:none"><i style="width:36px;height:36px;border-radius:12px"></i><i style="width:55%"></i></div>
+          <div class="skel"><i style="width:36px;height:36px;border-radius:12px"></i><i style="width:40%"></i></div>
+          <div class="skel"><i style="width:36px;height:36px;border-radius:12px"></i><i style="width:62%"></i></div>
+        </div></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- B6 -->
+    <section>
+      <p class="frame-label">B6 · Read error</p>
+      <div class="phone">
+        <div class="top"><h2>Activity</h2></div>
+        <div class="scroll">
+          <div class="alert" role="alert"><span>Couldn't load your activity. Nothing has changed; try again.</span><span class="btn" style="min-height:36px">Retry</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- B7 -->
+    <section>
+      <p class="frame-label">B7 · Detail · posted card purchase</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Card purchase</div>
+        <div class="hero"><div class="kind">Shwapno Gulshan</div><div class="big">৳2,150</div><span class="status verified">Verified · Recorded · saved to your ledger</span></div>
+        <div class="card"><h4>Details</h4>
+          <div class="kv"><span>Account</span><span>City Bank Amex ••7702</span></div>
+          <div class="kv"><span>Date</span><span>Sun 1 Nov, 11:20 am</span></div>
+          <div class="kv"><span>Category</span><span>Groceries</span></div>
+          <div class="kv"><span>Effect</span><span>Expense + card owed up</span></div>
+        </div>
+        <div class="card"><h4>Source evidence</h4>
+          <div class="sms">Card **7702 used for BDT 2,150.00 at SHWAPNO GULSHAN on 01-Nov-26 11:20</div>
+          <div class="note">Read by the City Bank SMS parser (v1). Also matched 1 chat note, which was not counted twice.</div>
+        </div>
+        <div class="actions"><span class="btn block">Correct or reverse</span></div>
+      </div>
+    </section>
+
+    <!-- B8 -->
+    <section>
+      <p class="frame-label">B8 · Detail · duplicate</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Duplicate evidence</div>
+        <div class="hero"><div class="kind">Your chat note</div><div class="big" style="color:var(--mt-caption)">৳2,150</div><span class="status neutral">Already recorded · not counted twice</span></div>
+        <div class="card"><h4>What you wrote</h4><div class="sms">Bought groceries at Shwapno for 2150 with the Amex</div>
+          <div class="note">Read by AI (deepseek-flash, prompt interpret-v1).</div></div>
+        <div class="info">This matches a card purchase that was already recorded from your bank SMS, so it was linked to it instead of adding a second expense.</div>
+        <div class="actions"><span class="btn block">View the original purchase</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <!-- B9 -->
+    <section>
+      <p class="frame-label">B9 · Detail · needs answer</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Card purchase?</div>
+        <div class="hero"><div class="kind">Agora Dhanmondi</div><div class="big">৳1,870</div><span class="status needs">Needs answer · not saved yet</span></div>
+        <div class="info"><b>Which card is ••9134?</b><br>No card ending in 9134 is set up yet, so this hasn't been recorded. Answer in Chat to record it.</div>
+        <div class="card"><h4>Source evidence</h4><div class="sms">Card **9134 used for BDT 1,870.00 at AGORA DHANMONDI on 03-Nov-26 18:05</div></div>
+        <div class="actions"><span class="btn primary block">Answer in Chat</span></div>
+      </div>
+    </section>
+
+    <!-- B10 -->
+    <section>
+      <p class="frame-label">B10 · Correct or reverse sheet</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Card purchase</div>
+        <div class="hero"><div class="kind">Shwapno Gulshan</div><div class="big">৳2,150</div></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>Change this transaction</h3>
+          <div class="sub">The original stays in your history. A correction adds a reversal and, if needed, a replacement.</div>
+          <div class="seg"><span class="on">Correct it</span><span>Reverse it</span></div>
+          <div class="field"><label>New amount</label><div class="input">৳ 2,150</div></div>
+          <div class="field" style="margin-top:12px"><label>Why? (required)</label><div class="input area err"></div><div class="errtxt">Add a reason so the history explains this change.</div></div>
+          <div style="margin-top:14px;display:flex;gap:10px"><span class="btn" style="flex:1">Cancel</span><span class="btn primary" style="flex:1">Save correction</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B11 -->
+    <section>
+      <p class="frame-label">B11 · Sheet after saving in demo mode</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Card purchase</div>
+        <div class="hero"><div class="kind">Shwapno Gulshan</div><div class="big">৳2,150</div></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>Change this transaction</h3>
+          <div class="seg"><span>Correct it</span><span class="on">Reverse it</span></div>
+          <div class="field"><label>Why? (required)</label><div class="input area">Card was declined at the till</div></div>
+          <div class="result" role="status">Not available yet — demo · nothing was saved</div>
+          <div style="margin-top:14px;display:flex;gap:10px"><span class="btn" style="flex:1">Close</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Desktop -->
+  <section>
+    <p class="frame-label" style="max-width:none">B12 · Desktop · list with the selected item's detail on the right</p>
+    <div class="desktop">
+      <div class="rail"><b>MoneyTrace</b><span>Home</span><span>Chat</span><span class="on">Activity</span><span>Accounts</span><span>Reports</span></div>
+      <div class="dmain">
+        <h2 style="margin:0;font-size:26px">Activity</h2><div class="sub">12 items · 1–6 Nov</div>
+        <div class="chips" style="padding:12px 0"><span class="chip on">All</span><span class="chip">Posted</span><span class="chip">Pending</span><span class="chip">Needs answer <span class="n">2</span></span><span class="chip">Duplicates</span></div>
+        <div class="day">Yesterday · Thu 5 Nov</div>
+        <div class="list">
+          <div class="item"><div class="ic">⇄</div><div class="txt"><div class="t">Transfer: Bank → Cash</div><div class="s">DBBL Savings → Cash · place not set · 7:02 pm</div></div><div class="amt"><b class="move">৳5,000</b><span class="status verified">Verified</span></div></div>
+          <div class="item"><div class="ic">🛺</div><div class="txt"><div class="t">Rickshaw and CNG</div><div class="s">Wallet · Chat · 6:20 pm</div></div><div class="amt"><b>৳650</b><span class="status verified">Verified</span></div></div>
+        </div>
+        <div class="day">Sun 1 Nov</div>
+        <div class="list">
+          <div class="item sel"><div class="ic">💳</div><div class="txt"><div class="t">Shwapno Gulshan</div><div class="s">City Bank Amex ••7702 · SMS · 11:20 am</div></div><div class="amt"><b>৳2,150</b><span class="status verified">Verified</span></div></div>
+          <div class="item"><div class="ic">↓</div><div class="txt"><div class="t">Salary</div><div class="s">DBBL Savings · SMS · 10:00 am</div></div><div class="amt"><b>+৳85,000</b><span class="status verified">Verified</span></div></div>
+        </div>
+      </div>
+      <div class="dside">
+        <div class="hero"><div class="kind">Card purchase · Shwapno Gulshan</div><div class="big">৳2,150</div><span class="status verified">Verified · Recorded · saved to your ledger</span></div>
+        <div class="card"><h4>Details</h4>
+          <div class="kv"><span>Account</span><span>City Bank Amex ••7702</span></div>
+          <div class="kv"><span>Date</span><span>Sun 1 Nov, 11:20 am</span></div>
+          <div class="kv"><span>Effect</span><span>Expense + card owed up</span></div></div>
+        <div class="card"><h4>Source evidence</h4><div class="sms">Card **7702 used for BDT 2,150.00 at SHWAPNO GULSHAN on 01-Nov-26 11:20</div></div>
+        <div class="actions"><span class="btn block">Correct or reverse</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>Decisions to confirm</h2>
+    <ul>
+      <li><b>Amounts:</b> money out is shown plain, money in gets a “+”, and a move between your own accounts (⇄) is neutral. Nothing is red.</li>
+      <li><b>Failed and rejected items stay in the list</b> with their status, so nothing you pasted silently disappears.</li>
+      <li><b>Duplicates</b> appear struck through and marked “Not counted twice”, linking to the original.</li>
+      <li><b>Needs answer</b> sends you to Chat to answer. Activity itself never asks questions.</li>
+      <li><b>Correct or reverse</b> is one sheet with two modes. A reason is always required, and the original always stays in history.</li>
+      <li><b>Desktop</b> shows the list with the selected item's detail beside it, instead of a separate page.</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

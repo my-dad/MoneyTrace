@@ -23,7 +23,7 @@ Read this first when resuming. Updated and committed after every task.
 | 2 Fixture household dataset | Done |
 | 3 Mockup A navigation shell | Done (approved) |
 | 4 Build A navigation shell | Done |
-| 5 Mockup B activity | Next |
+| 5 Mockup B activity | Drawn; awaiting Mabrur's approval |
 | 6–14 Mockups/builds B–F | Not started |
 | 15 UI-complete exit | Not started |
 
@@ -32,7 +32,7 @@ Read this first when resuming. Updated and committed after every task.
 | Group | Mockup | Mockup approved | Built | Tests |
 |---|---|---|---|---|
 | A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
-| B Activity / Inbox | — | — | — | — |
+| B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Awaiting Mabrur | — | — |
 | C Accounts & Cash | — | — | — | — |
 | D Reports | — | — | — | — |
 | E Settings / Onboarding | — | — | — | — |
@@ -40,11 +40,11 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Task 5: draw mockup B (Activity / Inbox), then stop for Mabrur's approval.
+Mabrur reviews `design/screens/B-activity.html`. On approval: record it here, then Task 6 (build B).
 
 ## Open decisions
 
-None.
+Mockup B asks Mabrur to confirm: amounts (out plain, in "+", moves neutral, nothing red); failed and rejected items stay listed; duplicates struck through as "Not counted twice"; Needs answer sends you to Chat; one Correct/Reverse sheet with a required reason; desktop shows list plus detail side by side.
 
 ## Noted for later (not in this plan)
 
