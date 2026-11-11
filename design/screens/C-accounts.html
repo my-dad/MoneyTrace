@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C · Accounts &amp; Cash — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:780px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .scroll { flex:1; overflow:hidden; padding:0 16px; }
+  .top { padding:20px 16px 8px; }
+  .top h2 { margin:0; font-size:24px; font-weight:800; }
+  .top .sub { margin-top:2px; }
+  .sub { font-size:12px; color:var(--mt-caption); }
+  .chips { display:flex; gap:8px; overflow:hidden; padding:8px 16px 12px; }
+  .chip { flex:none; min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .chip.on { background:var(--mt-ink); color:#fff; border-color:var(--mt-ink); }
+  .chip .n { font-size:11px; font-weight:800; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-radius:999px; padding:1px 6px; }
+
+  .day { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:14px 4px 6px; }
+  .list { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+  .item { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .item:first-child { border-top:none; }
+  .item .ic { width:36px; height:36px; border-radius:12px; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); display:grid; place-items:center; flex:none; color:var(--mt-body); }
+  .item .txt { flex:1; min-width:0; }
+  .item .t { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s { font-size:12px; color:var(--mt-caption); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .amt { text-align:right; flex:none; }
+  .item .amt b { display:block; font-size:14px; }
+  .item.dup .t, .item.dup .amt b { color:var(--mt-caption); }
+  .item.dup .amt b { text-decoration:line-through; }
+  .move { color:var(--mt-body); }
+
+  .status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:4px; }
+  .verified { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .pending { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .needs { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .failed { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .neutral { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .tabbar { display:grid; grid-template-columns:repeat(5,1fr); background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px 18px; font-size:11px; color:var(--mt-caption); text-align:center; }
+  .tabbar span { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tabbar .on { color:var(--mt-ink); font-weight:800; box-shadow:inset 0 3px 0 var(--mt-accent); }
+
+  .empty { text-align:center; padding:72px 24px; }
+  .empty .e-ic { width:56px; height:56px; border-radius:18px; margin:0 auto 14px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; }
+  .empty b { display:block; font-size:16px; margin-bottom:6px; }
+  .empty p { margin:0 0 16px; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:999px; font-size:14px; font-weight:700; border:1px solid var(--mt-border-strong); background:var(--mt-surface); color:var(--mt-ink); }
+  .btn.primary { background:var(--mt-accent); color:#fff; border-color:var(--mt-accent); }
+  .btn.block { width:100%; box-sizing:border-box; }
+  .skel { height:56px; border-top:1px solid var(--mt-border-soft); display:flex; align-items:center; gap:12px; padding:0 14px; }
+  .skel i { display:block; height:10px; border-radius:6px; background:var(--mt-border-soft); }
+  .alert { margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-failed-tint); color:var(--mt-failed-text); font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+  /* Detail */
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border-soft); font-weight:700; }
+  .bar .back { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; margin-left:-10px; }
+  .hero { padding:20px 16px 8px; }
+  .hero .kind { font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .hero .big { font-size:32px; font-weight:800; margin:4px 0; }
+  .card { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:10px 16px; }
+  .card h4 { margin:0 0 8px; font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:7px 0; border-top:1px solid var(--mt-border-soft); }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv span:last-child { font-weight:600; text-align:right; }
+  .sms { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); border-radius:12px; padding:10px 12px; color:var(--mt-body); }
+  .note { font-size:12px; color:var(--mt-caption); line-height:1.5; margin-top:8px; }
+  .actions { display:flex; gap:10px; padding:6px 16px 16px; }
+  .info { margin:10px 16px; padding:12px 14px; border-radius:14px; border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; background:var(--mt-surface-soft); }
+
+  /* Sheet */
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:10px 16px 24px; }
+  .grab { width:40px; height:4px; border-radius:4px; background:var(--mt-border-strong); margin:0 auto 14px; }
+  .sheet h3 { margin:0 0 4px; font-size:18px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+  .seg span { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+  .seg .on { border:2px solid var(--mt-ink); }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .input { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; box-sizing:border-box; color:var(--mt-ink); }
+  .input.area { min-height:76px; }
+  .input.err { border-color:var(--mt-failed-text); }
+  .errtxt { font-size:12px; color:var(--mt-failed-text); margin-top:6px; font-weight:600; }
+  .result { margin-top:12px; padding:10px 12px; border-radius:12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:13px; font-weight:700; }
+
+  /* Desktop */
+  .desktop { width:1280px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; display:grid; grid-template-columns:232px 1fr 440px; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .rail { background:var(--mt-surface-soft); border-right:1px solid var(--mt-border); padding:22px 14px; display:flex; flex-direction:column; gap:4px; font-size:14px; }
+  .rail b { margin:0 6px 20px; font-size:16px; }
+  .rail span { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:12px; color:var(--mt-body); }
+  .rail .on { background:var(--mt-surface); border:1px solid var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); color:var(--mt-ink); font-weight:800; }
+  .dmain { padding:24px 28px; overflow:hidden; }
+  .dside { background:var(--mt-surface); border-left:1px solid var(--mt-border); overflow:hidden; }
+  .item.sel { background:var(--mt-accent-tint); }
+</style>
+</head>
+<body>
+<style>
+  .group-h { display:flex; justify-content:space-between; align-items:baseline; margin:16px 4px 6px; }
+  .group-h .day { margin:0; }
+  .group-h b { font-size:13px; }
+  .item .ic { font-size:14px; }
+  .unx { border:1px dashed var(--mt-border-dashed); background:var(--mt-surface-soft); }
+  .unx .t { font-weight:600; }
+  .owed { font-size:11px; color:var(--mt-caption); font-weight:600; }
+  .add { display:flex; gap:10px; padding:14px 16px; }
+  .inst { display:flex; gap:10px; flex-wrap:wrap; }
+  .pill { border:1px solid var(--mt-border); background:var(--mt-surface-soft); border-radius:12px; padding:8px 12px; font-size:13px; font-weight:600; }
+  .pill span { display:block; font-size:11px; font-weight:500; color:var(--mt-caption); }
+  .diff { margin-top:12px; padding:12px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; }
+  .diff b { font-size:18px; display:block; margin:2px 0; }
+  .steps { display:flex; gap:6px; margin:4px 0 14px; }
+  .steps i { flex:1; height:4px; border-radius:4px; background:var(--mt-border); }
+  .steps i.on { background:var(--mt-accent); }
+  .form { padding:8px 16px 16px; display:flex; flex-direction:column; gap:14px; }
+  .hint { font-size:12px; color:var(--mt-caption); margin-top:6px; line-height:1.45; }
+  .select { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; justify-content:space-between; align-items:center; background:var(--mt-surface); }
+  .radios { display:flex; flex-direction:column; gap:8px; }
+  .radio { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; gap:10px; align-items:center; }
+  .radio.on { border:2px solid var(--mt-ink); }
+  .radio i { width:16px; height:16px; border-radius:999px; border:2px solid var(--mt-border-strong); flex:none; }
+  .radio.on i { border:5px solid var(--mt-ink); }
+  .fixedbar { padding:12px 16px 20px; border-top:1px solid var(--mt-border-soft); background:var(--mt-surface); display:flex; gap:10px; }
+  .fixedbar .btn { flex:1; }
+</style>
+<div class="page">
+  <header>
+    <h1>C · Accounts &amp; Cash</h1>
+    <p>Every place your money sits: bank accounts and mobile wallets, cash you hold, cash a family member holds, and the cards you owe on. Cash that hasn't been placed yet is shown dashed and neutral, never as spending. Card dues are money you owe, so they are shown separately and are not taken out of your available money.</p>
+  </header>
+
+  <div class="row">
+    <!-- C1 -->
+    <section>
+      <p class="frame-label">C1 · Accounts · grouped, with totals</p>
+      <div class="phone">
+        <div class="top"><h2>Accounts</h2><div class="sub">Available ৳1,50,200 · Cards owed ৳24,570</div></div>
+        <div class="scroll">
+          <div class="group-h"><span class="day">Bank &amp; wallets</span><b>৳1,25,500</b></div>
+          <div class="list">
+            <div class="item"><div class="ic">🏦</div><div class="txt"><div class="t">DBBL Savings</div><div class="s">Debit card ••4821</div></div><div class="amt"><b>৳82,000</b></div></div>
+            <div class="item"><div class="ic">🏦</div><div class="txt"><div class="t">City Bank Current</div><div class="s">Account ••3307</div></div><div class="amt"><b>৳31,500</b></div></div>
+            <div class="item"><div class="ic">📱</div><div class="txt"><div class="t">bKash</div><div class="s">Mobile wallet</div></div><div class="amt"><b>৳12,000</b></div></div>
+          </div>
+          <div class="group-h"><span class="day">Cash</span><b>৳20,200</b></div>
+          <div class="list">
+            <div class="item"><div class="ic">👛</div><div class="txt"><div class="t">Wallet</div></div><div class="amt"><b>৳7,200</b></div></div>
+            <div class="item"><div class="ic">🏠</div><div class="txt"><div class="t">Home</div></div><div class="amt"><b>৳8,000</b></div></div>
+            <div class="item unx"><div class="ic">?</div><div class="txt"><div class="t">Not yet explained</div><div class="s">From the ATM on 5 Nov · not spending</div></div><div class="amt"><b>৳5,000</b><span class="status needs">Needs answer</span></div></div>
+          </div>
+          <div class="group-h"><span class="day">Held by family</span><b>৳4,500</b></div>
+          <div class="list">
+            <div class="item"><div class="ic">👤</div><div class="txt"><div class="t">Ammu</div><div class="s">Cash she holds for the house</div></div><div class="amt"><b>৳4,500</b></div></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span class="on">Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- C1b -->
+    <section>
+      <p class="frame-label">C1 · continued · cards and actions (scrolled)</p>
+      <div class="phone">
+        <div class="scroll" style="padding-top:16px">
+          <div class="group-h"><span class="day">Credit cards · you owe</span><b>৳24,570</b></div>
+          <div class="list">
+            <div class="item"><div class="ic">💳</div><div class="txt"><div class="t">City Bank Amex ••7702</div><div class="s">Due 15 Nov</div></div><div class="amt"><b>৳18,450</b><span class="owed">owed</span></div></div>
+            <div class="item"><div class="ic">💳</div><div class="txt"><div class="t">EBL Visa ••2290</div><div class="s">Due 22 Nov</div></div><div class="amt"><b>৳6,120</b><span class="owed">owed</span></div></div>
+          </div>
+          <p class="note" style="padding:0 4px">Card dues are money you owe. They aren't taken out of your available money.</p>
+          <div class="add" style="padding:12px 0;flex-direction:column">
+            <span class="btn primary block">Add account</span>
+            <span class="btn block">Count cash</span>
+            <span class="btn block">Give cash to family</span>
+          </div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span class="on">Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- C2 -->
+    <section>
+      <p class="frame-label">C2 · Empty · new user</p>
+      <div class="phone">
+        <div class="top"><h2>Accounts</h2></div>
+        <div class="scroll">
+          <div class="empty"><div class="e-ic">🏦</div><b>Add your first account</b><p>Add a bank account, wallet, card or cash, with what it holds today. That opening balance is a starting position, not income.</p><span class="btn primary">Add account</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span class="on">Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <!-- C3 -->
+    <section>
+      <p class="frame-label">C3 · Loading and read error</p>
+      <div class="phone">
+        <div class="top"><h2>Accounts</h2><div class="sub" role="status">Loading your accounts…</div></div>
+        <div class="scroll">
+          <div class="list" style="margin-top:12px">
+            <div class="skel" style="border-top:none"><i style="width:36px;height:36px;border-radius:12px"></i><i style="width:50%"></i></div>
+            <div class="skel"><i style="width:36px;height:36px;border-radius:12px"></i><i style="width:38%"></i></div>
+          </div>
+          <p class="frame-label" style="margin-top:28px">If accounts can't load:</p>
+          <div class="alert" role="alert"><span>Couldn't load your accounts. No figures are shown rather than wrong ones.</span><span class="btn" style="min-height:36px">Retry</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span class="on">Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <!-- C4 -->
+    <section>
+      <p class="frame-label">C4 · Account detail · bank</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>DBBL Savings</div>
+        <div class="hero"><div class="kind">Balance</div><div class="big">৳82,000</div><span class="status verified">Verified · matches the last SMS balance</span></div>
+        <div class="card"><h4>Linked cards and wallets</h4>
+          <div class="inst"><div class="pill">Debit card ••4821<span>Spends from this account</span></div></div>
+          <div class="note">A debit card isn't a separate account; spending on it comes out of this balance.</div>
+        </div>
+        <div class="card"><h4>Recent</h4>
+          <div class="kv"><span>5 Nov · ATM → Cash · place not set</span><span>৳5,000</span></div>
+          <div class="kv"><span>1 Nov · Salary</span><span>+৳85,000</span></div>
+          <div class="kv"><span>1 Oct · Opening balance</span><span>৳2,000</span></div>
+        </div>
+        <div class="actions"><span class="btn block">See all in Activity</span></div>
+      </div>
+    </section>
+
+    <!-- C5 -->
+    <section>
+      <p class="frame-label">C5 · Account detail · credit card</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>City Bank Amex ••7702</div>
+        <div class="hero"><div class="kind">You owe</div><div class="big">৳18,450</div><div class="sub">Statement due 15 Nov · ৳18,450</div></div>
+        <div class="info">Paying this card moves money from your bank to the card. <b>A repayment is not an expense</b>; the purchases already were.</div>
+        <div class="card"><h4>Recent</h4>
+          <div class="kv"><span>1 Nov · Shwapno Gulshan</span><span>৳2,150</span></div>
+          <div class="kv"><span>28 Oct · Repayment from City Bank</span><span>−৳10,000 owed</span></div>
+          <div class="kv"><span>24 Oct · Card fee</span><span>৳575</span></div>
+        </div>
+        <div class="actions"><span class="btn block">See all in Activity</span></div>
+      </div>
+    </section>
+
+    <!-- C6 -->
+    <section>
+      <p class="frame-label">C6 · Cash count · enter what you counted</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Count cash</div>
+        <div class="form">
+          <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+          <div class="field"><label>Which cash?</label><div class="select">Home <span>▾</span></div></div>
+          <div class="field"><label>How much is there now?</label><div class="input">৳ 7,700</div></div>
+          <div class="diff"><span class="sub">Expected ৳8,000</span><b>৳300 less than expected</b>A difference isn't counted as spending. Next, say what explains it, or leave it to review later.</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Next</span></div>
+      </div>
+    </section>
+
+    <!-- C7 -->
+    <section>
+      <p class="frame-label">C7 · Adjustment · cause required</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Explain the difference</div>
+        <div class="form">
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <div class="sub">Home · ৳300 less than expected</div>
+          <div class="field"><label>What explains it? (required)</label>
+            <div class="radios">
+              <div class="radio on"><i></i>Spent and not recorded</div>
+              <div class="radio"><i></i>Given to someone</div>
+              <div class="radio"><i></i>Counting mistake earlier</div>
+              <div class="radio"><i></i>Don't know yet · review later</div>
+            </div></div>
+          <div class="field"><label>Note</label><div class="input area">Bazar on Tuesday, forgot to add it</div></div>
+          <div class="hint">This adds an adjustment with your reason. Nothing is changed silently, and it stays in your history.</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Save adjustment</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <!-- C8 -->
+    <section>
+      <p class="frame-label">C8 · Give cash to family (custody)</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Give cash to family</div>
+        <div class="form">
+          <div class="field"><label>From</label><div class="select">Wallet · ৳7,200 <span>▾</span></div></div>
+          <div class="field"><label>To</label><div class="select">Ammu <span>▾</span></div></div>
+          <div class="field"><label>Amount</label><div class="input">৳ 3,000</div></div>
+          <div class="info" style="margin:0">This moves cash; it isn't spending. Your total stays the same until Ammu spends it.</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Cancel</span><span class="btn primary">Give cash</span></div>
+      </div>
+    </section>
+
+    <!-- C9 -->
+    <section>
+      <p class="frame-label">C9 · After saving in demo mode</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Give cash to family</div>
+        <div class="form">
+          <div class="field"><label>From</label><div class="select">Wallet · ৳7,200 <span>▾</span></div></div>
+          <div class="field"><label>To</label><div class="select">Ammu <span>▾</span></div></div>
+          <div class="field"><label>Amount</label><div class="input">৳ 3,000</div></div>
+          <div class="result" role="status">Not available yet — demo · nothing was saved</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Close</span></div>
+      </div>
+    </section>
+
+    <!-- C10 -->
+    <section>
+      <p class="frame-label">C10 · Add account (existing setup form, unchanged, now at /accounts/new)</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Add account</div>
+        <div class="form">
+          <div class="field"><label>Type</label><div class="select">Bank account <span>▾</span></div></div>
+          <div class="field"><label>Name</label><div class="input">DBBL Savings</div></div>
+          <div class="field"><label>Balance today</label><div class="input">৳ 82,000</div><div class="hint">An opening balance is a starting position, not income.</div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn primary">Save account</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Desktop -->
+  <section>
+    <p class="frame-label" style="max-width:none">C11 · Desktop · groups as columns, selected account on the right</p>
+    <div class="desktop" style="grid-template-columns:232px 1fr 340px">
+      <div class="rail"><b>MoneyTrace</b><span>Home</span><span>Chat</span><span>Activity</span><span class="on">Accounts</span><span>Reports</span></div>
+      <div class="dmain">
+        <h2 style="margin:0;font-size:26px">Accounts</h2><div class="sub">Available ৳1,50,200 · Cards owed ৳24,570</div>
+        <div style="display:flex;gap:8px;margin:12px 0 4px"><span class="btn primary">Add account</span><span class="btn">Count cash</span><span class="btn">Give cash to family</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+          <div>
+            <div class="group-h"><span class="day">Bank &amp; wallets</span><b>৳1,25,500</b></div>
+            <div class="list">
+              <div class="item sel"><div class="ic">🏦</div><div class="txt"><div class="t">DBBL Savings</div><div class="s">Debit card ••4821</div></div><div class="amt"><b>৳82,000</b></div></div>
+              <div class="item"><div class="ic">🏦</div><div class="txt"><div class="t">City Bank Current</div></div><div class="amt"><b>৳31,500</b></div></div>
+              <div class="item"><div class="ic">📱</div><div class="txt"><div class="t">bKash</div></div><div class="amt"><b>৳12,000</b></div></div>
+            </div>
+            <div class="group-h"><span class="day">Credit cards · you owe</span><b>৳24,570</b></div>
+            <div class="list">
+              <div class="item"><div class="ic">💳</div><div class="txt"><div class="t">City Bank Amex ••7702</div><div class="s">Due 15 Nov</div></div><div class="amt"><b>৳18,450</b><span class="owed">owed</span></div></div>
+              <div class="item"><div class="ic">💳</div><div class="txt"><div class="t">EBL Visa ••2290</div><div class="s">Due 22 Nov</div></div><div class="amt"><b>৳6,120</b><span class="owed">owed</span></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="group-h"><span class="day">Cash</span><b>৳20,200</b></div>
+            <div class="list">
+              <div class="item"><div class="ic">👛</div><div class="txt"><div class="t">Wallet</div></div><div class="amt"><b>৳7,200</b></div></div>
+              <div class="item"><div class="ic">🏠</div><div class="txt"><div class="t">Home</div></div><div class="amt"><b>৳8,000</b></div></div>
+              <div class="item unx"><div class="ic">?</div><div class="txt"><div class="t">Not yet explained</div><div class="s">ATM 5 Nov · not spending</div></div><div class="amt"><b>৳5,000</b></div></div>
+            </div>
+            <div class="group-h"><span class="day">Held by family</span><b>৳4,500</b></div>
+            <div class="list"><div class="item"><div class="ic">👤</div><div class="txt"><div class="t">Ammu</div></div><div class="amt"><b>৳4,500</b></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dside">
+        <div class="hero"><div class="kind">DBBL Savings · balance</div><div class="big">৳82,000</div><span class="status verified">Verified · matches the last SMS balance</span></div>
+        <div class="card"><h4>Linked cards and wallets</h4><div class="inst"><div class="pill">Debit card ••4821<span>Spends from this account</span></div></div></div>
+        <div class="card"><h4>Recent</h4>
+          <div class="kv"><span>5 Nov · ATM → Cash · place not set</span><span>৳5,000</span></div>
+          <div class="kv"><span>1 Nov · Salary</span><span>+৳85,000</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>Decisions to confirm</h2>
+    <ul>
+      <li><b>Groups:</b> Bank &amp; wallets, Cash, Held by family, Credit cards. Mobile wallets such as bKash sit with banks.</li>
+      <li><b>Not yet explained cash</b> appears as its own dashed row inside Cash, with Needs answer, and is counted in your cash total.</li>
+      <li><b>Cards</b> show the amount owed as a positive number labelled “owed”, never as negative money.</li>
+      <li><b>Count cash</b> is a 3-step flow: pick the cash and count it, see the difference, then explain it with a required cause or leave it for review. Differences are never auto-categorised as spending.</li>
+      <li><b>Give cash to family</b> is a custody move, stated as “not spending”.</li>
+      <li><b>Add account</b> keeps the existing setup form, which moves to its own page.</li>
+    </ul>
+  </section>
+</div>
+
+</body>
+</html>

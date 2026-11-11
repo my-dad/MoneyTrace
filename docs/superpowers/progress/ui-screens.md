@@ -25,7 +25,7 @@ Read this first when resuming. Updated and committed after every task.
 | 4 Build A navigation shell | Done |
 | 5 Mockup B activity | Done (approved) |
 | 6 Build B activity | Done |
-| 7 Mockup C accounts and cash | Next |
+| 7 Mockup C accounts and cash | Drawn; awaiting Mabrur's approval |
 | 8–14 Build C, mockups/builds D–F | Not started |
 | 15 UI-complete exit | Not started |
 
@@ -35,18 +35,18 @@ Read this first when resuming. Updated and committed after every task.
 |---|---|---|---|---|
 | A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
 | B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
-| C Accounts & Cash | — | — | — | — |
+| C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Awaiting Mabrur | — | — |
 | D Reports | — | — | — | — |
 | E Settings / Onboarding | — | — | — | — |
 | F Reminders inbox | — | — | — | — |
 
 ## Next task
 
-Task 7: draw mockup C (Accounts & Cash), then stop for Mabrur's approval.
+Mabrur reviews `design/screens/C-accounts.html`. On approval: record it here, then Task 8 (build C).
 
 ## Open decisions
 
-None.
+Mockup C asks Mabrur to confirm: the four groups (bank and wallets, cash, held by family, cards); unexplained cash as a dashed row inside Cash; card dues shown positive and labelled "owed"; the 3-step cash count with a required cause; give-cash-to-family worded as "not spending"; Add account keeps the existing form at /accounts/new.
 
 ## Noted for later (not in this plan)
 
