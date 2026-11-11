@@ -13,6 +13,8 @@ import type {
 } from "../../shared/read-model-gateway";
 import { buildHomeViewModel, monthRangeInZone, SYSTEM_CASH_ACCOUNT_ID } from "./home-view-model";
 import styles from "./home.module.css";
+import { NavIcon } from "../shell/NavIcon";
+import { remindersLabel } from "../shell/nav-labels";
 
 const CHAT_PATH = "/chat";
 
@@ -40,6 +42,7 @@ export function HomeScreen({
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseEntryRow[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const openReminders = followUps.filter((followUp) => followUp.state === "open").length;
   const nowMs = useMemo(() => Date.now(), []);
 
   useEffect(() => {
@@ -114,7 +117,15 @@ export function HomeScreen({
           <p className={styles.eyebrow}>Good to see you</p>
           <h1>{displayName ?? "there"}</h1>
         </div>
-        <a href="/accounts">Accounts</a>
+        <div className={styles.headerActions}>
+          <Link href="/reminders" className={styles.iconLink} aria-label={remindersLabel(openReminders)}>
+            <NavIcon name="bell" />
+            {openReminders > 0 && <span className={styles.badge} aria-hidden="true">{openReminders}</span>}
+          </Link>
+          <Link href="/settings" className={styles.iconLink} aria-label="Settings">
+            <NavIcon name="settings" />
+          </Link>
+        </div>
       </header>
       {failure}
       {balances !== null && (

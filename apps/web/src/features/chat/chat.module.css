@@ -1,5 +1,5 @@
 .screen {
-  height: 100dvh;
+  height: calc(100dvh - var(--mt-nav-height, 0px) - var(--mt-top-chrome, 0px));
   display: flex;
   flex-direction: column;
   overflow: hidden;

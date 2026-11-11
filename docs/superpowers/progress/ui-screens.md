@@ -21,15 +21,17 @@ Read this first when resuming. Updated and committed after every task.
 |---|---|
 | 1 App services and fixture mode | Done |
 | 2 Fixture household dataset | Done |
-| 3 Mockup A navigation shell | Drawn; awaiting Mabrur's approval |
-| 4–14 Builds A and mockups/builds B–F | Not started |
+| 3 Mockup A navigation shell | Done (approved) |
+| 4 Build A navigation shell | Done |
+| 5 Mockup B activity | Next |
+| 6–14 Mockups/builds B–F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
 
 | Group | Mockup | Mockup approved | Built | Tests |
 |---|---|---|---|---|
-| A Navigation shell | Drawn: `design/screens/A-navigation.html` | Awaiting Mabrur | — | — |
+| A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
 | B Activity / Inbox | — | — | — | — |
 | C Accounts & Cash | — | — | — | — |
 | D Reports | — | — | — | — |
@@ -38,12 +40,17 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Mabrur reviews `design/screens/A-navigation.html`. On approval: record it here, then Task 4 (build A). Mockup B may be drawn meanwhile.
+Task 5: draw mockup B (Activity / Inbox), then stop for Mabrur's approval.
 
 ## Open decisions
 
-Mockup A asks Mabrur to confirm: (1) Home composer sits above the tab bar; (2) the desktop rail uses the same 5 destinations, with Cash and Cards folded into Accounts (screen 03 had separate Cash and Cards items), and Reminders and Settings at the rail's bottom; (3) the Demo marker is a top strip, not a floating badge; (4) the reminder badge counts open follow-ups only.
+None.
+
+## Noted for later (not in this plan)
+
+- Desktop Home has no assistant panel yet (mockup screen 03 and A5 show one). Home itself is unchanged by this plan.
+- The existing Home layout differs from mockup screen 01 (greeting, bank/cash split, card list). Home is unchanged by this plan.
 
 ## Last verification
 
-Task 2 (2026-11-12): `pnpm verify` → 76 files, 1289 tests pass, no dependency violations. `pnpm --filter web build` → pass.
+Task 4 (2026-11-12): `pnpm verify` → 77 files, 1296 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 1 passed. The emulator E2E suite (`pnpm test:e2e`) was not run; it runs at Task 15.

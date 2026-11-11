@@ -1,2 +1,12 @@
 .banner { margin:0; padding:10px 16px; background:var(--mt-failed-tint); color:var(--mt-failed-text); text-align:center; font-size:13px; font-weight:600; }
-.demo { position:fixed; top:8px; right:8px; z-index:20; margin:0; padding:4px 10px; border:1px dashed var(--mt-border-dashed); border-radius:999px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:12px; font-weight:700; pointer-events:none; }
+.demo { margin:0; padding:6px 12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-bottom:1px dashed var(--mt-border-dashed); text-align:center; font-size:12px; font-weight:700; }
+
+/* The phone tab bar is fixed; screens reserve its height through --mt-nav-height. */
+.frame { --mt-nav-height: 74px; padding-bottom:var(--mt-nav-height); }
+.content { min-width:0; }
+/* The demo strip sits above the frame; full-height parts subtract it. */
+.withDemo { --mt-top-chrome: 29px; }
+
+@media (min-width: 1024px) {
+  .frame { --mt-nav-height: 0px; display:grid; grid-template-columns:232px minmax(0, 1fr); padding-bottom:0; }
+}

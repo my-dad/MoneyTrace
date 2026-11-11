@@ -139,6 +139,34 @@ describe("HomeScreen", () => {
     expect(screen.getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/chat");
   });
 
+  it("links to settings", () => {
+    render(<HomeScreen gateway={gatewayWith({ accounts: [account("bank", "bank")] })} displayName="Mabrur" />);
+    expect(screen.getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
+  });
+
+  it("shows the open reminder count", () => {
+    const followUp = (id: string, state: FollowUpRow["state"]): FollowUpRow => ({
+      id,
+      trigger: "unreviewedCashActivity",
+      question: "Is this right?",
+      dueAtMs: 1,
+      snoozedUntilMs: state === "snoozed" ? Date.now() + 86_400_000 : null,
+      state,
+      createdAtMs: 1,
+      resolvedAtMs: null,
+    });
+    render(
+      <HomeScreen
+        gateway={gatewayWith({
+          accounts: [account("bank", "bank")],
+          followUps: [followUp("a", "open"), followUp("b", "open"), followUp("c", "snoozed")],
+        })}
+        displayName="Mabrur"
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Reminders, 2 open" }).getAttribute("href")).toBe("/reminders");
+  });
+
   it("Home always offers a way into chat", () => {
     render(<HomeScreen gateway={gatewayWith({ accounts: [account("bank", "bank")] })} />);
     expect(screen.getByRole("link", { name: /paste a bank sms/i }).getAttribute("href")).toBe("/chat");

@@ -3,8 +3,10 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { AppServicesProvider, createAppServices, type AppServices } from "../../shared/app-services";
 import { AuthGate } from "../auth/AuthGate";
+import { AppNav } from "./AppNav";
 import { DemoMarker } from "./DemoMarker";
 import { OfflineBanner } from "./OfflineBanner";
+import styles from "./shell.module.css";
 
 export function AppShell({ children, services }: { children: ReactNode; services?: AppServices }) {
   const resolved = useMemo(() => services ?? createAppServices(), [services]);
@@ -13,9 +15,14 @@ export function AppShell({ children, services }: { children: ReactNode; services
   }, []);
   return (
     <AppServicesProvider services={resolved}>
-      <OfflineBanner />
       {resolved.fixture && <DemoMarker />}
-      <AuthGate gateway={resolved.auth}>{children}</AuthGate>
+      <OfflineBanner />
+      <AuthGate gateway={resolved.auth}>
+        <div className={`${styles.frame ?? ""} ${resolved.fixture ? (styles.withDemo ?? "") : ""}`}>
+          <AppNav />
+          <div className={styles.content}>{children}</div>
+        </div>
+      </AuthGate>
     </AppServicesProvider>
   );
 }

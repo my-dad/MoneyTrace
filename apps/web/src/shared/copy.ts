@@ -15,7 +15,7 @@ export const COPY = {
   cancelled: "Cancelled · nothing was saved",
   demoUnavailable: "Not available yet — demo · nothing was saved",
   notAvailableYet: "Not available yet",
-  demoData: "Demo data",
+  demoData: "Demo data — nothing here is real or saved",
 } as const;
 
 export const CHAT_COPY = {

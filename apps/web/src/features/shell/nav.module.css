@@ -1,0 +1,19 @@
+/* Phone: a fixed bottom tab bar. Desktop (≥1024px): a sticky side rail. */
+.nav { position:fixed; left:0; right:0; bottom:0; z-index:10; background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px calc(10px + env(safe-area-inset-bottom)); }
+.logo, .more { display:none; }
+.tabs { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(5, 1fr); }
+.tab { position:relative; min-height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:12px; color:var(--mt-caption); font-size:11px; font-weight:500; text-decoration:none; }
+.tab[aria-current="page"] { color:var(--mt-ink); font-weight:800; }
+.tabs .tab[aria-current="page"]::before { content:""; position:absolute; top:-6px; width:28px; height:3px; border-radius:0 0 3px 3px; background:var(--mt-accent); }
+.tab:focus-visible { outline:3px solid var(--mt-focus); outline-offset:-2px; }
+.count { margin-left:auto; min-width:20px; padding:2px 7px; border-radius:999px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:11px; font-weight:800; text-align:center; box-sizing:border-box; }
+
+@media (min-width: 1024px) {
+  .nav { position:sticky; top:0; bottom:auto; height:calc(100dvh - var(--mt-top-chrome, 0px)); box-sizing:border-box; display:flex; flex-direction:column; gap:4px; padding:22px 14px; border-top:none; border-right:1px solid var(--mt-border); background:var(--mt-surface-soft); }
+  .logo { display:block; margin:0 6px 20px; font-size:16px; font-weight:800; color:var(--mt-ink); }
+  .tabs, .more { display:flex; flex-direction:column; gap:4px; list-style:none; margin:0; padding:0; }
+  .more { margin-top:auto; }
+  .tab { flex-direction:row; justify-content:flex-start; gap:12px; min-height:44px; padding:0 12px; font-size:14px; color:var(--mt-body); border:1px solid transparent; }
+  .tab[aria-current="page"] { background:var(--mt-surface); border-color:var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); }
+  .tabs .tab[aria-current="page"]::before { display:none; }
+}
