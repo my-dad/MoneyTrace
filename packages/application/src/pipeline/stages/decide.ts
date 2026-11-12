@@ -6,6 +6,7 @@ import {
   type AccountRef,
   type CurrencyCode,
   type DecisionInput,
+  type MatchResult,
   type PostingIntent,
 } from "@moneytrace/domain";
 import type { SourceEventRecord, StageOutput } from "../../ports/source-event-repository";
@@ -13,6 +14,7 @@ import { stageOutputId } from "../../source-event-guards";
 import { SYSTEM_CASH_ACCOUNT_ID } from "../../use-cases/bootstrap-user";
 import { candidateToIntent, type ResolvedAccounts } from "../candidate-to-intent";
 import { accountRef, type PipelineDeps, type Stage } from "./deps";
+import { findMatch, linkedId } from "./match";
 
 export async function resolveAccounts(
   deps: PipelineDeps,
@@ -64,7 +66,9 @@ async function decisionInput(
       ? event.resolvedAccountId !== null
       : intent !== null || !currencySupported,
     unresolvedDuplicateCandidate:
-      event.matchKind === "ambiguous" || event.matchKind === "possibleCounterpart",
+      event.matchKind === "ambiguous" ||
+      event.matchKind === "possibleCounterpart" ||
+      (event.matchKind === "duplicate" && event.userConfirmed),
     parsersConflict,
     source: extraction?.source ?? "deterministicParser",
     confidenceBp: extraction?.confidenceBp ?? 0,
@@ -111,22 +115,31 @@ function decisionRecord(
   };
 }
 
-export const decideStage: Stage = async (deps, ownerId, event, claim) => {
+export const decideStage: Stage = async (deps, ownerId, parkedEvent, claim) => {
+  let event = parkedEvent;
   if (event.candidate === null && event.extraction?.notFinancialReason !== undefined) {
     return { nextStatus: "rejected", outputs: [] };
   }
   if (event.matchKind === "duplicate" && !event.userConfirmed) {
     return { nextStatus: "linkedAsDuplicate", outputs: [] };
   }
+  // The user supplied facts that matching never saw (a date, an account): look again before posting.
+  let matchPatch: { matchKind: MatchResult["kind"]; matchedTransactionId: string | null } | undefined;
+  if (event.userConfirmed && event.matchKind === null && event.candidate !== null && event.resolvedAccountId !== null) {
+    const result = await findMatch(deps, ownerId, event.candidate, event.resolvedAccountId, event.receivedAtMs);
+    matchPatch = { matchKind: result.kind, matchedTransactionId: linkedId(result) };
+    event = { ...event, ...matchPatch };
+  }
   const input = await decisionInput(deps, ownerId, event);
   const outcome = decide(input, deps.confidence);
   const outputs = [decisionRecord(deps, event, claim.stageAttempt, outcome, input)];
+  const patch = matchPatch === undefined ? {} : { eventPatch: matchPatch };
   switch (outcome.outcome) {
     case "autoPost":
-      return { nextStatus: "decided", outputs };
+      return { nextStatus: "decided", outputs, ...patch };
     case "needsClarification":
-      return { nextStatus: "pending", pendingReason: "awaitingClarification", outputs };
+      return { nextStatus: "pending", pendingReason: "awaitingClarification", outputs, ...patch };
     case "failed":
-      return { nextStatus: "deadLetter", deadLetterReason: "stageFailed", outputs };
+      return { nextStatus: "deadLetter", deadLetterReason: "stageFailed", outputs, ...patch };
   }
 };

@@ -1,5 +1,6 @@
 import { DEFAULT_MATCH_CONFIG, matchCandidate, type MatchResult } from "@moneytrace/domain";
 import { isIncoming } from "../candidate-to-intent";
+import type { SourceEventRecord } from "../../ports/source-event-repository";
 import type { PipelineDeps, Stage } from "./deps";
 
 const CANDIDATE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -15,8 +16,35 @@ async function uniqueAccount(
   return accounts.size === 1 ? ([...accounts][0] ?? null) : null;
 }
 
-const linkedId = (result: MatchResult): string | null =>
+export const linkedId = (result: MatchResult): string | null =>
   "transactionId" in result ? result.transactionId : null;
+
+/**
+ * Looks for the same transaction already in the ledger. With no date on the evidence, the paste
+ * time stands in, so an undated SMS is still compared with what's recent.
+ */
+export async function findMatch(
+  deps: PipelineDeps,
+  ownerId: Parameters<Stage>[1],
+  candidate: NonNullable<SourceEventRecord["candidate"]>,
+  accountId: string,
+  receivedAtMs: number,
+): Promise<MatchResult> {
+  const atMs = candidate.occurredAtMs ?? receivedAtMs;
+  const existing = await deps.candidates.findRecent(ownerId, {
+    amountMinor: candidate.amountMinor,
+    currency: candidate.currency,
+    fromMs: atMs - CANDIDATE_LOOKBACK_MS,
+    toMs: atMs + CANDIDATE_LOOKBACK_MS,
+  });
+  return matchCandidate(
+    { ...candidate, occurredAtMs: atMs },
+    accountId,
+    isIncoming(candidate.kind) ? "in" : "out",
+    existing,
+    DEFAULT_MATCH_CONFIG,
+  );
+}
 
 export const matchStage: Stage = async (deps, ownerId, event) => {
   const { candidate } = event;
@@ -36,22 +64,10 @@ export const matchStage: Stage = async (deps, ownerId, event) => {
       ? null
       : await uniqueAccount(deps, ownerId, { mask: candidate.destinationMask }));
 
-  let result: MatchResult = { kind: "none" };
-  if (resolvedAccountId !== null && candidate.occurredAtMs !== null) {
-    const existing = await deps.candidates.findRecent(ownerId, {
-      amountMinor: candidate.amountMinor,
-      currency: candidate.currency,
-      fromMs: candidate.occurredAtMs - CANDIDATE_LOOKBACK_MS,
-      toMs: candidate.occurredAtMs + CANDIDATE_LOOKBACK_MS,
-    });
-    result = matchCandidate(
-      candidate,
-      resolvedAccountId,
-      isIncoming(candidate.kind) ? "in" : "out",
-      existing,
-      DEFAULT_MATCH_CONFIG,
-    );
-  }
+  const result: MatchResult =
+    resolvedAccountId === null
+      ? { kind: "none" }
+      : await findMatch(deps, ownerId, candidate, resolvedAccountId, event.receivedAtMs);
   return {
     nextStatus: "matched",
     outputs: [],

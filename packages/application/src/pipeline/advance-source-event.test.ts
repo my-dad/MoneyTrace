@@ -558,6 +558,38 @@ describe("AI fallback", () => {
     expect(event).toMatchObject({ status: "pending", resolvedAccountId: null });
   });
 
+describe("matching after the user answers", () => {
+  it("an undated SMS is compared with recent transactions, so a repeat is shown as a possible duplicate", async () => {
+    const first = await run(UCB_CREDIT_SMS);
+    await confirm.execute({ ownerId: alice, sourceEventId: first.id, decision: "confirm", overrides: { kind: "income", occurredAtMs: NOW } });
+    await settle(alice, first.id);
+    const again = await run(UCB_CREDIT_SMS.replace("For query: 16419", "For query 16419"));
+    expect(again.event).toMatchObject({ status: "pending", matchKind: "ambiguous" });
+  });
+
+  it("checks for a duplicate once the user picks the account, instead of posting twice", async () => {
+    expect((await run(CARD_PURCHASE_SMS)).event?.status).toBe("posted");
+    // The same purchase, but the SMS's card ending is unknown, so matching couldn't run before the question.
+    const again = await run(CARD_PURCHASE_SMS.replace("***9999", "***1212"));
+    expect(again.event).toMatchObject({ status: "pending", resolvedAccountId: null });
+    await confirm.execute({ ownerId: alice, sourceEventId: again.id, decision: "confirm", overrides: { accountId: "card" } });
+    expect(await settle(alice, again.id)).toMatchObject({ status: "pending", matchKind: "ambiguous" });
+    expect(await balance("card")).toBe(-190_000);
+  });
+
+  it("a confirm after seeing the possible match posts, without asking again", async () => {
+    const answer = async (id: SourceEventId) => {
+      await confirm.execute({ ownerId: alice, sourceEventId: id, decision: "confirm", overrides: { kind: "income", occurredAtMs: NOW } });
+      return settle(alice, id);
+    };
+    await answer((await run(UCB_CREDIT_SMS)).id);
+    const again = await run(UCB_CREDIT_SMS.replace("For query: 16419", "For query 16419"));
+    expect(again.event?.matchKind).toBe("ambiguous");
+    expect((await answer(again.id))?.status).toBe("posted");
+    expect(await balance("ucb-bank")).toBe(10_000_000 + 1_800_000);
+  });
+});
+
 describe("a mapping the posting rules refuse", () => {
   it("asks again instead of dead-ending when the user's choice can't be posted", async () => {
     const { id } = await run(UCB_DEBIT_SMS);
