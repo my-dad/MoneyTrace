@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.12
-      - run: corepack enable
+      - run: npm install -g corepack@0.32.0 && corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
       - name: Web build (emulator config; no real project needed)
@@ -45,7 +45,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - run: corepack enable
+      - run: npm install -g corepack@0.32.0 && corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:emulator
 
@@ -62,7 +62,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - run: corepack enable
+      - run: npm install -g corepack@0.32.0 && corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
