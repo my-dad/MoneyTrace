@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G · Dashboard and chat — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:820px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; min-height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .phone.fixed { height:844px; }
+  .demo { background:#F8EDD0; color:#7A5A12; font-size:12px; font-weight:700; text-align:center; padding:6px; border-bottom:1px dashed #E2C77E; }
+  .bar { display:flex; justify-content:space-between; align-items:center; padding:16px 16px 4px; }
+  .bar .hi { font-size:12px; color:var(--mt-caption); }
+  .bar .name { font-size:20px; font-weight:800; }
+  .menu-btn { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; font-size:18px; }
+  .wrap { padding:0 16px 96px; }
+
+  .month { display:flex; align-items:center; justify-content:space-between; margin:10px 0 8px; }
+  .month b { font-size:15px; }
+  .nav { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; color:var(--mt-body); }
+  .nav.off { color:var(--mt-border-strong); }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tile { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:12px 14px; }
+  .tile .l { font-size:12px; color:var(--mt-caption); font-weight:600; }
+  .tile .v { font-size:22px; font-weight:800; margin-top:2px; }
+  .unx { margin-top:10px; display:flex; justify-content:space-between; gap:10px; padding:10px 14px; border:1.5px dashed var(--mt-border-dashed); border-radius:14px; background:var(--mt-surface-soft); font-size:13px; }
+  .unx span small { display:block; font-size:12px; color:var(--mt-caption); }
+  .card { margin-top:12px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; }
+  .card h3 { margin:0 0 10px; font-size:13px; font-weight:600; color:var(--mt-caption); }
+  .bars { display:flex; flex-direction:column; gap:11px; }
+  .bl { display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .bl b { font-weight:700; }
+  .track { height:10px; border-radius:6px; background:var(--mt-surface-soft); }
+  .fill { height:10px; border-radius:0 4px 4px 0; background:var(--mt-body); }
+  .trend { font-size:12.5px; color:var(--mt-body); margin-top:10px; }
+  .kv { display:flex; justify-content:space-between; padding:7px 0; border-top:1px solid var(--mt-border-soft); font-size:13px; }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv b { font-weight:700; }
+  .rec { display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--mt-border-soft); }
+  .rec:first-of-type { border-top:none; }
+  .rec .t { flex:1; min-width:0; font-size:13.5px; font-weight:600; }
+  .rec .t small { display:block; font-weight:500; font-size:12px; color:var(--mt-caption); margin-top:1px; }
+  .rec .a { text-align:right; font-size:13.5px; font-weight:700; }
+  .st { display:inline-block; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:3px; }
+  .ok { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .wait { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .prog { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .bad { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .nc { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .fab { position:absolute; right:16px; bottom:24px; width:60px; height:60px; border-radius:999px; background:var(--mt-accent); color:#fff; display:grid; place-items:center; box-shadow:0 8px 20px rgba(180,80,20,.3); font-size:24px; }
+  .fab i { position:absolute; top:-2px; right:-2px; font-style:normal; min-width:22px; height:22px; border-radius:999px; background:var(--mt-ink); color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center; border:2px solid var(--mt-ground); }
+
+  .empty { text-align:center; padding:96px 28px 0; }
+  .empty .ic { width:64px; height:64px; border-radius:20px; margin:0 auto 16px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; font-size:26px; }
+  .empty b { display:block; font-size:18px; margin-bottom:8px; }
+  .empty p { margin:0; color:var(--mt-caption); font-size:14px; line-height:1.55; }
+  .arrow { position:absolute; right:84px; bottom:52px; font-size:13px; color:var(--mt-caption); }
+
+  .status { font-size:13px; color:var(--mt-caption); }
+  .alert { margin:10px 0; padding:10px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px solid var(--mt-border); font-size:13px; font-weight:600; line-height:1.45; }
+  .skel { height:22px; width:110px; border-radius:8px; background:var(--mt-surface-soft); margin-top:4px; }
+
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .menu { position:absolute; right:16px; top:84px; width:250px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; box-shadow:0 12px 30px rgba(30,35,32,.15); padding:6px; }
+  .menu .mi { padding:12px 12px; font-size:14px; border-radius:12px; }
+  .menu .mi small { display:block; font-size:12px; color:var(--mt-caption); margin-top:2px; }
+  .menu .sep { height:1px; background:var(--mt-border-soft); margin:4px 6px; }
+
+  .chat { position:absolute; inset:0; background:var(--mt-ground); display:flex; flex-direction:column; }
+  .chead { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border); }
+  .chead .mk { width:36px; height:36px; border-radius:12px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; }
+  .chead .tt { flex:1; }
+  .chead .tt b { display:block; font-size:15px; }
+  .chead .tt small { font-size:12px; color:var(--mt-caption); }
+  .x { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; font-size:18px; }
+  .log { flex:1; padding:14px 14px 0; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  .me { align-self:flex-end; max-width:82%; background:var(--mt-accent-tint, #F6E3D3); border:1px solid var(--mt-border); padding:10px 12px; border-radius:16px 16px 6px 16px; font-size:13px; line-height:1.45; }
+  .me small { display:block; font-weight:700; color:var(--mt-accent); font-size:11px; margin-bottom:3px; }
+  .ai { align-self:flex-start; max-width:88%; background:var(--mt-surface); border:1px solid var(--mt-border); padding:12px 14px; border-radius:16px 16px 16px 6px; font-size:13px; line-height:1.5; }
+  .ai .q { font-weight:700; font-size:14px; }
+  .ai .opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .ai .opts span { border:1px solid var(--mt-border-strong); border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:600; background:var(--mt-surface); }
+  .ai .note { font-size:12px; color:var(--mt-caption); margin-top:8px; }
+  .comp { display:flex; gap:8px; padding:10px 12px 18px; border-top:1px solid var(--mt-border); background:var(--mt-surface); }
+  .comp .in { flex:1; min-height:44px; border:1.5px solid var(--mt-accent); border-radius:999px; padding:0 16px; display:flex; align-items:center; color:var(--mt-caption); font-size:14px; }
+  .comp .send { width:44px; height:44px; border-radius:999px; background:var(--mt-surface-soft); border:1px solid var(--mt-border); display:grid; place-items:center; }
+
+  .desk { width:1200px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:20px; overflow:hidden; position:relative; display:flex; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .desk .main { flex:1; padding:0 28px; overflow:hidden; }
+  .desk .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .desk .side { width:420px; border-left:1px solid var(--mt-border); position:relative; box-shadow:-12px 0 30px rgba(30,35,32,.08); }
+  .desk .side .chat { position:absolute; }
+
+  .signin { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:760px; padding:0 32px; }
+  .signin .logo { width:64px; height:64px; border-radius:20px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; font-size:26px; margin-bottom:18px; }
+  .signin h2 { margin:0 0 8px; font-size:28px; font-weight:800; }
+  .signin p { margin:0 0 28px; color:var(--mt-body); font-size:15px; line-height:1.55; max-width:300px; }
+  .gbtn { min-height:52px; width:100%; max-width:320px; border-radius:14px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .gbtn .g { width:20px; height:20px; border-radius:999px; background:conic-gradient(#EA4335 0 25%, #FBBC05 0 50%, #34A853 0 75%, #4285F4 0); }
+  .fine { margin-top:16px; font-size:12px; color:var(--mt-caption); max-width:300px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>G · Dashboard and pop-up chat (CR-007, piece 1)</h1>
+    <p>After Google sign-in the app is one dashboard. A chat button pops up the chat, where any SMS or spending note is pasted; the dashboard updates live. Tips (piece 3) get a spot later and are not shown yet. Figures are the demo household's November 2026. Unexplained cash is neutral and dashed, never spending.</p>
+  </header>
+
+  <div class="row">
+    <div>
+      <p class="frame-label">G8 · Sign-in page (signed out)</p>
+      <div class="phone fixed">
+        <div class="signin">
+          <div class="logo">M</div>
+          <h2>MoneyTrace</h2>
+          <p>Paste your bank SMS or tell it about cash. It works out where your money goes.</p>
+          <div class="gbtn"><span class="g"></span>Sign in with Google</div>
+          <p class="fine">Never asks for bank passwords, PINs or one-time codes.</p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">G1 · Dashboard, this month (full scroll)</p>
+      <div class="phone">
+        <div class="demo">Demo data — nothing here is real or saved</div>
+        <div class="bar"><div><div class="hi">Good to see you</div><div class="name">Demo</div></div><div class="menu-btn">☰</div></div>
+        <div class="wrap">
+          <div class="month"><div class="nav">‹</div><b>November 2026</b><div class="nav off">›</div></div>
+          <div class="tiles">
+            <div class="tile"><div class="l">Spent</div><div class="v">৳18,640</div></div>
+            <div class="tile"><div class="l">Came in</div><div class="v">৳85,000</div></div>
+          </div>
+          <div class="unx"><span>Cash not yet explained<small>Withdrawn, no place yet · not counted as spending</small></span><b>৳5,000</b></div>
+          <div class="card">
+            <h3>Where it went</h3>
+            <div class="bars">
+              <div><div class="bl"><span>Groceries</span><b>৳6,820</b></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+              <div><div class="bl"><span>Other</span><b>৳5,730</b></div><div class="track"><div class="fill" style="width:84%"></div></div></div>
+              <div><div class="bl"><span>Transport</span><b>৳3,150</b></div><div class="track"><div class="fill" style="width:46%"></div></div></div>
+              <div><div class="bl"><span>Eating out</span><b>৳2,940</b></div><div class="track"><div class="fill" style="width:43%"></div></div></div>
+            </div>
+            <div class="trend">৳1,740 more than this time last month</div>
+          </div>
+          <div class="card">
+            <h3>Money now</h3>
+            <div class="kv"><span>Banks and cash</span><b>৳1,50,200</b></div>
+            <div class="kv"><span>Cards owed</span><b>৳24,570</b></div>
+          </div>
+          <div class="card">
+            <h3>Recent</h3>
+            <div class="rec"><div class="t">Agora Dhanmondi<small>Card · 3 Nov</small><span class="st wait">Waiting for your answer</span></div><div class="a">৳1,870</div></div>
+            <div class="rec"><div class="t">Rickshaw and CNG<small>Cash · 5 Nov</small><span class="st ok">Recorded</span></div><div class="a">৳650</div></div>
+            <div class="rec"><div class="t">Bank → Cash<small>ATM withdrawal · 5 Nov</small><span class="st ok">Recorded</span></div><div class="a">৳5,000</div></div>
+            <div class="rec"><div class="t">Txn of BDT 750.00…<small>SMS · 6 Nov</small><span class="st bad">Couldn't read</span></div><div class="a">—</div></div>
+            <div class="rec"><div class="t">Foodpanda<small>Card · 4 Nov</small><span class="st nc">Not counted</span></div><div class="a">৳1,200</div></div>
+          </div>
+        </div>
+        <div class="fab">💬<i>2</i></div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">G2 · New user: nothing recorded yet</p>
+      <div class="phone fixed">
+        <div class="bar"><div><div class="hi">Welcome</div><div class="name">Rahim</div></div><div class="menu-btn">☰</div></div>
+        <div class="empty">
+          <div class="ic">✦</div>
+          <b>Nothing here yet</b>
+          <p>Paste a bank SMS or tell me about a purchase to get started.</p>
+        </div>
+        <div class="arrow">Open the chat →</div>
+        <div class="fab">💬</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <p class="frame-label">G3 · Loading (never ৳0), and if figures can't load</p>
+      <div class="phone fixed">
+        <div class="bar"><div><div class="hi">Good to see you</div><div class="name">Demo</div></div><div class="menu-btn">☰</div></div>
+        <div class="wrap">
+          <div class="month"><div class="nav">‹</div><b>November 2026</b><div class="nav off">›</div></div>
+          <div class="tiles">
+            <div class="tile"><div class="l">Spent</div><div class="status">Loading…</div></div>
+            <div class="tile"><div class="l">Came in</div><div class="status">Loading…</div></div>
+          </div>
+          <p class="frame-label" style="margin-top:28px">If figures can't load:</p>
+          <div class="alert">Couldn't load your latest figures. Anything shown may be out of date.</div>
+        </div>
+        <div class="fab">💬</div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">G4 · Menu: AI budget and sign out</p>
+      <div class="phone fixed">
+        <div class="bar"><div><div class="hi">Good to see you</div><div class="name">Demo</div></div><div class="menu-btn">☰</div></div>
+        <div class="wrap">
+          <div class="month"><div class="nav">‹</div><b>November 2026</b><div class="nav off">›</div></div>
+          <div class="tiles">
+            <div class="tile"><div class="l">Spent</div><div class="v">৳18,640</div></div>
+            <div class="tile"><div class="l">Came in</div><div class="v">৳85,000</div></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="menu">
+          <div class="mi">AI budget<small>$1.43 of $5.00 this month</small></div>
+          <div class="sep"></div>
+          <div class="mi">Sign out</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">G5 · Chat open (phone: full screen)</p>
+      <div class="phone fixed">
+        <div class="chat">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>Chat</b><small>Paste a bank SMS or describe a purchase</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="me"><small>Pasted SMS</small>BDT 5,000.00 withdrawn from A/C **4821 at ATM GULSHAN-2 on 05-Nov-26 19:02.</div>
+            <div class="ai"><span class="st ok">Recorded</span> Bank → Cash ৳5,000. Not counted as spending.
+              <div class="q" style="margin-top:8px">Where did the ৳5,000 go?</div>
+              <div class="opts"><span>Wallet</span><span>Home</span><span>Ammu</span><span>Not sure yet</span></div>
+            </div>
+            <div class="me">paid 500 for rickshaw</div>
+            <div class="ai">৳500 · Transport · from cash. Record it?
+              <div class="opts"><span>Record</span><span>Fix</span></div>
+              <div class="note">Waiting for your answer · not saved yet</div>
+            </div>
+          </div>
+          <div class="comp"><div class="in">Paste a bank SMS or describe cash</div><div class="send">↑</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label" style="max-width:none">G6 · Desktop: dashboard with the chat panel open on the right (Escape or ✕ closes it)</p>
+    <div class="desk">
+      <div class="main">
+        <div class="bar" style="padding:20px 0 4px"><div><div class="hi">Good to see you</div><div class="name">Demo</div></div><div class="menu-btn">☰</div></div>
+        <div class="month" style="max-width:360px"><div class="nav">‹</div><b>November 2026</b><div class="nav off">›</div></div>
+        <div class="grid">
+          <div>
+            <div class="tiles">
+              <div class="tile"><div class="l">Spent</div><div class="v">৳18,640</div></div>
+              <div class="tile"><div class="l">Came in</div><div class="v">৳85,000</div></div>
+            </div>
+            <div class="unx"><span>Cash not yet explained<small>Not counted as spending</small></span><b>৳5,000</b></div>
+            <div class="card">
+              <h3>Where it went</h3>
+              <div class="bars">
+                <div><div class="bl"><span>Groceries</span><b>৳6,820</b></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+                <div><div class="bl"><span>Other</span><b>৳5,730</b></div><div class="track"><div class="fill" style="width:84%"></div></div></div>
+                <div><div class="bl"><span>Transport</span><b>৳3,150</b></div><div class="track"><div class="fill" style="width:46%"></div></div></div>
+                <div><div class="bl"><span>Eating out</span><b>৳2,940</b></div><div class="track"><div class="fill" style="width:43%"></div></div></div>
+              </div>
+              <div class="trend">৳1,740 more than this time last month</div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-top:0">
+              <h3>Money now</h3>
+              <div class="kv"><span>Banks and cash</span><b>৳1,50,200</b></div>
+              <div class="kv"><span>Cards owed</span><b>৳24,570</b></div>
+            </div>
+            <div class="card">
+              <h3>Recent</h3>
+              <div class="rec"><div class="t">Agora Dhanmondi<small>Card · 3 Nov</small><span class="st wait">Waiting for your answer</span></div><div class="a">৳1,870</div></div>
+              <div class="rec"><div class="t">Rickshaw and CNG<small>Cash · 5 Nov</small><span class="st ok">Recorded</span></div><div class="a">৳650</div></div>
+              <div class="rec"><div class="t">Bank → Cash<small>ATM withdrawal · 5 Nov</small><span class="st ok">Recorded</span></div><div class="a">৳5,000</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="chat">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>Chat</b><small>Paste a bank SMS or describe a purchase</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="me"><small>Pasted SMS</small>BDT 5,000.00 withdrawn from A/C **4821 at ATM GULSHAN-2 on 05-Nov-26 19:02.</div>
+            <div class="ai"><span class="st ok">Recorded</span> Bank → Cash ৳5,000. Not counted as spending.
+              <div class="q" style="margin-top:8px">Where did the ৳5,000 go?</div>
+              <div class="opts"><span>Wallet</span><span>Home</span><span>Ammu</span><span>Not sure yet</span></div>
+            </div>
+          </div>
+          <div class="comp"><div class="in">Paste a bank SMS or describe cash</div><div class="send">↑</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <p class="frame-label">G7 · A month with nothing recorded</p>
+      <div class="phone fixed">
+        <div class="bar"><div><div class="hi">Good to see you</div><div class="name">Demo</div></div><div class="menu-btn">☰</div></div>
+        <div class="wrap">
+          <div class="month"><div class="nav">‹</div><b>September 2026</b><div class="nav">›</div></div>
+          <div class="empty" style="padding-top:60px">
+            <b>Nothing recorded in September 2026</b>
+            <p>Use › to go to a later month.</p>
+          </div>
+        </div>
+        <div class="fab">💬<i>2</i></div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h2>Decisions to confirm</h2>
+      <ol>
+        <li><b>Sign-in page</b>: app name, one line, Google button, and a reassurance line (no passwords, PINs or codes).</li>
+        <li><b>Dashboard order</b>: month switch → Spent and Came in → unexplained cash (only when above ৳0) → Where it went (with the comparison line) → Money now → Recent (last 10).</li>
+        <li><b>Chat button</b>: round, bottom-right on every screen, with a badge for questions waiting. Phone: full-screen chat. Desktop: 420 px panel on the right, dashboard stays visible.</li>
+        <li><b>Questions in the chat</b>: an ATM withdrawal is recorded as Bank → Cash at once, then asks "Where did the ৳5,000 go?" with your wallets and family as answers, or "Not sure yet" (never "spent"). Notes read by AI ask "Record it?" before saving.</li>
+        <li><b>Menu</b> (☰): AI budget used this month, and Sign out. Nothing else.</li>
+        <li><b>Recent labels</b>: Recorded · Waiting for your answer · In progress · Couldn't read · Not counted.</li>
+        <li><b>Tips</b> are not shown yet; they come with piece 3.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+</body>
+</html>
