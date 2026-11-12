@@ -11,7 +11,7 @@ Read this file first when resuming.
 | 1 | Phase 0 Task 12, authenticated callables (gate 35) | `apps/functions/src/callable/*` at HEAD; original diff `3bade59..d548607` | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 2 Important, 8 Minor); no cross-user exploit found |
 | 2 | Web sign-in | `apps/web/src/features/auth/*`, Firebase wiring, fixture guard | Fresh reviewer (opus), read-only | Reported: with fixes (1 Critical, 4 Important, 6 Minor) |
 | 3 | Restore drill tooling | `tools/restore-drill/*`, `docs/runbooks/restore-drill*.md` (`ebebf7f`) | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 5 Important, 8 Minor) |
-| 4 | Phase 0 whole-branch review (0A gate) | `a4b05d2..master`, graded at HEAD | Fresh reviewer (opus), read-only | Running |
+| 4 | Phase 0 whole-branch review (0A gate) | `a4b05d2..master`, graded at HEAD | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 3 Important, 7 Minor); all rulings stand |
 
 ## How findings are handled
 
@@ -19,7 +19,8 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 
 ## Next task
 
-Wait for the four review reports, then sort the findings and fix them.
+Fix pass, in this order: sign-in C1, I1, I2; Phase 0 I1, I3, I2; callables I1; restore drill I1–I5.
+Waiting for Mabrur: (a) whether to build opening-balance correction now (callables I2); (b) whether sign-in I3 (allowlist) and I4 (redirect fallback) go on the 0B checklist.
 
 ## Findings
 
@@ -45,6 +46,17 @@ Important:
 4. Sign-in is popup-only, which is unreliable in installed phone apps. It needs a redirect fallback, checked on a real device before 0B.
 
 Minor: 6 items (in the ledger).
+
+### Review 4: Phase 0 whole branch (with fixes)
+
+Ledger invariants hold: integer money, balanced append-only entries, atomic idempotent posting, cutover protection, owner isolation, transactional quota.
+
+Important:
+1. A correction drops the transaction's category and reference, so correcting the same item twice moves the expense to "uncategorized". This is live at HEAD.
+2. The Phase 0 ledger's "Task 12 … review clean" line is false and needs a correction note.
+3. The bound that stops a stage from reopening forever (`stageAttempt < max * 2`) has no test.
+
+Minor: 7 items (in the ledger).
 
 ### Review 3: restore drill (with fixes)
 
