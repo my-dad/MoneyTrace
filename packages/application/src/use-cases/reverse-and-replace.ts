@@ -150,13 +150,17 @@ export class ReverseAndReplace {
       rationale: input.rationale,
       correctionOf: original.id,
       committedAtMs,
+      // The provider reference is evidence about the original; both halves keep it for matching.
+      ...(original.reference !== undefined ? { reference: original.reference } : {}),
     } as const;
     const reversal: TransactionRecord = {
       ...base,
       id: asTransactionId(`${original.id}:rev`),
       intentType: original.intentType,
       occurredAtMs: original.occurredAtMs,
+      ...(original.category !== undefined ? { category: original.category } : {}),
     };
+    const replacementCategory = resolved ? categoryOf(resolved) : undefined;
     const audit = resolved ? auditDetailsOf(resolved) : undefined;
     const replacementTx: TransactionRecord | null = resolved
       ? {
@@ -164,6 +168,7 @@ export class ReverseAndReplace {
           id: asTransactionId(`${original.id}:repl`),
           intentType: resolved.type,
           occurredAtMs: replacementMs,
+          ...(replacementCategory !== undefined ? { category: replacementCategory } : {}),
           ...(audit ? { auditDetails: audit } : {}),
         }
       : null;
@@ -204,4 +209,10 @@ export class ReverseAndReplace {
       ...(marker ? { cutoverMarker: marker } : {}),
     });
   }
+}
+
+/** The expense category a replacement posts to, as PostTransaction records it. */
+function categoryOf(intent: PostingIntent): string | undefined {
+  if (intent.type === "historicalImport") return categoryOf(intent.inner);
+  return "category" in intent ? intent.category : undefined;
 }

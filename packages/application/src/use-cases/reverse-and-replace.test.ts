@@ -4,6 +4,7 @@ import {
   asAccountId,
   asIdempotencyKey,
   asOwnerId,
+  asSourceEventId,
   asTransactionId,
   nominal,
   type AccountRef,
@@ -205,5 +206,31 @@ describe("ReverseAndReplace", () => {
         rationale: "x",
       }),
     ).rejects.toThrow(code("invalidTransition"));
+  });
+
+  it("carries the original's category, reference and evidence onto the reversal and replacement", async () => {
+    const tx2 = asTransactionId("tx-2");
+    await new PostTransaction({ writer: w.ledger, accounts: w.accounts, hasher: w.hasher, clock: w.clock }).execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("k2"),
+      transactionId: tx2,
+      intent: purchase(2_000),
+      occurredAtMs: 1_700_000_000_000,
+      sourceEventIds: [asSourceEventId("e1")],
+      reference: "REF-9",
+      actor: "user",
+    });
+    await reverse.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("c2"),
+      originalTransactionId: tx2,
+      replacement: purchase(2_100),
+      actor: "user",
+      rationale: "receipt says 2,100",
+    });
+    for (const id of ["tx-2:rev", "tx-2:repl"]) {
+      const tx = await w.ledger.getTransaction(alice, asTransactionId(id));
+      expect(tx).toMatchObject({ category: "food", reference: "REF-9", sourceEventIds: ["e1"] });
+    }
   });
 });
