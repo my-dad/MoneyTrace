@@ -5,7 +5,9 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
-import { FIXTURE_NOW_MS } from "../../shared/fixtures/household";
+import { FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
+
+const createFixtureEvents = () => [...FIXTURE_SOURCE_EVENTS];
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
 import type { ReadModelGateway } from "../../shared/read-model-gateway";
 import { DashboardScreen } from "./DashboardScreen";
@@ -125,5 +127,13 @@ describe("DashboardScreen", () => {
     const calls = watch.mock.calls.length;
     rerender(<DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />);
     expect(watch.mock.calls.length).toBe(calls);
+  });
+
+  it("shows recent messages even when the month has nothing recorded", () => {
+    const gateway = new InMemoryReadModelGateway();
+    gateway.setSourceEvents(createFixtureEvents().filter((e) => e.status === "pending"));
+    open(gateway);
+    expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Recent" })).getAllByText("Waiting for your answer").length).toBeGreaterThan(0);
   });
 });

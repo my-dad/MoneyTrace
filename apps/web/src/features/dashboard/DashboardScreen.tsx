@@ -84,10 +84,14 @@ export function DashboardScreen({
     body = <p role="status" className={styles.caption}>{DASHBOARD_COPY.loading}</p>;
   } else if (!view.hasActivity) {
     body = (
-      <div className={styles.empty}>
-        <p className={styles.emptyTitle}>{DASHBOARD_COPY.emptyMonth(month.label)}</p>
-        <p>{DASHBOARD_COPY.emptyMonthHint}</p>
-      </div>
+      <>
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>{DASHBOARD_COPY.emptyMonth(month.label)}</p>
+          {offset < 0 && <p>{DASHBOARD_COPY.emptyMonthHint}</p>}
+        </div>
+        {/* Messages still waiting (for example "Which account?") stay visible on an empty month. */}
+        {offset === 0 && recent.length > 0 && <RecentList items={recent} />}
+      </>
     );
   } else {
     body = (
