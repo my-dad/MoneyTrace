@@ -22,7 +22,7 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 Fix pass done. Waiting for Mabrur on three decisions:
 1. Opening-balance correction (callables I2): build it now, or in the functionality phase?
 2. Sign-in I3 (allowlist / reject anonymous) and I4 (redirect fallback, checked on a phone): add to the 0B checklist?
-3. Backup retention for the restore runbook (14 days is a placeholder).
+3. ~~Backup retention~~ Done 2026-11-12: Mabrur asked for it to be configurable. It is `backupDays` in the retention policy (default 14 days, limit 98), with a `BACKUP_RETENTION_DAYS` override, and `pnpm backups:retention` feeds the runbook command.
 
 Then: mark CR-003 complete in the PRD and the Phase 1 exit checklist.
 
