@@ -12,6 +12,8 @@ export type ExistingTransaction = {
   occurredAtMs: number;
   reference?: string;
   isAuthorization: boolean;
+  /** What it was posted as; only a plain purchase or income can be the other half of a transfer. */
+  intentType?: string;
 };
 
 export type MatchResult =
@@ -23,9 +25,12 @@ export type MatchResult =
   /** The other half of the user's own transfer, unique and close in time (CR-008). */
   | { kind: "transferCounterpart"; transactionId: string; accountId: string };
 
-export type MatchConfig = { windowMs: number };
+export type MatchConfig = { windowMs: number; transferWindowMs: number };
 
-export const DEFAULT_MATCH_CONFIG: MatchConfig = { windowMs: 600_000 };
+/** Own transfers pair automatically within 30 minutes; further apart the same day, the user is asked (CR-008). */
+export const DEFAULT_MATCH_CONFIG: MatchConfig = { windowMs: 600_000, transferWindowMs: 1_800_000 };
+
+const PAIRABLE: ReadonlySet<string> = new Set(["purchase", "income"]);
 
 const ids = (rows: readonly ExistingTransaction[]): string[] => rows.map((r) => r.transactionId);
 
@@ -73,9 +78,19 @@ export function matchCandidate(
   // never gets here; intake's source hash already catches it.
   if (near.length > 0) return { kind: "ambiguous", transactionIds: ids(near) };
 
+  // The other half of the user's own transfer: money out of one source and into another.
   const counterparts = same.filter(
-    (e) => e.accountId !== accountId && e.direction !== direction && inWindow(e),
+    (e) =>
+      e.accountId !== accountId &&
+      e.direction !== direction &&
+      (e.intentType === undefined || PAIRABLE.has(e.intentType)),
   );
+  const close = counterparts.filter((e) => Math.abs(e.occurredAtMs - occurredAtMs) <= config.transferWindowMs);
+  const onlyClose = one(close);
+  if (onlyClose !== undefined) {
+    return { kind: "transferCounterpart", transactionId: onlyClose.transactionId, accountId: onlyClose.accountId };
+  }
+  if (close.length > 1) return { kind: "ambiguous", transactionIds: ids(close) };
   const onlyCounterpart = one(counterparts);
   if (onlyCounterpart !== undefined) {
     return { kind: "possibleCounterpart", transactionId: onlyCounterpart.transactionId };

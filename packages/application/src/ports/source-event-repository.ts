@@ -74,6 +74,8 @@ export type SourceEventPatch = {
 export type UserDecision = {
   candidate: CandidateTransaction;
   userConfirmed: true;
+  /** The user said the possible other half is their own transfer: pair it (CR-008). */
+  pairAsTransfer?: true;
   resolvedAccountId?: string | null;
   resolvedDestinationAccountId?: string | null;
 };

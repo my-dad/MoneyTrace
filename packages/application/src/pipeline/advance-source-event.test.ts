@@ -20,6 +20,7 @@ import { SYSTEM_CASH_ACCOUNT_ID } from "../use-cases/bootstrap-user";
 import { ConfirmCandidate } from "../use-cases/confirm-candidate";
 import { IntakeEvidence } from "../use-cases/intake-evidence";
 import { RecordOpeningBalance } from "../use-cases/record-opening-balance";
+import { ReverseAndReplace } from "../use-cases/reverse-and-replace";
 import { PostTransaction } from "../use-cases/post-transaction";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "./ai-gateway";
 import { AdvanceSourceEvent } from "./advance-source-event";
@@ -153,6 +154,8 @@ beforeEach(async () => {
     candidates: new LedgerCandidateReader(ledger),
     gateway: new AIGateway(w.executor(), ai, DEFAULT_AI_ESTIMATE_MICRO_USD),
     post: new PostTransaction({ writer: ledger, accounts, hasher, clock }),
+    correct: new ReverseAndReplace({ writer: ledger, reader: ledger, accounts, hasher, clock }),
+    ledger,
     profiles: { get: () => Promise.resolve(null) },
     confidence: DEFAULT_CONFIDENCE_CONFIG,
   });
@@ -522,6 +525,8 @@ describe("AI fallback", () => {
         hasher: new TestHasher(),
         clock: w.clock,
       }),
+      correct: new ReverseAndReplace({ writer: ledger, reader: ledger, accounts, hasher: new TestHasher(), clock: w.clock }),
+      ledger,
       profiles: { get: () => Promise.resolve(null) },
       confidence: DEFAULT_CONFIDENCE_CONFIG,
     });
@@ -620,6 +625,72 @@ describe("sources remembered from SMS (CR-008)", () => {
       const { event } = await run(entry.text, bob);
       if (event?.candidate?.provider !== undefined) expect(event.resolvedAccountId, entry.text).not.toBeNull();
     }
+  });
+});
+
+describe("own transfers are paired, not counted (CR-008)", () => {
+  const CARD_DEBIT = smsOf("UCB Debit Card#7777").replace("BDT250.25", "BDT1,700.00").replace("26/03/26 20:30", "21/03/26 16:05");
+  const BKASH_DEPOSIT = smsOf("received deposit from iBanking");
+  const bobBalance = (id: string) => ledger.getBalance(bob, asAccountId(id));
+  const expectPaired = async (firstId: SourceEventId) => {
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${firstId}`))).toMatchObject({ state: "reversed" });
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${firstId}:repl`))).toMatchObject({ intentType: "transfer" });
+    expect(await bobBalance("src-ucb-7777")).toBe(-170_000);
+    expect(await bobBalance("src-bkash-main")).toBe(170_000);
+    expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(0);
+    expect(await bobBalance("nominal:income:uncategorized:BDT")).toBe(0);
+  };
+
+  beforeEach(async () => {
+    await accounts.ensure(bob, { id: SYSTEM_CASH_ACCOUNT_ID, kind: "cash", name: "Cash · place not set", currency: "BDT", status: "active", createdAtMs: 1 });
+  });
+
+  it("a card debit and a bKash credit 15 minutes apart become one transfer: Spent and Came in unchanged", async () => {
+    const debit = await run(CARD_DEBIT, bob);
+    expect(debit.event?.status).toBe("posted");
+    const credit = await run(BKASH_DEPOSIT, bob);
+    expect(credit.event).toMatchObject({ status: "posted", matchKind: "transferCounterpart", resolvedDestinationAccountId: "src-ucb-7777" });
+    await expectPaired(debit.id);
+  });
+
+  it("the credit first, then the debit, pairs the same way", async () => {
+    const credit = await run(BKASH_DEPOSIT, bob);
+    const debit = await run(CARD_DEBIT, bob);
+    expect(debit.event).toMatchObject({ status: "posted", matchKind: "transferCounterpart" });
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${credit.id}`))).toMatchObject({ state: "reversed" });
+    expect(await bobBalance("src-ucb-7777")).toBe(-170_000);
+    expect(await bobBalance("src-bkash-main")).toBe(170_000);
+  });
+
+  it("a crash after pairing replays without correcting twice", async () => {
+    const debit = await run(CARD_DEBIT, bob);
+    const original = w.sourceEvents.commitStage.bind(w.sourceEvents);
+    let failOnce = true;
+    w.sourceEvents.commitStage = (owner, claim, commit) => {
+      if (claim.stage === "post" && failOnce) {
+        failOnce = false;
+        return Promise.reject(new Error("crash"));
+      }
+      return original(owner, claim, commit);
+    };
+    const { id } = await run(BKASH_DEPOSIT, bob).catch(async () => {
+      const [only] = (await w.sourceEvents.listExpiredClaims(NOW + 10_000_000, 10)).map((r) => r.sourceEventId);
+      if (only === undefined) throw new Error("no claim left");
+      return { id: only };
+    });
+    const parked = await w.sourceEvents.get(bob, id);
+    await w.sourceEvents.reopen(bob, id, parked?.version ?? -1, NOW + 10_000_000);
+    expect((await settle(bob, id))?.status).toBe("posted");
+    await expectPaired(debit.id);
+  });
+
+  it("a pair hours apart the same day asks, and 'link' makes it a transfer", async () => {
+    const debit = await run(CARD_DEBIT, bob);
+    const credit = await run(BKASH_DEPOSIT.replace("16:20", "21:00"), bob);
+    expect(credit.event).toMatchObject({ status: "pending", matchKind: "possibleCounterpart" });
+    await confirm.execute({ ownerId: bob, sourceEventId: credit.id, decision: "link" });
+    expect((await settle(bob, credit.id))?.status).toBe("posted");
+    await expectPaired(debit.id);
   });
 });
 

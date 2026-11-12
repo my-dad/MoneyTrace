@@ -42,6 +42,15 @@ export class ConfirmCandidate {
     if (event.status !== "pending" || event.pendingReason !== "awaitingClarification") {
       throw new DomainError("invalidTransition", "this event is not waiting for an answer");
     }
+    // "Yes, that's my own transfer" for a possible other half: pair them rather than drop this one.
+    if (decision === "link" && event.matchKind === "possibleCounterpart" && event.matchedTransactionId !== null && event.candidate !== null) {
+      const applied = await sourceEvents.applyUserDecision(ownerId, event.id, { candidate: event.candidate, userConfirmed: true, pairAsTransfer: true });
+      const fresh = await sourceEvents.get(ownerId, event.id);
+      const reopened =
+        applied === "applied" && fresh !== null ? await sourceEvents.reopen(ownerId, event.id, fresh.version, clock.nowMs()) : "stale";
+      if (reopened !== "reopened") throw new DomainError("invalidTransition", "the event has moved on");
+      return { status: "pending" };
+    }
     if (decision !== "confirm") {
       const status = decision === "reject" ? "rejected" : "linkedAsDuplicate";
       const done = await sourceEvents.finishParked(ownerId, sourceEventId, status, clock.nowMs());

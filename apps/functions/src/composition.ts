@@ -11,6 +11,7 @@ import {
   ResumeQuotaBlockedEvents,
   WakeSnoozedFollowUps,
   CorrectTransaction,
+  ReverseAndReplace,
   PostTransaction,
   RecordCustodyTransfer,
   ResolveFollowUp,
@@ -115,6 +116,8 @@ export function composeDeps(db: Firestore): Deps {
           DEFAULT_AI_ESTIMATE_MICRO_USD,
         ),
         post,
+        correct: new ReverseAndReplace({ writer, reader, accounts, hasher, clock }),
+        ledger: reader,
         profiles,
         confidence: DEFAULT_CONFIDENCE_CONFIG,
       });

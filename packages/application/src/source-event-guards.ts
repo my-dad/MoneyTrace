@@ -253,8 +253,9 @@ export function decideUserDecision(
     userConfirmed: decision.userConfirmed,
     // A possible match the user saw is now judged ("none"). If no match was ever shown, matching
     // reruns with the user's answer (null), so a supplied date or account can't hide a duplicate.
-    matchKind: event.matchKind === null || event.matchKind === "none" ? null : "none",
-    matchedTransactionId: null,
+    ...(decision.pairAsTransfer === true
+      ? { matchKind: "transferCounterpart" as const, matchedTransactionId: event.matchedTransactionId }
+      : { matchKind: event.matchKind === null || event.matchKind === "none" ? null : ("none" as const), matchedTransactionId: null }),
     ...(decision.resolvedAccountId !== undefined
       ? { resolvedAccountId: decision.resolvedAccountId }
       : {}),

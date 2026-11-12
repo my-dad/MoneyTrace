@@ -11,7 +11,9 @@ import type {
   StageCommit,
 } from "../../ports/source-event-repository";
 import type { UserProfileDefaults } from "../../ports/user-profile-repository";
+import type { LedgerReader } from "../../ports/ledger-reader";
 import type { PostTransaction } from "../../use-cases/post-transaction";
+import type { ReverseAndReplace } from "../../use-cases/reverse-and-replace";
 import type { AIGateway } from "../ai-gateway";
 import type { LedgerCandidateReader } from "../candidate-reader";
 
@@ -24,6 +26,9 @@ export type PipelineDeps = {
   candidates: LedgerCandidateReader;
   gateway: AIGateway;
   post: PostTransaction;
+  /** Turns the other half of an own transfer into the transfer (CR-008), as a reversal and replacement. */
+  correct: Pick<ReverseAndReplace, "execute">;
+  ledger: LedgerReader;
   profiles: { get(ownerId: OwnerId): Promise<UserProfileDefaults | null> };
   confidence: ConfidenceConfig;
 };
