@@ -6,9 +6,11 @@ Source of product truth: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline). If this
 
 ## Project status
 
-Phase 1's SMS vertical slice is implemented and locally verified on
-`phase-1-sms-slice`. It includes the authenticated chat, Home summary, account
-setup, deterministic pipeline, emulator coverage, and PWA shell. Production
+Phase 1's SMS vertical slice is implemented, whole-branch reviewed and merged to
+`master` (2026-11-12; review record in
+[`docs/superpowers/progress/phase-1-review.md`](docs/superpowers/progress/phase-1-review.md)).
+It includes the authenticated chat, deterministic pipeline, emulator coverage, and
+PWA shell. PRD CR-003's outstanding reviews are complete. Production
 deployment remains blocked by the Phase 0B gates. The Phase 0 plan is
 [`docs/superpowers/plans/2026-11-06-phase-0-foundations.md`](docs/superpowers/plans/2026-11-06-phase-0-foundations.md);
 the architecture source is
