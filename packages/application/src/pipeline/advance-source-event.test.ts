@@ -73,8 +73,9 @@ async function addInstrument(
   provider: string,
   mask: string,
   kind: PaymentInstrumentKind,
+  owner = alice,
 ) {
-  await instruments.create(alice, {
+  await instruments.create(owner, {
     id: `i-${account}-${provider}-${mask}`,
     kind,
     provider,
@@ -556,4 +557,35 @@ describe("AI fallback", () => {
     const { event } = await run(CARD_PURCHASE_SMS, bob);
     expect(event).toMatchObject({ status: "pending", resolvedAccountId: null });
   });
+
+describe("a mapping the posting rules refuse", () => {
+  it("asks again instead of dead-ending when the user's choice can't be posted", async () => {
+    const { id } = await run(UCB_DEBIT_SMS);
+    await confirm.execute({
+      ownerId: alice,
+      sourceEventId: id,
+      decision: "confirm",
+      overrides: { kind: "purchase", accountId: "card", category: "other", occurredAtMs: NOW },
+    });
+    const event = await settle(alice, id);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "awaitingClarification" });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}`))).toBeNull();
+  });
+
+  it("checks the fee too, so a refused fee never leaves a half-posted event", async () => {
+    await addAccount("bob-bkash", "bank", bob);
+    await addAccount("bob-wallet", "cash", bob);
+    await addInstrument("bob-bkash", "upay", "", "mobileWallet", bob);
+    const { id } = await run(UPAY_TRANSFER_SMS, bob);
+    await confirm.execute({
+      ownerId: bob,
+      sourceEventId: id,
+      decision: "confirm",
+      overrides: { kind: "purchase", accountId: "bob-wallet", category: "other", occurredAtMs: NOW },
+    });
+    const event = await settle(bob, id);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "awaitingClarification" });
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${id}`))).toBeNull();
+  });
+});
 });

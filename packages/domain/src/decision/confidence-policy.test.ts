@@ -33,7 +33,7 @@ describe("decide", () => {
     ).toEqual({ outcome: "autoPost", rule: "userConfirmed" });
   });
   it.each([
-    [{ invariantsPass: false }, "failed", "invariantsFailed"],
+    [{ invariantsPass: false }, "needsClarification", "invariantsFailed"],
     [{ extractionUsable: false }, "failed", "extractionUnusable"],
     [{ currencySupported: false }, "needsClarification", "currencyUnsupported"],
     [{ kindKnown: false }, "needsClarification", "kindUnknown"],
@@ -47,14 +47,15 @@ describe("decide", () => {
       rule,
     });
   });
-  it("an unsupported currency asks, and comes after the failed rules", () => {
+  it("an unsupported currency asks, and comes after the invariants rule", () => {
     expect(decide({ ...clear, currencySupported: false }, config)).toEqual({
       outcome: "needsClarification",
       rule: "currencyUnsupported",
     });
-    expect(
-      decide({ ...clear, currencySupported: false, invariantsPass: false }, config).outcome,
-    ).toBe("failed");
+    expect(decide({ ...clear, currencySupported: false, invariantsPass: false }, config)).toEqual({
+      outcome: "needsClarification",
+      rule: "invariantsFailed",
+    });
   });
   it("auto-posts a clear deterministic match", () => {
     expect(decide(clear, config)).toEqual({ outcome: "autoPost", rule: "deterministicClear" });
@@ -99,11 +100,12 @@ describe("decide", () => {
 
   it.each([
     [{ extractionUsable: false }, "extractionUnusable"],
-    [{ invariantsPass: false }, "invariantsFailed"],
   ])("fails %o", (o, rule) => {
     expect(decide({ ...clear, ...o }, config)).toEqual({ outcome: "failed", rule });
   });
   it.each([
+    // A mapping the posting rules refuse goes back to the user, never to a dead end.
+    [{ invariantsPass: false }, "invariantsFailed"],
     [{ accountMappingUnambiguous: false }, "accountMappingAmbiguous"],
     [{ unresolvedDuplicateCandidate: true }, "duplicateCandidateUnresolved"],
   ])("asks about %o", (o, rule) => {
@@ -123,9 +125,9 @@ describe("decide", () => {
         "extractionUnusable",
       ],
       [
-        "failed over parsersConflict",
+        "invariants over parsersConflict",
         { invariantsPass: false, ...conflict },
-        "failed",
+        "needsClarification",
         "invariantsFailed",
       ],
       [
@@ -134,7 +136,7 @@ describe("decide", () => {
         "failed",
         "extractionUnusable",
       ],
-      ["failed over mapping", { invariantsPass: false, ...mapping }, "failed", "invariantsFailed"],
+      ["invariants over mapping", { invariantsPass: false, ...mapping }, "needsClarification", "invariantsFailed"],
       [
         "parsersConflict over retried",
         { ...conflict, ...retried },

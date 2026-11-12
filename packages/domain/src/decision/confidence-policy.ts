@@ -57,7 +57,8 @@ export function decide(input: DecisionInput, config: ConfidenceConfig): Decision
     );
   }
   if (!input.extractionUsable) return { outcome: "failed", rule: "extractionUnusable" };
-  if (!input.invariantsPass) return { outcome: "failed", rule: "invariantsFailed" };
+  // The posting rules refuse this mapping (or its fee): ask again rather than dead-end (PRD: unclear goes to review).
+  if (!input.invariantsPass) return { outcome: "needsClarification", rule: "invariantsFailed" };
   if (!input.currencySupported)
     return { outcome: "needsClarification", rule: "currencyUnsupported" };
   if (input.parsersConflict) return { outcome: "needsClarification", rule: "parsersConflict" };

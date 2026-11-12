@@ -1,9 +1,12 @@
 import {
   DomainError,
+  Money,
   defaultPostingPolicy,
   decide,
   type AccountRef,
+  type CurrencyCode,
   type DecisionInput,
+  type PostingIntent,
 } from "@moneytrace/domain";
 import type { SourceEventRecord, StageOutput } from "../../ports/source-event-repository";
 import { stageOutputId } from "../../source-event-guards";
@@ -25,10 +28,12 @@ export async function resolveAccounts(
   return { source, destination, systemCash: systemCash ?? fallback };
 }
 
-function invariantsHold(intent: ReturnType<typeof candidateToIntent>): boolean {
+/** Both postings the post stage would make must pass, so a refused fee never leaves a half-posted event. */
+function invariantsHold(intent: ReturnType<typeof candidateToIntent>, fee: PostingIntent | null): boolean {
   if (intent === null) return true;
   try {
     defaultPostingPolicy.toEntries(intent);
+    if (fee !== null) defaultPostingPolicy.toEntries(fee);
     return true;
   } catch (error) {
     if (error instanceof DomainError) return false;
@@ -46,13 +51,15 @@ async function decisionInput(
   const currencySupported = candidate === null || candidate.currency === "BDT";
   const unclassified =
     candidate?.kind === "unclassifiedCredit" || candidate?.kind === "unclassifiedDebit";
-  const intent =
-    candidate !== null && currencySupported
-      ? candidateToIntent(candidate, await resolveAccounts(deps, ownerId, event))
+  const resolved = candidate !== null && currencySupported ? await resolveAccounts(deps, ownerId, event) : null;
+  const intent = candidate !== null && resolved !== null ? candidateToIntent(candidate, resolved) : null;
+  const fee =
+    intent !== null && candidate?.feeMinor !== undefined && resolved?.source != null
+      ? { type: "fee" as const, charged: resolved.source, amount: Money.ofMinor(candidate.feeMinor, candidate.currency as CurrencyCode) }
       : null;
   return {
     extractionUsable: candidate !== null || parsersConflict,
-    invariantsPass: invariantsHold(intent),
+    invariantsPass: invariantsHold(intent, fee),
     accountMappingUnambiguous: unclassified
       ? event.resolvedAccountId !== null
       : intent !== null || !currencySupported,
