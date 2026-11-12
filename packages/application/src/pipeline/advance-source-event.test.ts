@@ -590,6 +590,16 @@ describe("matching after the user answers", () => {
   });
 });
 
+describe("a real SMS with promotional wording", () => {
+  it("shows the bank's reading and posts once the user confirms it", async () => {
+    const promo = "Dear Customer, Your A/C XXXXX123456 has been Debited by BDT 700.00 on 16/03/26. Available balance BDT 2,500.75. Enjoy 10% cashback offer on your card! MTB Hotline 16219";
+    const { id, event } = await run(promo);
+    expect(event).toMatchObject({ status: "pending", candidate: { amountMinor: 70_000 } });
+    await confirm.execute({ ownerId: alice, sourceEventId: id, decision: "confirm", overrides: { kind: "purchase", accountId: "bank", category: "other" } });
+    expect((await settle(alice, id))?.status).toBe("posted");
+  });
+});
+
 describe("a mapping the posting rules refuse", () => {
   it("asks again instead of dead-ending when the user's choice can't be posted", async () => {
     const { id } = await run(UCB_DEBIT_SMS);

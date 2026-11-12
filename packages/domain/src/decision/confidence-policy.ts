@@ -61,7 +61,8 @@ export function decide(input: DecisionInput, config: ConfidenceConfig): Decision
   if (!input.invariantsPass) return { outcome: "needsClarification", rule: "invariantsFailed" };
   if (!input.currencySupported)
     return { outcome: "needsClarification", rule: "currencyUnsupported" };
-  if (input.parsersConflict) return { outcome: "needsClarification", rule: "parsersConflict" };
+  // Parsers disagreed, so it always asks first; the user's confirmation is the answer.
+  if (input.parsersConflict && !input.userConfirmed) return { outcome: "needsClarification", rule: "parsersConflict" };
   if (input.retriedAfterUnknownInChain && !input.userConfirmed)
     return { outcome: "needsClarification", rule: "retriedAfterUnknown" };
   if (!input.kindKnown) return { outcome: "needsClarification", rule: "kindUnknown" };

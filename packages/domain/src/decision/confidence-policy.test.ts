@@ -40,12 +40,15 @@ describe("decide", () => {
     [{ dateKnown: false }, "needsClarification", "dateUnknown"],
     [{ accountMappingUnambiguous: false }, "needsClarification", "accountMappingAmbiguous"],
     [{ unresolvedDuplicateCandidate: true }, "needsClarification", "duplicateCandidateUnresolved"],
-    [{ parsersConflict: true }, "needsClarification", "parsersConflict"],
   ])("a user confirmation does not override %o", (override, outcome, rule) => {
     expect(decide({ ...clear, ...override, userConfirmed: true }, config)).toEqual({
       outcome,
       rule,
     });
+  });
+  it("a parser conflict asks first, and the user's confirmation of the shown reading answers it", () => {
+    expect(decide({ ...clear, parsersConflict: true }, config)).toEqual({ outcome: "needsClarification", rule: "parsersConflict" });
+    expect(decide({ ...clear, parsersConflict: true, userConfirmed: true }, config)).toEqual({ outcome: "autoPost", rule: "userConfirmed" });
   });
   it("an unsupported currency asks, and comes after the invariants rule", () => {
     expect(decide({ ...clear, currencySupported: false }, config)).toEqual({

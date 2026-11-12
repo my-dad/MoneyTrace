@@ -14,7 +14,12 @@ export type { BankSmsParser, ParsedSms } from "./parsers/shared";
 
 export type ParserEvaluation =
   | { outcome: "match"; parser: { name: string; version: string }; parsed: ParsedSms }
-  | { outcome: "conflict"; parsers: string[] }
+  | {
+      outcome: "conflict";
+      parsers: string[];
+      /** The one transaction reading among the disagreeing parsers (the rest say "not financial"), shown so the user can confirm it. */
+      transaction?: { parser: { name: string; version: string }; candidate: CandidateTransaction; confidenceBp: number };
+    }
   | { outcome: "none" };
 
 export const defaultParsers: readonly BankSmsParser[] = [
@@ -65,7 +70,17 @@ export function evaluateParsers(parsers: readonly BankSmsParser[], text: string)
   const [first] = hits;
   if (first === undefined) return { outcome: "none" };
   if (hits.some((h) => readingKey(h.parsed) !== readingKey(first.parsed))) {
-    return { outcome: "conflict", parsers: hits.map((h) => h.parser.name).sort() };
+    const parsers = hits.map((h) => h.parser.name).sort();
+    const readings = hits.filter((h) => h.parsed.kind === "transaction");
+    const only = readings[0];
+    if (only !== undefined && only.parsed.kind === "transaction" && readings.every((h) => readingKey(h.parsed) === readingKey(only.parsed))) {
+      return {
+        outcome: "conflict",
+        parsers,
+        transaction: { parser: { name: only.parser.name, version: only.parser.version }, candidate: only.parsed.candidate, confidenceBp: only.parsed.confidenceBp },
+      };
+    }
+    return { outcome: "conflict", parsers };
   }
   const best = hits.reduce((a, b) => (confidenceOf(b.parsed) > confidenceOf(a.parsed) ? b : a));
   return {

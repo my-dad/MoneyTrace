@@ -194,6 +194,18 @@ describe("evaluateParsers", () => {
     expect(evaluateParsers([a, b], "x").outcome).toBe("conflict");
   });
 
+  it("a conflict with a single transaction reading carries it, so the user can confirm it", () => {
+    const a = parserOf("a", transaction({ amountMinor: 70_000 }));
+    const b = parserOf("b", { kind: "notFinancial", reason: "promotional" });
+    for (const parsers of [[a, b], [b, a]]) {
+      expect(evaluateParsers(parsers, "x")).toMatchObject({
+        outcome: "conflict",
+        parsers: ["a", "b"],
+        transaction: { parser: { name: "a" }, candidate: { amountMinor: 70_000 } },
+      });
+    }
+  });
+
   it("a parser that throws counts as no match and does not break the others", () => {
     const bad: BankSmsParser = {
       name: "bad",

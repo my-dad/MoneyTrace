@@ -12,10 +12,14 @@ const interpreted = (eventPatch: StageCommit["eventPatch"]): StageCommit => ({
 export const interpretStage: Stage = async (deps, ownerId, event) => {
   const evaluation = evaluateParsers(defaultParsers, event.retainedText);
   if (evaluation.outcome === "conflict") {
-    return interpreted({
-      candidate: null,
-      extraction: { source: null, confidenceBp: 0, parsersConflict: true },
-    });
+    const reading = evaluation.transaction;
+    // A bank SMS with promotional wording: keep the bank's reading for the user to confirm.
+    return reading === undefined
+      ? interpreted({ candidate: null, extraction: { source: null, confidenceBp: 0, parsersConflict: true } })
+      : interpreted({
+          candidate: reading.candidate,
+          extraction: { source: "deterministicParser", parser: reading.parser, confidenceBp: reading.confidenceBp, parsersConflict: true },
+        });
   }
   if (evaluation.outcome === "match") {
     const { parser, parsed } = evaluation;
