@@ -118,8 +118,9 @@ describe("buildDashboard", () => {
 describe("aiSpendLabel", () => {
   it("sums actual, falling back to estimate", () => {
     const base = FIXTURE_AI_USAGE[0] as AiUsageRow;
-    const { actualMicroUsd: _ignored, ...estimateOnly } = base;
-    expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, { ...estimateOnly, estimatedMicroUsd: 430_000 }])).toBe("$1.43 of $5.00 this month");
+    const estimateOnly: AiUsageRow = { ...base, estimatedMicroUsd: 430_000 };
+    delete estimateOnly.actualMicroUsd;
+    expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, estimateOnly])).toBe("$1.43 of $5.00 this month");
     expect(aiSpendLabel(FIXTURE_AI_USAGE)).toBe("$1.43 of $5.00 this month");
   });
 });
