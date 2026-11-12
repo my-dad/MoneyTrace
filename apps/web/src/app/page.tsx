@@ -11,9 +11,6 @@ export default function HomePage() {
     <HomeScreen
       gateway={readModels}
       {...(user?.displayName === undefined ? {} : { displayName: user.displayName })}
-      onAddAccount={() => {
-        window.location.href = "/accounts/new";
-      }}
     />
   );
 }

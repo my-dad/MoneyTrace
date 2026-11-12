@@ -18,6 +18,7 @@ const services = (fixture: boolean): AppServices => ({
   commands: createFixtureCommands(),
   cash: null,
   reports: null,
+  settings: null,
   fixture,
 });
 

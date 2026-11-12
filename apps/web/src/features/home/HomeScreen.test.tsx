@@ -2,7 +2,7 @@
 
 import { act, cleanup, render, screen } from "@testing-library/react";
 import axe from "axe-core";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
 import type {
   AccountRow,
@@ -244,7 +244,7 @@ describe("HomeScreen", () => {
         }),
     ],
   ] as [string, () => ReadModelGateway][])("has no axe violations: %s", async (_name, gateway) => {
-    const { container } = render(<HomeScreen gateway={gateway()} onAddAccount={vi.fn()} />);
+    const { container } = render(<HomeScreen gateway={gateway()} />);
     const results = await axe.run(container, {
       rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
     });
@@ -252,9 +252,14 @@ describe("HomeScreen", () => {
   });
 
   it("a new user sees setup rather than zeroed figures", () => {
-    render(<HomeScreen gateway={gatewayWith()} displayName="Mabrur" onAddAccount={vi.fn()} />);
+    render(<HomeScreen gateway={gatewayWith()} displayName="Mabrur" />);
     expect(screen.getByText(/Let's set up your first account/)).toBeTruthy();
     expect(screen.queryByText("৳0.00")).toBeNull();
+  });
+
+  it("a new user's setup button opens onboarding", () => {
+    render(<HomeScreen gateway={gatewayWith()} />);
+    expect(screen.getByRole("link", { name: "Start setup" }).getAttribute("href")).toBe("/onboarding");
   });
 
   it("a listener error shows a failure message", () => {

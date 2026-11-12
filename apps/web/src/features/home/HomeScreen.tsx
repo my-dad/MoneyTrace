@@ -1,7 +1,7 @@
 "use client";
 
 import { formatBdt } from "@moneytrace/contracts";
-import { Button, Card, EmptyState, List, ListItem, MoneyText } from "@moneytrace/ui-kit";
+import { Card, EmptyState, List, ListItem, MoneyText } from "@moneytrace/ui-kit";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -30,11 +30,9 @@ const updatedFormat = new Intl.DateTimeFormat("en-GB", {
 export function HomeScreen({
   gateway,
   displayName,
-  onAddAccount,
 }: {
   gateway: ReadModelGateway;
   displayName?: string;
-  onAddAccount?: () => void;
 }) {
   // Null until the first snapshot, so "not loaded yet" never reads as "you have nothing".
   const [accounts, setAccounts] = useState<AccountRow[] | null>(null);
@@ -104,7 +102,7 @@ export function HomeScreen({
         <EmptyState
           title="Let's set up your first account"
           description="Add an account and its opening balance so your available money starts from a real number."
-          action={<Button onClick={onAddAccount}>Add account</Button>}
+          action={<Link href="/onboarding" className="mt-button mt-button--primary">Start setup</Link>}
         />
       </main>
     );

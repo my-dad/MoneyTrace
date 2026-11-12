@@ -1,0 +1,24 @@
+.page { max-width:560px; margin:0 auto; padding:20px 16px calc(32px + var(--mt-nav-height, 0px)); display:flex; flex-direction:column; gap:14px; color:var(--mt-ink); }
+.progress { display:flex; gap:6px; }
+.progress span { flex:1; height:4px; border-radius:4px; background:var(--mt-border); }
+.progress .on { background:var(--mt-accent); }
+.stepText { margin:-6px 0 0; font-size:12px; color:var(--mt-caption); }
+.title { margin:4px 0 0; font-size:22px; font-weight:800; }
+.lead { margin:0; font-size:14px; line-height:1.5; color:var(--mt-body); }
+.page input:not([type="radio"]), .page select { width:100%; box-sizing:border-box; }
+.fixed { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--mt-border-strong); border-radius:12px; background:var(--mt-surface-soft); font-size:14px; }
+.fixed span { font-size:12px; color:var(--mt-caption); }
+.list { list-style:none; margin:0; padding:0; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+.list li { padding:12px 14px; font-size:14px; }
+.list li + li { border-top:1px solid var(--mt-border-soft); }
+.list small { display:block; font-size:12px; color:var(--mt-caption); }
+.addRow { display:grid; grid-template-columns:1fr; gap:10px; padding:14px 16px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; }
+.info { margin:0; padding:12px 14px; border:1px dashed var(--mt-border-dashed); border-radius:14px; background:var(--mt-surface-soft); font-size:13px; line-height:1.5; }
+.balances { padding:4px 16px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; }
+.balances :global(.mt-field) { display:grid; grid-template-columns:minmax(0, 1fr) 130px; align-items:center; gap:4px 10px; margin:0; padding:8px 0; border-top:1px solid var(--mt-border-soft); }
+.balances :global(.mt-field):first-child { border-top:none; }
+.balances :global(.mt-field__label) { margin:0; font-weight:500; }
+.balances input { text-align:right; }
+.error { margin:0; font-size:13px; font-weight:600; color:var(--mt-failed-text); }
+.actions { display:flex; gap:10px; margin-top:8px; }
+.actions > * { flex:1; }

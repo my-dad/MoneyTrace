@@ -29,8 +29,9 @@ Read this first when resuming. Updated and committed after every task.
 | 8 Build C accounts and cash | Done |
 | 9 Mockup D reports | Done (approved) |
 | 10 Build D reports | Done |
-| 11 Mockup E settings and onboarding | Drawn; awaiting Mabrur's approval |
-| 12–14 Build E, mockup/build F | Not started |
+| 11 Mockup E settings and onboarding | Done (approved) |
+| 12 Build E settings and onboarding | Done |
+| 13–14 Mockup/build F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -41,24 +42,25 @@ Read this first when resuming. Updated and committed after every task.
 | B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
 | C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
 | D Reports | Drawn: `design/screens/D-reports.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | fixture report source, screen (toggle, stepping, empty, error, unexplained line, null source, axe), smoke |
-| E Settings / Onboarding | Drawn: `design/screens/E-settings.html` | Awaiting Mabrur | — | — |
+| E Settings / Onboarding | Drawn: `design/screens/E-settings.html` | Approved 2026-11-12 (all 7 decisions as drawn) | Done | settings source, settings screen, AI budget, reminders form, wizard, Home link, smoke |
 | F Reminders inbox | — | — | — | — |
 
 ## Next task
 
-Mabrur reviews `design/screens/E-settings.html`. On approval: record it here, then Task 12 (build E).
+Task 13: draw mockup F (Reminders inbox) at `design/screens/F-reminders.html`, then stop for Mabrur's approval.
 
 ## Open decisions
 
-Mockup E asks Mabrur to confirm: 5-step setup shown once for a new user; BDT fixed; read-only AI budget (US$0.05/day, US$5.00/month); reminders daily/weekly/off with digest time, quiet hours and minimum amount; notifications explain browser permission with the inbox always on and no amounts in notifications; the privacy page's lists; Reporting period in Settings reuses setup step 2.
+None.
 
 ## Noted for later (not in this plan)
 
 - Desktop Home has no assistant panel yet (mockup screen 03 and A5 show one). Home itself is unchanged by this plan.
 - The existing Home layout differs from mockup screen 01 (greeting, bank/cash split, card list). Home is unchanged by this plan.
 - Account detail omits mockup C4's "Verified · matches the last SMS balance" badge: no read model says whether a balance matches an SMS yet.
+- The setup name (step 1) isn't saved: `updateSettings` has no display-name field.
 - Account history has no opening-balance line yet (mockup C4 shows one); the fixture history is built from source events only.
 
 ## Last verification
 
-Task 10 (2026-11-12): `pnpm verify` → 91 files, 1378 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 4 passed. The emulator E2E suite runs at Task 15.
+Task 12 (2026-11-12): `pnpm verify` → 96 files, 1399 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 5 passed. The emulator E2E suite runs at Task 15.

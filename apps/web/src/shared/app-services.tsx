@@ -5,6 +5,8 @@ import type { CashSource } from "../features/accounts/cash-source";
 import { createFixtureCashSource } from "../features/accounts/fixture-cash-source";
 import { createFixtureReportSource } from "../features/reports/fixture-report-source";
 import type { ReportSource } from "../features/reports/report-source";
+import { createFixtureSettingsSource } from "../features/settings/fixture-settings-source";
+import type { SettingsSource } from "../features/settings/settings-source";
 import type { AuthGateway } from "../features/auth/auth-gateway";
 import { createFirebaseAuthGateway } from "../features/auth/firebase-auth-gateway";
 import { createFixtureAuthGateway } from "../features/auth/fixture-auth-gateway";
@@ -23,6 +25,8 @@ export type AppServices = {
   cash: CashSource | null;
   /** Period reports; fixture-only until functionality resumes. */
   reports: ReportSource | null;
+  /** Preferences and AI usage; fixture-only until functionality resumes. */
+  settings: SettingsSource | null;
   fixture: boolean;
 };
 
@@ -36,6 +40,7 @@ export function createAppServices(): AppServices {
       commands: createFixtureCommands(),
       cash: createFixtureCashSource(),
       reports: createFixtureReportSource(),
+      settings: createFixtureSettingsSource(),
       fixture: true,
     };
   }
@@ -45,6 +50,7 @@ export function createAppServices(): AppServices {
     commands: createFirebaseCommands(),
     cash: null,
     reports: null,
+    settings: null,
     fixture: false,
   };
 }
