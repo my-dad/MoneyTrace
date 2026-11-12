@@ -48,7 +48,7 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Final review done (0 Critical, 6 Important fixed, 12 Minor deferred, listed below). Next: finishing-a-development-branch (Mabrur picks how to integrate).
+Done. Final review: 0 Critical, 6 Important fixed, 12 Minor deferred (listed below). On 2026-11-12, Mabrur chose a local merge: `ui-screens` was fast-forwarded into `phase-1-sms-slice` at `c02654d` and deleted. Next: the CR-003 reviews, merging Phase 1 into `master`, then a spec and plan for the functionality phase (see the open items).
 
 Emulator suites need Java 21+. OpenJDK 21 is now the system default (installed 2026-11-12), so `pnpm test:emulator` and `pnpm test:e2e` run as written.
 
