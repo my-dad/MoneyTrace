@@ -66,4 +66,20 @@ describe("ChatLauncher", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
     expect((await axe.run(container)).violations).toEqual([]);
   });
+
+  it("shows the question the badge counts, including one whose snooze has passed", () => {
+    const later = Date.parse("2026-12-02T00:00:00+06:00");
+    render(<ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={later} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open chat, 3 questions waiting" }));
+    const dialog = screen.getByRole("dialog", { name: "Chat" });
+    expect(within(dialog).getByText(/Home cash counted ৳300 less than expected/)).toBeTruthy();
+  });
+
+  it("keeps the chat open when Escape ends a Bangla (IME) composition", () => {
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
+    const dialog = screen.getByRole("dialog", { name: "Chat" });
+    fireEvent.keyDown(within(dialog).getByLabelText("Message MoneyTrace"), { key: "Escape", isComposing: true });
+    expect(screen.getByRole("dialog", { name: "Chat" })).toBeTruthy();
+  });
 });

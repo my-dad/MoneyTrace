@@ -82,38 +82,36 @@ export function DashboardScreen({
     );
   } else if (view === null) {
     body = <p role="status" className={styles.caption}>{DASHBOARD_COPY.loading}</p>;
-  } else if (!view.hasActivity) {
-    body = (
-      <>
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>{DASHBOARD_COPY.emptyMonth(month.label)}</p>
-          {offset < 0 && <p>{DASHBOARD_COPY.emptyMonthHint}</p>}
-        </div>
-        {/* Messages still waiting (for example "Which account?") stay visible on an empty month. */}
-        {offset === 0 && recent.length > 0 && <RecentList items={recent} />}
-      </>
-    );
   } else {
+    // Only Spent, Came in and the chart belong to the month; balances, unexplained cash and the
+    // latest messages are shown on every month.
     body = (
       <div className={styles.columns}>
         <div>
-          <div className={styles.tiles}>
-            <div role="group" aria-label={DASHBOARD_COPY.spent} className={styles.tile}>
-              <span className={styles.tileLabel}>{DASHBOARD_COPY.spent}</span>
-              <span className={styles.tileValue}>{formatBdt(view.spentMinor)}</span>
+          {view.hasActivity ? (
+            <div className={styles.tiles}>
+              <div role="group" aria-label={DASHBOARD_COPY.spent} className={styles.tile}>
+                <span className={styles.tileLabel}>{DASHBOARD_COPY.spent}</span>
+                <span className={styles.tileValue}>{formatBdt(view.spentMinor)}</span>
+              </div>
+              <div role="group" aria-label={DASHBOARD_COPY.cameIn} className={styles.tile}>
+                <span className={styles.tileLabel}>{DASHBOARD_COPY.cameIn}</span>
+                <span className={styles.tileValue}>{formatBdt(view.incomeMinor)}</span>
+              </div>
             </div>
-            <div role="group" aria-label={DASHBOARD_COPY.cameIn} className={styles.tile}>
-              <span className={styles.tileLabel}>{DASHBOARD_COPY.cameIn}</span>
-              <span className={styles.tileValue}>{formatBdt(view.incomeMinor)}</span>
+          ) : (
+            <div className={styles.emptyMonth}>
+              <p className={styles.emptyTitle}>{DASHBOARD_COPY.emptyMonth(month.label)}</p>
+              {offset < 0 && <p>{DASHBOARD_COPY.emptyMonthHint}</p>}
             </div>
-          </div>
+          )}
           {view.unexplainedCashMinor > 0 && (
             <div role="note" aria-label={DASHBOARD_COPY.unexplained} className={styles.unexplained}>
               <span>{DASHBOARD_COPY.unexplained}<small>{DASHBOARD_COPY.unexplainedDetail}</small></span>
               <b>{formatBdt(view.unexplainedCashMinor)}</b>
             </div>
           )}
-          {view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
+          {view.hasActivity && view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
         </div>
         <div>
           <section aria-labelledby="money-now" className={styles.card}>

@@ -32,9 +32,14 @@ export function chatStatusCopy(event: SourceEventRow): string {
   return "Reading your evidence";
 }
 
-export function buildChatTimeline(input: { events: SourceEventRow[]; followUps: FollowUpRow[]; accounts: AccountRow[] }): ChatItem[] {
+/** A question waiting for the user: open, or snoozed until a time that has passed. The badge and the chat share this. */
+export function isAwaitingAnswer(row: FollowUpRow, nowMs: number): boolean {
+  return row.state === "open" || (row.state === "snoozed" && row.snoozedUntilMs !== null && row.snoozedUntilMs <= nowMs);
+}
+
+export function buildChatTimeline(input: { events: SourceEventRow[]; followUps: FollowUpRow[]; accounts: AccountRow[]; nowMs: number }): ChatItem[] {
   const events: ChatItem[] = input.events.map((event) => ({ kind: "evidence", id: event.id, text: event.retainedText, outcome: chatOutcome(event), statusCopy: chatStatusCopy(event), event }));
-  const followUps: ChatItem[] = input.followUps.filter((followUp) => followUp.state === "open").map((followUp) => ({ kind: "followUp", id: followUp.id, question: followUp.question, followUp, accounts: input.accounts }));
+  const followUps: ChatItem[] = input.followUps.filter((followUp) => isAwaitingAnswer(followUp, input.nowMs)).map((followUp) => ({ kind: "followUp", id: followUp.id, question: followUp.question, followUp, accounts: input.accounts }));
   return [...events, ...followUps].sort((a, b) => {
     const aAt = a.kind === "evidence" ? a.event.receivedAtMs : a.followUp.createdAtMs;
     const bAt = b.kind === "evidence" ? b.event.receivedAtMs : b.followUp.createdAtMs;

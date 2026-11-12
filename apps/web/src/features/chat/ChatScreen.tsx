@@ -49,12 +49,15 @@ export function ChatScreen({
   gateway,
   commands,
   embedded = false,
+  nowMs: givenNowMs,
 }: {
   gateway: ReadModelGateway;
   commands: ChatCommands;
   /** Inside the pop-up panel, which supplies its own title bar. */
   embedded?: boolean;
+  nowMs?: number;
 }) {
+  const [nowMs] = useState(() => givenNowMs ?? Date.now());
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
   const [events, setEvents] = useState<SourceEventRow[]>([]);
@@ -86,8 +89,8 @@ export function ChatScreen({
   }, [gateway]);
 
   const timeline = useMemo(
-    () => buildChatTimeline({ events, followUps, accounts }),
-    [events, followUps, accounts],
+    () => buildChatTimeline({ events, followUps, accounts, nowMs }),
+    [events, followUps, accounts, nowMs],
   );
 
   useEffect(() => {

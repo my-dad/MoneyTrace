@@ -57,6 +57,9 @@ button.menuItem { cursor:pointer; border-top:1px solid var(--mt-border-soft); bo
 .empty { text-align:center; padding:72px 24px 0; color:var(--mt-caption); font-size:14px; line-height:1.55; }
 .empty p { margin:0; }
 .emptyTitle { color:var(--mt-ink); font-size:18px; font-weight:700; margin-bottom:8px !important; }
+.emptyMonth { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:20px 16px; text-align:center; color:var(--mt-caption); font-size:13px; line-height:1.5; }
+.emptyMonth p { margin:0; }
+.emptyMonth .emptyTitle { font-size:15px; margin-bottom:4px !important; }
 .tips:empty { display:none; }
 
 @media (min-width: 1024px) {

@@ -49,4 +49,11 @@ describe("toRecentItems", () => {
     expect(atm?.title).toBe("Bank → Cash");
     expect(atm?.detail).toMatch(/ATM withdrawal · \w{3} 5 Nov/);
   });
+
+  it("lists by when the message was sent, so an old SMS pasted now still shows", () => {
+    const fresh = withStatus("fresh", { status: "received", candidate: { ...(base.candidate as NonNullable<SourceEventRow["candidate"]>), occurredAtMs: Date.parse("2026-03-29T19:45:00+06:00") } }, Date.parse("2026-11-12T10:00:00+06:00"));
+    const items = toRecentItems([...FIXTURE_SOURCE_EVENTS, fresh], FIXTURE_ACCOUNTS, 3);
+    expect(items[0]?.id).toBe("fresh");
+    expect(items[0]?.detail).toMatch(/29 Mar/);
+  });
 });

@@ -20,7 +20,8 @@ export function useModalFocus(onClose: () => void) {
   }, []);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
+    // Escape also ends an IME composition (Bangla input); that must not close the dialog.
+    if (event.key === "Escape" && !event.nativeEvent.isComposing) {
       event.stopPropagation();
       close.current();
       return;

@@ -136,4 +136,15 @@ describe("DashboardScreen", () => {
     expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Recent" })).getAllByText("Waiting for your answer").length).toBeGreaterThan(0);
   });
+
+  it("keeps balances and unexplained cash on a month with no spending or income", () => {
+    const gateway = createFixtureReadModels();
+    gateway.setExpenseEntries([]);
+    gateway.setIncomeEntries([]);
+    open(gateway);
+    expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
+    expect(screen.getByRole("note", { name: "Cash not yet explained" }).textContent).toContain("৳5,000");
+    expect(figure("Banks and cash")).toContain("৳1,50,200");
+    expect(screen.queryByRole("group", { name: "Spent" })).toBeNull();
+  });
 });

@@ -52,6 +52,7 @@ describe("chat view model", () => {
       events: [event("posted")],
       followUps: [{ id: "follow-up", trigger: "withdrawalDestination", question: "Where did it go?", dueAtMs: 1, snoozedUntilMs: null, state: "open", createdAtMs: 1, resolvedAtMs: null }],
       accounts: [],
+      nowMs: 2,
     });
     expect(items.map((item) => item.kind)).toEqual(["evidence", "followUp"]);
   });

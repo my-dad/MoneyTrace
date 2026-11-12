@@ -44,7 +44,10 @@ const preview = (text: string): string => (text.length > 40 ? `${text.slice(0, 4
 
 export function toRecentItems(events: SourceEventRow[], accounts: AccountRow[], limit: number): RecentItem[] {
   const names = new Map(accounts.map((account) => [account.id, account.name]));
-  return events
+  // The last messages *sent*: an old SMS pasted today is the newest item, shown with its own date.
+  return [...events]
+    .sort((a, b) => b.receivedAtMs - a.receivedAtMs)
+    .slice(0, limit)
     .map((event): RecentItem => {
       const candidate = event.candidate;
       const kind = candidate?.kind;
@@ -65,7 +68,5 @@ export function toRecentItems(events: SourceEventRow[], accounts: AccountRow[], 
         status,
         statusLabel: LABELS[status],
       };
-    })
-    .sort((a, b) => b.atMs - a.atMs)
-    .slice(0, limit);
+    });
 }

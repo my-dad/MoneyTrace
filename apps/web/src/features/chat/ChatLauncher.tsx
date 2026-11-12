@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { CHAT_COPY } from "../../shared/copy";
 import type { FollowUpRow, ReadModelGateway } from "../../shared/read-model-gateway";
 import { useModalFocus } from "../../shared/use-modal-focus";
+import { isAwaitingAnswer } from "./chat-view-model";
 import { ChatScreen, type ChatCommands } from "./ChatScreen";
 import styles from "./launcher.module.css";
 
 /** Questions waiting for an answer: open ones, and snoozed ones whose snooze has passed. */
 export function openQuestionCount(rows: FollowUpRow[], nowMs: number): number {
-  return rows.filter((row) => row.state === "open" || (row.state === "snoozed" && row.snoozedUntilMs !== null && row.snoozedUntilMs <= nowMs)).length;
+  return rows.filter((row) => isAwaitingAnswer(row, nowMs)).length;
 }
 
 const buttonLabel = (count: number): string =>
@@ -30,12 +31,12 @@ export function ChatLauncher({ gateway, commands, nowMs }: { gateway: ReadModelG
         </svg>
         {count > 0 && <span className={styles.badge} aria-hidden="true">{count}</span>}
       </button>
-      {open && <ChatPanel gateway={gateway} commands={commands} onClose={() => { setOpen(false); }} />}
+      {open && <ChatPanel gateway={gateway} commands={commands} nowMs={nowMs} onClose={() => { setOpen(false); }} />}
     </>
   );
 }
 
-function ChatPanel({ gateway, commands, onClose }: { gateway: ReadModelGateway; commands: ChatCommands; onClose: () => void }) {
+function ChatPanel({ gateway, commands, nowMs, onClose }: { gateway: ReadModelGateway; commands: ChatCommands; nowMs: number; onClose: () => void }) {
   const focus = useModalFocus(onClose);
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="chat-panel-title" className={styles.panel} {...focus}>
@@ -47,7 +48,7 @@ function ChatPanel({ gateway, commands, onClose }: { gateway: ReadModelGateway; 
         </div>
         <button type="button" className={styles.close} aria-label="Close chat" onClick={onClose}>✕</button>
       </div>
-      <ChatScreen gateway={gateway} commands={commands} embedded />
+      <ChatScreen gateway={gateway} commands={commands} nowMs={nowMs} embedded />
     </div>
   );
 }
