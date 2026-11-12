@@ -33,7 +33,7 @@ Read this first when resuming. Updated and committed after every task.
 | 12 Build E settings and onboarding | Done |
 | 13 Mockup F reminders | Done (approved) |
 | 14 Build F reminders | Done |
-| 15 UI-complete exit | Not started |
+| 15 UI-complete exit | Done, except the emulator suites (blocked: JDK 21 missing) |
 
 ## Screen groups
 
@@ -48,11 +48,24 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Task 15: UI-complete exit — run every suite (including `pnpm test:emulator` and `pnpm test:e2e`), compare screens to mockups, update AGENT.md status/commands, record open items. Then the final whole-branch review.
+1. Mabrur installs JDK 21 or newer (only JDK 17 is installed; firebase-tools refuses anything older than 21). Then run `pnpm test:emulator && pnpm test:e2e` and record the totals below.
+2. Final whole-branch review, then finishing-a-development-branch.
 
 ## Open decisions
 
 None.
+
+## Open items for the functionality phase
+
+- CR-003 reviews still to do before the functionality phase starts.
+- Real sources for `CashSource`, `ReportSource` and `SettingsSource` (fixture-only today; `null` outside fixture mode shows "Not available yet"), plus the read-model fields they need: per-account history with an opening-balance line, card statement dues, period report aggregates (categories, movements, unsettled items), and settings plus AI-usage views.
+- Backend commands the UI already calls but which have no implementation: cash count, adjustment, allocation, and closing a follow-up without an answer ("Done").
+- Merge Phase 1 (`phase-1-sms-slice`) before this branch is integrated.
+- DeepSeek pricing and data-processing terms are to be checked before any real data.
+
+## Screen walk (Task 15)
+
+Every route was captured at 390 px and 1280 px in fixture mode: `/`, `/chat`, `/activity` (list and detail), `/accounts` (list, card detail, `/accounts/new`), `/reports`, `/settings` (list and AI budget), `/onboarding` and `/reminders`. No horizontal overflow and no page errors. Each screen matches its approved mockup, apart from the differences listed under "Noted for later".
 
 ## Noted for later (not in this plan)
 
@@ -67,4 +80,4 @@ None.
 
 ## Last verification
 
-Task 14 (2026-11-12): `pnpm verify` → 98 files, 1413 tests pass. `pnpm test:e2e:fixture` (builds the app) → 6 passed. The emulator E2E suite runs at Task 15.
+Task 15 (2026-11-12): `pnpm verify` → 98 files, 1413 tests pass. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 6 passed. `pnpm test:emulator` → **did not run**: `Error: firebase-tools no longer supports Java version before 21` (the machine has OpenJDK 17.0.21). `pnpm test:e2e` uses the same emulators, so it is blocked too. The emulator E2E suite runs at Task 15.

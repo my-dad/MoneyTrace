@@ -15,6 +15,12 @@ the architecture source is
 [`docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md`](docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md).
 Cloud CI and real Firebase environments are intentionally deferred.
 
+On `ui-screens`, every PRD §4 screen (Home, Chat, Activity, Accounts & Cash,
+Reports, Settings/Onboarding, Reminders) is built against fixture data
+(`NEXT_PUBLIC_DATA_SOURCE=fixture`). Actions without a backend report "Not
+available yet" and save nothing. Wiring real sources is the next phase; see
+[`docs/superpowers/progress/ui-screens.md`](docs/superpowers/progress/ui-screens.md).
+
 ## What it is
 
 Single-user, mobile-first PWA for evidence-driven personal/household finance tracking. The user pastes bank SMS, uploads receipts/screenshots/PDFs, or chats about cash. The system extracts evidence, deduplicates, validates, posts balanced ledger entries, and asks focused follow-up questions. Hybrid home screen: summary + pending items + always-available AI chat.
@@ -119,12 +125,14 @@ pnpm --filter web build
 pnpm test:emulator
 pnpm build:functions
 pnpm test:e2e
+pnpm test:e2e:fixture
 ```
 
 `pnpm verify` runs lint, all workspace typechecks, dependency-boundary checks,
 and the unit test suite. `pnpm test:emulator` builds Functions and runs the
 emulator suite against the local demo project. `pnpm test:e2e` builds the web
-app and runs emulator-gated Playwright smoke paths. `pnpm deploy:staging` exists,
+app and runs emulator-gated Playwright smoke paths. `pnpm test:e2e:fixture` builds the
+fixture-mode app and runs the demo-data smoke paths (no emulators needed). `pnpm deploy:staging` exists,
 but must not run before Phase 0B's App Check, rate-limit, billing, backup, and
 restore gates are approved.
 
