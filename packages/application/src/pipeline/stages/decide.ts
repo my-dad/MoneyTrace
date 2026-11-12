@@ -51,8 +51,6 @@ async function decisionInput(
   const { candidate, extraction } = event;
   const parsersConflict = extraction?.parsersConflict === true;
   const currencySupported = candidate === null || candidate.currency === "BDT";
-  const unclassified =
-    candidate?.kind === "unclassifiedCredit" || candidate?.kind === "unclassifiedDebit";
   const resolved = candidate !== null && currencySupported ? await resolveAccounts(deps, ownerId, event) : null;
   const intent = candidate !== null && resolved !== null ? candidateToIntent(candidate, resolved) : null;
   const fee =
@@ -62,9 +60,7 @@ async function decisionInput(
   return {
     extractionUsable: candidate !== null || parsersConflict,
     invariantsPass: invariantsHold(intent, fee),
-    accountMappingUnambiguous: unclassified
-      ? event.resolvedAccountId !== null
-      : intent !== null || !currencySupported,
+    accountMappingUnambiguous: intent !== null || !currencySupported,
     unresolvedDuplicateCandidate:
       event.matchKind === "ambiguous" ||
       event.matchKind === "possibleCounterpart" ||
@@ -75,7 +71,8 @@ async function decisionInput(
     retriedAfterUnknownInChain: extraction?.retriedAfterUnknown === true,
     currencySupported,
     userConfirmed: event.userConfirmed,
-    kindKnown: !unclassified,
+    // CR-008: credit or debit is enough to know what it means.
+    kindKnown: true,
     dateKnown: candidate === null || candidate.occurredAtMs !== null,
   };
 }

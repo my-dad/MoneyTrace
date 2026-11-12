@@ -1,4 +1,5 @@
 import { DEFAULT_RETENTION_POLICY } from "@moneytrace/contracts";
+import { CASH_ACCOUNT_ID } from "../pipeline/sources";
 import { asAccountId, type OwnerId } from "@moneytrace/domain";
 import type { AccountRepository } from "../ports/account-repository";
 import type { Clock } from "../ports/clock";
@@ -30,6 +31,14 @@ export class BootstrapUser {
       id: SYSTEM_CASH_ACCOUNT_ID,
       kind: "cash",
       name: "Cash · place not set",
+      currency: "BDT",
+      status: "active",
+      createdAtMs: this.deps.clock.nowMs(),
+    });
+    await this.deps.accounts.ensure(input.ownerId, {
+      id: CASH_ACCOUNT_ID,
+      kind: "cash",
+      name: "Cash",
       currency: "BDT",
       status: "active",
       createdAtMs: this.deps.clock.nowMs(),

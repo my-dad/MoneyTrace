@@ -7,7 +7,7 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 |---|---|
 | 1 Mockup H | Done: approved by Mabrur 2026-11-12, with quick answers kept |
 | 2 Contracts | Done |
-| 3 Sources remembered from SMS | Not started |
+| 3 Sources remembered from SMS | Done |
 | 4 Transfer pairing | Not started |
 | 5 DeepSeek asks until it's clear | Not started |
 | 6 Web: chips, Net money and Sources, question thread | Not started |
@@ -15,7 +15,7 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 
 ## Next task
 
-Task 3: sources remembered from SMS.
+Task 4: transfer pairing.
 
 ## Open decisions
 

@@ -432,9 +432,10 @@ describe("evidence that must not post", () => {
     expect(await balance("card")).toBe(0);
   });
 
-  it("an SMS for an unknown card ending asks which account", async () => {
+  it("an SMS for an unknown card ending remembers a new source (CR-008)", async () => {
     const { event } = await run(CARD_PURCHASE_SMS.replace("***9999", "***1212"));
-    expect(event).toMatchObject({ status: "pending", resolvedAccountId: null });
+    expect(event).toMatchObject({ status: "posted", resolvedAccountId: "src-brac-1212" });
+    expect((await accounts.getMany(alice, [asAccountId("src-brac-1212")]))[0]?.name).toBe("BRAC card ••1212");
     expect(await balance("card")).toBe(0);
   });
 
@@ -556,8 +557,71 @@ describe("AI fallback", () => {
     });
     await run(CARD_PURCHASE_SMS);
     const { event } = await run(CARD_PURCHASE_SMS, bob);
-    expect(event).toMatchObject({ status: "pending", resolvedAccountId: null });
+    // Bob's own source is remembered for Bob (CR-008); Alice's card is untouched.
+    expect(event).toMatchObject({ status: "posted", resolvedAccountId: "src-brac-9999" });
+    expect(await balance("card")).toBe(-190_000);
   });
+
+describe("sources remembered from SMS (CR-008)", () => {
+  const MTB_DEBIT_SMS = smsOf("has been Debited by BDT 700.00");
+  const MTB_CREDIT_SMS = smsOf("has been Credited by BDT 18,000.00");
+  const bobAccount = async (id: string) => (await accounts.getMany(bob, [asAccountId(id)]))[0];
+  const bobBalance = (id: string) => ledger.getBalance(bob, asAccountId(id));
+
+  beforeEach(async () => {
+    await accounts.ensure(bob, { id: SYSTEM_CASH_ACCOUNT_ID, kind: "cash", name: "Cash · place not set", currency: "BDT", status: "active", createdAtMs: 1 });
+  });
+
+  it("the first SMS from a new bank account creates its source, and later ones reuse it", async () => {
+    expect((await run(WITHDRAWAL_SMS, bob)).event?.status).toBe("posted");
+    expect(await bobAccount("src-brac-8888")).toMatchObject({ name: "BRAC ••8888", kind: "bank" });
+    expect((await run(WITHDRAWAL_SMS.replace("4,000.00", "3,000.00"), bob)).event?.status).toBe("posted");
+    expect(await bobBalance("src-brac-8888")).toBe(-700_000);
+    expect((await instruments.findForCandidate(bob, { provider: "brac", mask: "8888" })).map((i) => i.linkedAccountId)).toEqual(["src-brac-8888"]);
+  });
+
+  it("two SMS from the same new source at once create one source", async () => {
+    await Promise.all([run(WITHDRAWAL_SMS, bob), run(WITHDRAWAL_SMS.replace("4,000.00", "3,000.00"), bob)]);
+    expect(new Set((await instruments.findForCandidate(bob, { provider: "brac", mask: "8888" })).map((i) => i.linkedAccountId))).toEqual(new Set(["src-brac-8888"]));
+    expect(await bobBalance("src-brac-8888")).toBe(-700_000);
+  });
+
+  it("the same digits at two banks are two sources", async () => {
+    await run(WITHDRAWAL_SMS.replace("**8888", "**5555"), bob);
+    await run(UCB_CARD_SMS.replace(/\*\*\*\d{4}|\d{4}\*+\d{4}/, "***5555"), bob);
+    expect(await bobAccount("src-brac-5555")).toBeDefined();
+    expect(await bobAccount("src-brac-5555")).not.toEqual(await bobAccount("src-ucb-5555"));
+  });
+
+  it("a card SMS for an already known source uses it and creates nothing", async () => {
+    expect((await run(CARD_PURCHASE_SMS)).event?.status).toBe("posted");
+    expect(await balance("card")).toBe(-190_000);
+    expect((await accounts.getMany(alice, [asAccountId("src-brac-9999")]))).toEqual([]);
+  });
+
+  it("an unclassified debit counts as Spent and an unclassified credit as Came in", async () => {
+    const debit = await run(MTB_DEBIT_SMS, bob);
+    const credit = await run(MTB_CREDIT_SMS, bob);
+    expect(debit.event?.status).toBe("posted");
+    expect(credit.event?.status).toBe("posted");
+    const kinds = async (id: SourceEventId) => (await ledger.getEntries(bob, asTransactionId(`txn-${id}`))).map((e) => e.accountKind).sort();
+    expect(await kinds(debit.id)).toEqual(["bank", "expense"]);
+    expect(await kinds(credit.id)).toEqual(["bank", "income"]);
+  });
+
+  it("a cash note read by AI goes to Cash", async () => {
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: 50_000, currency: "BDT", occurredAtMs: NOW, provider: "cash" } });
+    const { event } = await run("paid 500 for rickshaw", bob);
+    expect(event).toMatchObject({ resolvedAccountId: "cash-main" });
+  });
+
+  it("every corpus SMS that names its bank or wallet never asks which account", async () => {
+    for (const entry of corpus) {
+      const { event } = await run(entry.text, bob);
+      if (event?.candidate?.provider !== undefined) expect(event.resolvedAccountId, entry.text).not.toBeNull();
+    }
+  });
+});
 
 describe("matching after the user answers", () => {
   it("an undated SMS is compared with recent transactions, so a repeat is shown as a possible duplicate", async () => {
@@ -570,8 +634,9 @@ describe("matching after the user answers", () => {
 
   it("checks for a duplicate once the user picks the account, instead of posting twice", async () => {
     expect((await run(CARD_PURCHASE_SMS)).event?.status).toBe("posted");
-    // The same purchase, but the SMS's card ending is unknown, so matching couldn't run before the question.
-    const again = await run(CARD_PURCHASE_SMS.replace("***9999", "***1212"));
+    // A second card now shares the ending, so the source can't be told until the user picks it.
+    await addInstrument("ucb-card", "brac", "9999", "creditCard");
+    const again = await run(CARD_PURCHASE_SMS.replace("Helpline 16221", "Helpline: 16221"));
     expect(again.event).toMatchObject({ status: "pending", resolvedAccountId: null });
     await confirm.execute({ ownerId: alice, sourceEventId: again.id, decision: "confirm", overrides: { accountId: "card" } });
     expect(await settle(alice, again.id)).toMatchObject({ status: "pending", matchKind: "ambiguous" });

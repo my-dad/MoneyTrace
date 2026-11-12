@@ -1,6 +1,7 @@
 import { DEFAULT_MATCH_CONFIG, matchCandidate, type MatchResult } from "@moneytrace/domain";
 import { isIncoming } from "../candidate-to-intent";
 import type { SourceEventRecord } from "../../ports/source-event-repository";
+import { CASH_ACCOUNT_ID, ensureSource } from "../sources";
 import type { PipelineDeps, Stage } from "./deps";
 
 const CANDIDATE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
@@ -46,18 +47,33 @@ export async function findMatch(
   );
 }
 
+/**
+ * The source the evidence names (CR-008): a known reference, or a new one remembered now. Two
+ * stored sources fitting the same reference still ask; no named source at all asks.
+ */
+async function sourceOf(
+  deps: PipelineDeps,
+  ownerId: Parameters<Stage>[1],
+  candidate: NonNullable<SourceEventRecord["candidate"]>,
+): Promise<string | null> {
+  if (candidate.provider === undefined) return null;
+  if (candidate.provider === "cash") return CASH_ACCOUNT_ID;
+  const query = {
+    provider: candidate.provider,
+    ...(candidate.instrumentMask === undefined ? {} : { mask: candidate.instrumentMask }),
+  };
+  const found = new Set((await deps.instruments.findForCandidate(ownerId, query)).map((i) => i.linkedAccountId));
+  if (found.size > 1) return null;
+  const [only] = [...found];
+  if (only !== undefined) return only;
+  return ensureSource(deps, ownerId, { provider: candidate.provider, mask: candidate.instrumentMask, kind: candidate.kind });
+}
+
 export const matchStage: Stage = async (deps, ownerId, event) => {
   const { candidate } = event;
   if (candidate === null) return { nextStatus: "matched", outputs: [] };
 
-  const resolvedAccountId =
-    event.resolvedAccountId ??
-    (candidate.provider === undefined
-      ? null
-      : await uniqueAccount(deps, ownerId, {
-          provider: candidate.provider,
-          ...(candidate.instrumentMask === undefined ? {} : { mask: candidate.instrumentMask }),
-        }));
+  const resolvedAccountId = event.resolvedAccountId ?? (await sourceOf(deps, ownerId, candidate));
   const resolvedDestinationAccountId =
     event.resolvedDestinationAccountId ??
     (candidate.destinationMask === undefined
