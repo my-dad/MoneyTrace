@@ -8,7 +8,7 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 | 1 Mockup H | Done: approved by Mabrur 2026-11-12, with quick answers kept |
 | 2 Contracts | Done |
 | 3 Sources remembered from SMS | Done |
-| 4 Transfer pairing | Done (emulator run pending) |
+| 4 Transfer pairing | Done |
 | 5 DeepSeek asks until it's clear | Not started |
 | 6 Web: chips, Net money and Sources, question thread | Not started |
 | 7 End-to-end tests, final checks, records | Not started |
