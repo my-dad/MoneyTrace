@@ -39,10 +39,20 @@ describe("web hosting (release blocker B1)", () => {
 describe("deploy commands (release blocker B3)", () => {
   const scripts = (JSON.parse(readFileSync(join(import.meta.dirname, "../../../package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
 
-  it.each([["deploy:staging", "staging"], ["deploy:prod", "prod"]])("%s builds both apps and deploys rules, functions and hosting to %s", (name, alias) => {
+  it.each([["deploy:dev", "dev"], ["deploy:prod", "prod"]])("%s builds both apps and deploys rules, functions and hosting to %s", (name, alias) => {
     const script = scripts[name] ?? "";
     expect(script).toContain("pnpm build:functions");
     expect(script).toContain("pnpm --filter web build");
     expect(script).toContain(`firebase deploy --project ${alias} --only firestore,storage,functions,hosting`);
+  });
+});
+
+describe("environments (Mabrur, 2026-11-13: dev and prod)", () => {
+  it("has dev and prod aliases and no staging deploy", () => {
+    const rc = JSON.parse(readFileSync(join(import.meta.dirname, "../../../.firebaserc"), "utf8")) as { projects: Record<string, string> };
+    const scripts = (JSON.parse(readFileSync(join(import.meta.dirname, "../../../package.json"), "utf8")) as { scripts: Record<string, string> }).scripts;
+    expect(rc.projects["dev"]).toBe("moneytrace-staging");
+    expect(rc.projects).not.toHaveProperty("staging");
+    expect(scripts).not.toHaveProperty("deploy:staging");
   });
 });
