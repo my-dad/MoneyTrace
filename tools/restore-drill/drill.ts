@@ -31,13 +31,14 @@ const FIXED: Partial<Record<OwnerCollectionName, Record<string, unknown>>> = {
     sourceType: "sms",
     sourceHash: "restore-hash",
     idempotencyKey: "restore-source-key",
-    status: "received",
+    // Terminal, so a deployed trigger or schedule never changes it between seed and backup.
+    status: "cancelled",
     stageAttempt: 0,
     claim: null,
     parkedStage: null,
     version: 0,
     receivedAtMs: 1_700_000_000_000,
-    terminalAtMs: null,
+    terminalAtMs: 1_700_000_000_000,
     providerResultsPurged: false,
     retainedText: "masked evidence",
     candidate: null,
@@ -184,9 +185,52 @@ const FIXED: Partial<Record<OwnerCollectionName, Record<string, unknown>>> = {
   },
 };
 
-function argument(name: string, fallback?: string): string | undefined {
-  const index = process.argv.indexOf(`--${name}`);
-  return index < 0 ? fallback : process.argv[index + 1];
+export type DrillOptions = {
+  command: "seed" | "verify";
+  projectId: string;
+  databaseId: string;
+  expected: string;
+};
+
+const USAGE =
+  "usage: drill seed|verify --project <demo-moneytrace|moneytrace-staging> --expected <path> [--database <restored-db>]";
+
+/**
+ * Checks every argument before anything is read or written. A staging verify must name the
+ * restored database, never the live (default) one, or it would compare live data with itself.
+ */
+export function parseOptions(argv: string[], env: Record<string, string | undefined>): DrillOptions {
+  const command = argv[2];
+  if (command !== "seed" && command !== "verify") throw new Error(USAGE);
+  const value = (name: string): string | undefined => {
+    const index = argv.indexOf(`--${name}`);
+    if (index < 0) return undefined;
+    const next = argv[index + 1];
+    if (next === undefined || next.startsWith("--")) throw new Error(`--${name} needs a value`);
+    return next;
+  };
+  const projectId = value("project") ?? PROJECT_DEFAULT;
+  assertAllowedProject(projectId);
+  const expected = value("expected");
+  if (expected === undefined) throw new Error("--expected is required");
+  const local = projectId === PROJECT_DEFAULT;
+  const emulatorHost = env["FIRESTORE_EMULATOR_HOST"];
+  if (local && (emulatorHost ?? "") === "") {
+    throw new Error("demo-moneytrace runs against the emulator: set FIRESTORE_EMULATOR_HOST");
+  }
+  if (!local && (emulatorHost ?? "") !== "") {
+    throw new Error("unset FIRESTORE_EMULATOR_HOST: a staging drill must not run against the emulator");
+  }
+  let databaseId = "(default)";
+  if (command === "verify") {
+    const database = value("database");
+    if (!local && database === undefined) throw new Error("--database <restored-db> is required on staging");
+    if (!local && database === "(default)") {
+      throw new Error("refusing to verify the live database; restore into a separate database first");
+    }
+    databaseId = database ?? "(default)";
+  }
+  return { command, projectId, databaseId, expected };
 }
 
 export function assertAllowedProject(projectId: string): void {
@@ -209,8 +253,8 @@ function documentId(name: OwnerCollectionName, data: Record<string, unknown>): s
   return String(data["id"]);
 }
 
-async function seed(projectId: string): Promise<void> {
-  const db = firestore(projectId);
+export async function seed(options: DrillOptions): Promise<void> {
+  const db = firestore(options.projectId);
   const owner = asOwnerId(OWNER);
   const deps = composeDeps(db);
   await deps.bootstrapUser.execute({ ownerId: owner });
@@ -250,17 +294,14 @@ async function seed(projectId: string): Promise<void> {
   for (const name of Object.keys(OWNER_DATA_REGISTRY) as OwnerCollectionName[]) {
     if (sum.collections[name].count === 0) throw new Error(`restore seed missing ${name}`);
   }
-  const expected = argument("expected", "drill-expected.json");
-  if (expected === undefined) throw new Error("--expected is required");
-  await writeFile(expected, `${JSON.stringify(sum, null, 2)}\n`);
-  console.log(`seeded ${OWNER}; checksum written to ${expected}`);
+  await writeFile(options.expected, `${JSON.stringify(sum, null, 2)}\n`);
+  console.log(`seeded ${OWNER} in ${options.projectId}; checksum written to ${options.expected}`);
 }
 
-async function verify(projectId: string, databaseId: string): Promise<void> {
-  const expectedPath = argument("expected", "drill-expected.json");
-  if (expectedPath === undefined) throw new Error("--expected is required");
-  const expected = JSON.parse(await readFile(expectedPath, "utf8")) as DataChecksum;
-  const db = firestore(projectId, databaseId);
+/** Returns the scopes that differ from the expected checksum; empty means the restore matches. */
+export async function verify(options: DrillOptions): Promise<string[]> {
+  const expected = JSON.parse(await readFile(options.expected, "utf8")) as DataChecksum;
+  const db = firestore(options.projectId, options.databaseId);
   const actual = await dataChecksum(db, OWNER);
   const differences = diffChecksums(expected, actual);
   const entries = await db.collection(ownerPath(OWNER, "ledgerEntries")).get();
@@ -280,21 +321,16 @@ async function verify(projectId: string, databaseId: string): Promise<void> {
     if (totals.get(data.accountId) !== data.debitMinusCreditMinor)
       differences.push(`balance:${data.accountId}`);
   }
-  console.log(
-    differences.length === 0 ? "checksum match" : `differences: ${differences.join(", ")}`,
-  );
-  if (differences.length > 0) process.exitCode = 1;
+  return differences;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const command = process.argv[2];
-  const projectId = argument("project", PROJECT_DEFAULT) as string;
-  assertAllowedProject(projectId);
-  if (command === "seed") await seed(projectId);
-  else if (command === "verify")
-    await verify(projectId, argument("database", "(default)") as string);
-  else
-    throw new Error(
-      "usage: drill seed|verify --project <demo-moneytrace|*-staging> --expected <path>",
-    );
+  const options = parseOptions(process.argv, process.env);
+  if (options.command === "seed") await seed(options);
+  else {
+    const differences = await verify(options);
+    const where = `${options.projectId}/${options.databaseId}`;
+    console.log(differences.length === 0 ? `checksum match in ${where}` : `differences in ${where}: ${differences.join(", ")}`);
+    if (differences.length > 0) process.exitCode = 1;
+  }
 }
