@@ -33,7 +33,7 @@ Read this first when resuming. Updated and committed after every task.
 | 12 Build E settings and onboarding | Done |
 | 13 Mockup F reminders | Done (approved) |
 | 14 Build F reminders | Done |
-| 15 UI-complete exit | Done, except the emulator suites (blocked: JDK 21 missing) |
+| 15 UI-complete exit | Done |
 
 ## Screen groups
 
@@ -48,8 +48,9 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-1. Mabrur installs JDK 21 or newer (only JDK 17 is installed; firebase-tools refuses anything older than 21). Then run `pnpm test:emulator && pnpm test:e2e` and record the totals below.
-2. Final whole-branch review, then finishing-a-development-branch.
+Final whole-branch review, then finishing-a-development-branch.
+
+Emulator suites need Java 21+. The system Java is 17, so run them with Android Studio's bundled Java 25: `JAVA_HOME=/home/mabrur/Downloads/android-studio/jbr PATH=$JAVA_HOME/bin:$PATH pnpm test:emulator` (the same goes for `pnpm test:e2e`).
 
 ## Open decisions
 
@@ -80,4 +81,4 @@ Every route was captured at 390 px and 1280 px in fixture mode: `/`, `/chat`, `/
 
 ## Last verification
 
-Task 15 (2026-11-12): `pnpm verify` → 98 files, 1413 tests pass. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 6 passed. `pnpm test:emulator` → **did not run**: `Error: firebase-tools no longer supports Java version before 21` (the machine has OpenJDK 17.0.21). `pnpm test:e2e` uses the same emulators, so it is blocked too. The emulator E2E suite runs at Task 15.
+Task 15 (2026-11-12): `pnpm verify` → 98 files, 1413 tests pass. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 6 passed. `pnpm test:emulator` (with Android Studio's Java 25) → core 8 files/440 tests pass, functions 2 files/24 tests pass. `pnpm test:e2e` → 2 passed. The emulator E2E suite runs at Task 15.
