@@ -7,7 +7,7 @@ import type { ProviderOutcome } from "./provider-call-executor";
 
 const owner = asOwnerId("alice");
 const event = asSourceEventId("evt-1");
-const context = { allowedCategories: [], nowMs: 1 };
+const context = { allowedCategories: [], nowMs: 1, clarifications: [] };
 
 function recordingProvider(outcome: ProviderOutcome<AiInterpretation>) {
   const texts: string[] = [];

@@ -145,7 +145,7 @@ const sourceEvents = z
       "deadLetter",
     ]),
     pendingReason: z
-      .enum(["awaitingClarification", "aiQuotaExhausted", "providerOutcomeUnknown"])
+      .enum(["awaitingClarification", "aiQuotaExhausted", "providerOutcomeUnknown", "aiQuestion"])
       .optional(),
     deadLetterReason: z
       .enum(["attemptsExhausted", "providerResultMissing", "stageFailed", "beforeOpeningBalance"])
@@ -166,10 +166,25 @@ const sourceEvents = z
     extraction: extractionSchema.nullable(),
     matchedTransactionId: documentId.nullable(),
     matchKind: z
-      .enum(["none", "duplicate", "ambiguous", "finalizesAuthorization", "possibleCounterpart"])
+      .enum(["none", "duplicate", "ambiguous", "finalizesAuthorization", "possibleCounterpart", "transferCounterpart"])
       .nullable(),
     resolvedAccountId: documentId.nullable(),
     resolvedDestinationAccountId: documentId.nullable(),
+    /** DeepSeek's questions about this evidence and the user's answers, at most 3 (CR-008). */
+    clarifications: z
+      .array(
+        z
+          .object({
+            question: z.string().min(1).max(300),
+            options: z.array(z.string().min(1).max(40)).max(4),
+            answer: z.string().min(1).max(500).nullable(),
+            askedAtMs: epochMs,
+            answeredAtMs: epochMs.nullable(),
+          })
+          .strict(),
+      )
+      .max(3)
+      .default([]),
     userConfirmed: z.boolean(),
   })
   .strict();

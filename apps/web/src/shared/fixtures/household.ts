@@ -151,6 +151,19 @@ const candidate = (
 
 const EVENT_SEEDS: EventSeed[] = [
   {
+    // An own transfer, paired with DBBL's debit (CR-008): counted in neither Spent nor Came in.
+    id: "se-transfer-bkash",
+    sourceType: "sms",
+    status: "posted",
+    receivedIso: "2026-11-06T15:01:00",
+    text: "You have received Tk 10,000.00 from DBBL. Fee Tk 0.00. Balance Tk 12,000.00. TrxID BK00000009 at 06/11/2026 15:00",
+    candidate: candidate("unclassifiedCredit", 10_000, "2026-11-06T15:00:00", { provider: "bkash" }),
+    account: "bank-bkash",
+    destination: "bank-dbbl",
+    matchKind: "transferCounterpart",
+    matchedTransactionId: "txn-se-dbbl-out:repl",
+  },
+  {
     id: "se-salary",
     sourceType: "sms",
     status: "posted",
@@ -297,8 +310,32 @@ export const FIXTURE_SOURCE_EVENTS: SourceEventRow[] = EVENT_SEEDS.map((seed) =>
     resolvedAccountId: seed.account ?? null,
     resolvedDestinationAccountId: seed.destination ?? null,
     userConfirmed: seed.sourceType === "chat",
+    clarifications: [],
   };
 });
+
+/** November's money in and out on each source, for the dashboard's Sources list (CR-008). */
+export const FIXTURE_SOURCE_ENTRIES: LedgerEntryRow[] = (
+  [
+    ["salary", "bank-dbbl", "bank", "debit", 85_000, "2026-11-01T10:00:00"],
+    ["shwapno", "card-amex", "creditLiability", "credit", 2_150, "2026-11-01T11:20:00"],
+    ["pathao", "bank-bkash", "bank", "credit", 950, "2026-11-02T09:10:00"],
+    ["atm", "bank-dbbl", "bank", "credit", 5_000, "2026-11-05T19:02:00"],
+    ["atm", "cash-unassigned", "cash", "debit", 5_000, "2026-11-05T19:02:00"],
+    ["rickshaw", "cash-wallet", "cash", "credit", 650, "2026-11-05T18:20:00"],
+    ["transfer", "bank-dbbl", "bank", "credit", 10_000, "2026-11-06T15:00:00"],
+    ["transfer", "bank-bkash", "bank", "debit", 10_000, "2026-11-06T15:00:00"],
+  ] as const
+).map(([tx, accountId, accountKind, side, amount, iso], index) => ({
+  id: `tx-src-${tx}:${String(index)}`,
+  transactionId: `tx-src-${tx}`,
+  accountId,
+  accountKind,
+  side,
+  amountMinor: taka(amount),
+  currency: "BDT",
+  occurredAtMs: at(iso),
+}));
 
 export const FIXTURE_FOLLOW_UPS: FollowUpRow[] = [
   {

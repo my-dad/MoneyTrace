@@ -21,7 +21,7 @@ import { useOnlineStatus } from "../shell/OfflineBanner";
 
 export type ChatCommands = Pick<
   Commands,
-  "submitEvidence" | "confirmCandidate" | "resolveFollowUp" | "retrySourceEvent" | "cancelSourceEvent"
+  "submitEvidence" | "confirmCandidate" | "resolveFollowUp" | "retrySourceEvent" | "cancelSourceEvent" | "answerQuestion"
 >;
 
 const EVENT_LIMIT = 50;

@@ -316,14 +316,23 @@ function CandidateForm({
         </FormField>
       )}
 
-      {isLinkable && (
-        <>
-          <p className={styles.note}>{CHAT_COPY.possibleMatch}</p>
-          <Button variant="text" disabled={busy} onClick={onLink}>
-            {CHAT_COPY.sameAsRecorded}
-          </Button>
-        </>
-      )}
+      {isLinkable &&
+        (event.matchKind === "possibleCounterpart" ? (
+          <>
+            <p className={styles.note}>{CHAT_COPY.transferQuestion(amountText(candidate))}</p>
+            <p className={styles.note}>{CHAT_COPY.transferNoHint}</p>
+            <Button variant="text" disabled={busy} onClick={onLink}>
+              {CHAT_COPY.yesTransfer}
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className={styles.note}>{CHAT_COPY.possibleMatch}</p>
+            <Button variant="text" disabled={busy} onClick={onLink}>
+              {CHAT_COPY.sameAsRecorded}
+            </Button>
+          </>
+        ))}
 
       <p className={styles.note}>{CHAT_COPY.nothingSaved}</p>
       <div className={styles.actions}>

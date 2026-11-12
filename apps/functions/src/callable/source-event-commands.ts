@@ -43,3 +43,13 @@ export const cancelSourceEvent = (getDeps: () => Deps) =>
       sourceEventId: asSourceEventId(data.sourceEventId),
     }),
   );
+
+export const answerQuestion = (getDeps: () => Deps) =>
+  createCallable(COMMANDS.answerQuestion, getDeps, (ctx, data) =>
+    ctx.deps.answerQuestion.execute({
+      ownerId: ctx.ownerId,
+      sourceEventId: asSourceEventId(data.sourceEventId),
+      ...(data.answer === undefined ? {} : { answer: data.answer }),
+      ...(data.skip === true ? { skip: true as const } : {}),
+    }),
+  );

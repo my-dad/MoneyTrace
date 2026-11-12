@@ -151,6 +151,18 @@ Errors: unauthenticated, not-found, failed-precondition (invalidTransition)
 
 Use case: RetrySourceEvent
 
+### answerQuestion
+
+Phase: 1 (CR-008)
+
+Request: `{ sourceEventId, answer? | skip? }`, exactly one. The answer is 1–500 characters and is refused if it looks like a secret (an OTP or PIN).
+
+Response: `{ status }`
+
+Errors: unauthenticated, invalid-argument, not-found, failed-precondition (invalidTransition when the event isn't waiting on DeepSeek's question; sensitiveEvidence)
+
+Use case: AnswerQuestion. It stores the answer with DeepSeek's latest question and re-reads the evidence; a skip shows the reading so far.
+
 ### cancelSourceEvent
 
 Phase: 1

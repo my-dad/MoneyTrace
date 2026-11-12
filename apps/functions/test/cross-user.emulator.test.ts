@@ -130,6 +130,7 @@ const MUST_REFUSE: Case[] = [
   { name: "confirmCandidate", data: (a, b) => ({ sourceEventId: b.pendingEventId, decision: "confirm", overrides: { kind: "purchase", accountId: a.wallet, category: "transport" } }) },
   { name: "retrySourceEvent", data: (a) => ({ sourceEventId: a.eventId }) },
   { name: "cancelSourceEvent", data: (a) => ({ sourceEventId: a.eventId }) },
+  { name: "answerQuestion", data: (a) => ({ sourceEventId: a.eventId, answer: "paid from it" }) },
 ];
 
 /** The callables index.ts exports: the ones built from ./callable/ modules. */

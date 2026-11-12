@@ -56,4 +56,24 @@ describe("toRecentItems", () => {
     expect(items[0]?.id).toBe("fresh");
     expect(items[0]?.detail).toMatch(/29 Mar/);
   });
+
+  it("shows the source as a chip, and a paired transfer as Transfer with both sources (CR-008)", () => {
+    const items = toRecentItems(FIXTURE_SOURCE_EVENTS, FIXTURE_ACCOUNTS, 50);
+    expect(items.find((i) => i.id === "se-salary")?.chips).toEqual(["DBBL Savings"]);
+    expect(items.find((i) => i.id === "se-transfer-bkash")?.chips).toEqual(["Transfer", "DBBL Savings", "bKash"]);
+    expect(items.find((i) => i.id === "se-transfer-bkash")?.title).toBe("Transfer");
+  });
+
+  it("a message waiting on DeepSeek's question waits for your answer (CR-008)", () => {
+    const [item] = toRecentItems([withStatus("q", { status: "pending", pendingReason: "aiQuestion", candidate: null }, 1)], FIXTURE_ACCOUNTS, 10);
+    expect(item?.statusLabel).toBe("Waiting for your answer");
+  });
+
+  it("a transfer shows once: the half it absorbed is not listed again (CR-008)", () => {
+    const events = [
+      withStatus("first", { status: "posted" }, 1),
+      withStatus("second", { status: "posted", matchKind: "transferCounterpart", matchedTransactionId: "txn-first:repl" }, 2),
+    ];
+    expect(toRecentItems(events, FIXTURE_ACCOUNTS, 10).map((i) => i.id)).toEqual(["second"]);
+  });
 });

@@ -33,6 +33,8 @@ export class FakeAIProvider implements AIProvider {
           amountMinor: Number(m[1]) * 100,
           currency: "BDT",
           occurredAtMs: input.context.nowMs,
+          // A cash note: the money left the user's Cash (CR-008).
+          provider: "cash",
         },
       },
     });

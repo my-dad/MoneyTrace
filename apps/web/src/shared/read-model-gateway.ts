@@ -19,4 +19,6 @@ export type ReadModelGateway = {
   watchExpenseEntries: (fromMs: number, toMs: number, onValue: (rows: ExpenseEntryRow[]) => void, onError?: (error: Error) => void) => () => void;
   watchIncomeEntries: (fromMs: number, toMs: number, onValue: (rows: LedgerEntryRow[]) => void, onError?: (error: Error) => void) => () => void;
   watchAiUsage: (fromMs: number, toMs: number, onValue: (rows: AiUsageRow[]) => void, onError?: (error: Error) => void) => () => void;
+  /** Ledger entries on the user's sources (banks, cards, wallets, cash) in a time range (CR-008). */
+  watchSourceEntries: (fromMs: number, toMs: number, onValue: (rows: LedgerEntryRow[]) => void, onError?: (error: Error) => void) => () => void;
 };

@@ -10,6 +10,7 @@ import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model
 import { MonthSwitch } from "./MonthSwitch";
 import { toRecentItems } from "./recent-items";
 import { RecentList } from "./RecentList";
+import { SourcesList } from "./SourcesList";
 import styles from "./dashboard.module.css";
 
 const RECENT_LIMIT = 10;
@@ -34,6 +35,7 @@ export function DashboardScreen({
   const [events, setEvents] = useState<SourceEventRow[] | null>(null);
   const [expenses, setExpenses] = useState<LedgerEntryRow[] | null>(null);
   const [previous, setPrevious] = useState<LedgerEntryRow[] | null>(null);
+  const [sourceEntries, setSourceEntries] = useState<LedgerEntryRow[] | null>(null);
   const [income, setIncome] = useState<LedgerEntryRow[] | null>(null);
   const [usage, setUsage] = useState<AiUsageRow[] | null>(null);
 
@@ -57,7 +59,9 @@ export function DashboardScreen({
     setExpenses(null);
     setPrevious(null);
     setIncome(null);
+    setSourceEntries(null);
     const stops = [
+      gateway.watchSourceEntries(month.fromMs, month.toMs, setSourceEntries, onError),
       gateway.watchExpenseEntries(month.fromMs, month.toMs, setExpenses, onError),
       gateway.watchExpenseEntries(prior.fromMs, prior.toMs, setPrevious, onError),
       gateway.watchIncomeEntries(month.fromMs, month.toMs, setIncome, onError),
@@ -65,10 +69,10 @@ export function DashboardScreen({
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, month, prior]);
 
-  const loading = balances === null || events === null || expenses === null || previous === null || income === null;
+  const loading = balances === null || events === null || expenses === null || previous === null || income === null || sourceEntries === null;
   const view = loading
     ? null
-    : buildDashboard({ balances, expenses, income, previousExpenses: previous, nowMs, offset, previousLabel: prior.label.split(" ")[0] ?? "" });
+    : buildDashboard({ balances, expenses, income, previousExpenses: previous, nowMs, offset, previousLabel: prior.label.split(" ")[0] ?? "", accounts, sourceEntries });
   const newUser = events !== null && events.length === 0;
   const recent = events === null ? [] : toRecentItems(events, accounts, RECENT_LIMIT);
 
@@ -114,11 +118,7 @@ export function DashboardScreen({
           {view.hasActivity && view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
         </div>
         <div>
-          <section aria-labelledby="money-now" className={styles.card}>
-            <h3 id="money-now">{DASHBOARD_COPY.moneyNow}</h3>
-            <div role="group" aria-label={DASHBOARD_COPY.banksAndCash} className={styles.kv}><span>{DASHBOARD_COPY.banksAndCash}</span><b>{formatBdt(view.availableMinor)}</b></div>
-            <div role="group" aria-label={DASHBOARD_COPY.cardsOwed} className={styles.kv}><span>{DASHBOARD_COPY.cardsOwed}</span><b>{formatBdt(view.cardsOwedMinor)}</b></div>
-          </section>
+          <SourcesList netMoneyMinor={view.netMoneyMinor} sources={view.sources} />
           {recent.length > 0 && <RecentList items={recent} />}
         </div>
       </div>

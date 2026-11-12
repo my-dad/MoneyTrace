@@ -93,22 +93,22 @@ describe("matchCandidate", () => {
   it("another amount never matches", () => {
     expect(match(candidate(), [existing({ amountMinor: 50001 })])).toEqual({ kind: "none" });
   });
-  it("a debit and a same-amount credit on two own accounts ask whether it is one transfer", () => {
+  it("a debit and a same-amount credit on two own accounts 5 minutes apart pair as a transfer", () => {
     expect(
       match(candidate({ kind: "unclassifiedDebit" }), [
         existing({ accountId: "card", direction: "in", occurredAtMs: T + 5 * MIN }),
       ]),
-    ).toEqual({ kind: "possibleCounterpart", transactionId: "t1" });
+    ).toEqual({ kind: "transferCounterpart", transactionId: "t1", accountId: "card" });
   });
   it("same direction on another account is unrelated", () => {
     expect(match(candidate(), [existing({ accountId: "other" })])).toEqual({ kind: "none" });
   });
-  it("an opposite entry outside the window is unrelated", () => {
+  it("an opposite entry an hour apart the same day asks", () => {
     expect(
       match(candidate(), [
         existing({ accountId: "card", direction: "in", occurredAtMs: T + 60 * MIN }),
       ]),
-    ).toEqual({ kind: "none" });
+    ).toEqual({ kind: "possibleCounterpart", transactionId: "t1" });
   });
   it("two possible counterparts ask rather than pick one", () => {
     const other = { accountId: "card", direction: "in" } as const;
@@ -118,5 +118,33 @@ describe("matchCandidate", () => {
   });
   it("a candidate with no date compares against nothing by time", () => {
     expect(match(candidate({ occurredAtMs: null }), [existing()])).toEqual({ kind: "none" });
+  });
+
+  describe("own transfers (CR-008)", () => {
+    const other = (patch: Partial<ExistingTransaction>) =>
+      existing({ accountId: "wallet", direction: "in", intentType: "income", ...patch });
+    it("one opposite entry on another source within 30 minutes is the other half of a transfer", () => {
+      expect(match(candidate(), [other({ occurredAtMs: T + 25 * MIN })])).toEqual({
+        kind: "transferCounterpart",
+        transactionId: "t1",
+        accountId: "wallet",
+      });
+    });
+    it("the same day but more than 30 minutes apart asks", () => {
+      expect(match(candidate(), [other({ occurredAtMs: T + 31 * MIN })])).toEqual({ kind: "possibleCounterpart", transactionId: "t1" });
+    });
+    it("two possible other halves ask", () => {
+      expect(match(candidate(), [other({ occurredAtMs: T + 5 * MIN }), other({ transactionId: "t2", occurredAtMs: T + 6 * MIN })])).toMatchObject({ kind: "ambiguous" });
+    });
+    it("an entry that is already a transfer is never paired again", () => {
+      expect(match(candidate(), [other({ occurredAtMs: T + 5 * MIN, intentType: "transfer" })])).toEqual({ kind: "none" });
+    });
+  });
+
+  it("a withdrawal, fee, refund or transfer is never the new half of a transfer (CR-008)", () => {
+    const income = existing({ accountId: "wallet", direction: "in", intentType: "income", occurredAtMs: T + 5 * MIN });
+    for (const kind of ["withdrawal", "fee", "refund", "transfer"] as const) {
+      expect(match(candidate({ kind }), [income]).kind, kind).not.toBe("transferCounterpart");
+    }
   });
 });

@@ -14,6 +14,7 @@ export const PHASE_ONE_COMMANDS = [
   "snoozeFollowUp",
   "retrySourceEvent",
   "cancelSourceEvent",
+  "answerQuestion",
   "correctTransaction",
   "recordCustodyTransfer",
 ] as const satisfies readonly CommandName[];

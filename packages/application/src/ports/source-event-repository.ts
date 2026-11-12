@@ -38,6 +38,16 @@ export type SourceEventRecord = {
   resolvedAccountId: string | null;
   resolvedDestinationAccountId: string | null;
   userConfirmed: boolean;
+  /** DeepSeek's questions about this evidence and the user's answers, at most 3 (CR-008). */
+  clarifications: Clarification[];
+};
+
+export type Clarification = {
+  question: string;
+  options: string[];
+  answer: string | null;
+  askedAtMs: number;
+  answeredAtMs: number | null;
 };
 
 export type Extraction = {
@@ -52,6 +62,7 @@ export type Extraction = {
 
 /** Event fields a stage may set, written in the same transaction as its status. */
 export type SourceEventPatch = {
+  clarifications?: Clarification[];
   retainedText?: string;
   candidate?: CandidateTransaction | null;
   extraction?: Extraction | null;
@@ -64,6 +75,8 @@ export type SourceEventPatch = {
 export type UserDecision = {
   candidate: CandidateTransaction;
   userConfirmed: true;
+  /** The user said the possible other half is their own transfer: pair it (CR-008). */
+  pairAsTransfer?: true;
   resolvedAccountId?: string | null;
   resolvedDestinationAccountId?: string | null;
 };
@@ -165,6 +178,9 @@ export type SourceEventRepository = {
     id: SourceEventId,
     decision: UserDecision,
   ): Promise<"applied" | "stale">;
+
+  /** Stores the user's answer to DeepSeek's latest question on an `aiQuestion` event. The caller then reopens it. */
+  recordAnswer(ownerId: OwnerId, id: SourceEventId, answer: string, nowMs: number): Promise<"applied" | "stale">;
 
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]>;
 

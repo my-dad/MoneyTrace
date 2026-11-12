@@ -33,7 +33,10 @@ export function candidateToIntent(
         ? { type: "cardPurchase", card: source, category, amount }
         : { type: "purchase", funding: source, category, amount };
     case "cardPurchase":
-      return { type: "cardPurchase", card: source, category, amount };
+      // A card is an ordinary source unless it was set up as a liability (CR-008).
+      return source.kind === "creditLiability"
+        ? { type: "cardPurchase", card: source, category, amount }
+        : { type: "purchase", funding: source, category, amount };
     case "purchase":
       return { type: "purchase", funding: source, category, amount };
     case "cardRepayment":
@@ -50,9 +53,11 @@ export function candidateToIntent(
       return destination === null
         ? null
         : { type: "transfer", from: source, to: destination, amount };
+    // CR-008: a debit counts as Spent and a credit as Came in; own transfers are paired later.
     case "unclassifiedCredit":
+      return { type: "income", destination: source, category, amount };
     case "unclassifiedDebit":
-      return null;
+      return { type: "purchase", funding: source, category, amount };
   }
 }
 

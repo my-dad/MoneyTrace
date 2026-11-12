@@ -74,5 +74,6 @@ function toExisting(entry: EntryRecord, tx: TransactionRecord): ExistingTransact
     occurredAtMs: entry.occurredAtMs,
     ...(tx.reference !== undefined ? { reference: tx.reference } : {}),
     isAuthorization: false,
+    intentType: tx.intentType,
   };
 }

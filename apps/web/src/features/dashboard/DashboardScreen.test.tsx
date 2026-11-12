@@ -27,6 +27,7 @@ const silent: ReadModelGateway = {
   watchExpenseEntries: () => () => undefined,
   watchIncomeEntries: () => () => undefined,
   watchAiUsage: () => () => undefined,
+  watchSourceEntries: () => () => undefined,
 };
 
 describe("DashboardScreen", () => {
@@ -39,8 +40,25 @@ describe("DashboardScreen", () => {
     expect(note.textContent).toContain("৳5,000");
     expect(note.textContent).toContain("not counted as spending");
     expect(screen.getByText("৳1,740 more than this time last month")).toBeTruthy();
-    expect(figure("Banks and cash")).toContain("৳1,50,200");
-    expect(figure("Cards owed")).toContain("৳24,570");
+    expect(figure("Net money")).toContain("৳1,25,630");
+  });
+
+  it("lists each source with its money in and out this month (CR-008)", () => {
+    open();
+    const sources = screen.getByRole("region", { name: "Net money" });
+    expect(within(sources).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "DBBL Savingsin ৳85,000 · out ৳15,000",
+      "City Bank Amexin ৳0 · out ৳2,150",
+      "bKashin ৳10,000 · out ৳950",
+      "Walletin ৳0 · out ৳650",
+    ]);
+  });
+
+  it("shows source chips on recent rows, and Transfer with both sources", () => {
+    open();
+    const recent = screen.getByRole("region", { name: "Recent" });
+    const transfer = within(recent).getAllByRole("listitem").find((li) => li.textContent.startsWith("Transfer"));
+    expect(transfer?.textContent).toContain("TransferDBBL SavingsbKash");
   });
 
   it("steps to October and back", () => {
@@ -144,7 +162,7 @@ describe("DashboardScreen", () => {
     open(gateway);
     expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
     expect(screen.getByRole("note", { name: "Cash not yet explained" }).textContent).toContain("৳5,000");
-    expect(figure("Banks and cash")).toContain("৳1,50,200");
+    expect(figure("Net money")).toContain("৳1,25,630");
     expect(screen.queryByRole("group", { name: "Spent" })).toBeNull();
   });
 });

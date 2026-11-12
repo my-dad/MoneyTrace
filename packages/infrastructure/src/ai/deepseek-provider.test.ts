@@ -2,9 +2,9 @@ import { describeAiProviderContract, liveSignal } from "@moneytrace/application/
 import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "./deepseek-provider";
 import { FakeAIProvider } from "./fake-ai-provider";
-import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v1";
+import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v2";
 
-const context = { allowedCategories: ["groceries"], nowMs: Date.parse("2026-03-10T00:00:00Z") };
+const context = { allowedCategories: ["groceries"], nowMs: Date.parse("2026-03-10T00:00:00Z"), clarifications: [] };
 
 const validContent = JSON.stringify({
   kind: "transaction",
@@ -172,7 +172,7 @@ describe("DeepSeekProvider", () => {
 
 describe("interpret prompt", () => {
   it("is versioned and asks for JSON", () => {
-    expect(INTERPRET_PROMPT_VERSION).toBe("interpret-v1");
+    expect(INTERPRET_PROMPT_VERSION).toBe("interpret-v2");
     const [system] = buildInterpretMessages("x", context);
     expect(system?.content).toMatch(/JSON/);
   });
@@ -190,6 +190,34 @@ describe("interpret prompt", () => {
     );
     expect(user?.content.match(/<<<END>>>/g)).toHaveLength(1);
     expect(user?.content.match(/<<<EVIDENCE>>>/g)).toHaveLength(1);
+  });
+});
+
+describe("DeepSeekProvider: sources and questions (CR-008)", () => {
+  it("maps the source it names to the provider and its last digits", async () => {
+    const content = JSON.stringify({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: 200_000, currency: "BDT", occurredAtIso: null, sourceName: "Nagad", sourceMask: "1234" } });
+    const outcome = await interpret(provider(fakeFetch(() => reply(content)).fetchImpl));
+    expect(outcome).toMatchObject({ kind: "success", value: { kind: "transaction", candidate: { provider: "nagad", instrumentMask: "1234" } } });
+    const value = (outcome as { value: { candidate: Record<string, unknown> } }).value;
+    expect(value.candidate).not.toHaveProperty("sourceName");
+    expect(value.candidate).not.toHaveProperty("sourceMask");
+  });
+
+  it("passes a question through with its quick answers and partial reading", async () => {
+    const content = JSON.stringify({ kind: "question", text: "Paid from your Nagad, or received?", options: ["Paid from it", "Received"], candidate: { kind: "purchase", amountMinor: 200_000, currency: "BDT", occurredAtIso: null, sourceName: "Nagad" } });
+    const outcome = await interpret(provider(fakeFetch(() => reply(content)).fetchImpl));
+    expect(outcome).toMatchObject({ kind: "success", value: { kind: "question", text: "Paid from your Nagad, or received?", options: ["Paid from it", "Received"], candidate: { provider: "nagad" } } });
+  });
+
+  it("a question with no options or reading has empty ones", async () => {
+    const outcome = await interpret(provider(fakeFetch(() => reply('{"kind":"question","text":"Which bank?"}')).fetchImpl));
+    expect(outcome).toMatchObject({ kind: "success", value: { kind: "question", options: [], candidate: null } });
+  });
+
+  it("sends the questions and answers so far after the evidence, as data", () => {
+    const [system, user] = buildInterpretMessages("Tk2000 Nagad", { ...context, clarifications: [{ question: "Paid or received?", answer: "paid" }] });
+    expect(system?.content).toMatch(/"kind":"question"/);
+    expect(user?.content).toContain("Q: Paid or received?\nA: paid");
   });
 });
 

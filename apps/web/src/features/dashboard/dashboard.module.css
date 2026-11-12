@@ -57,6 +57,14 @@ button.menuItem { cursor:pointer; border-top:1px solid var(--mt-border-soft); bo
 .empty { text-align:center; padding:72px 24px 0; color:var(--mt-caption); font-size:14px; line-height:1.55; }
 .empty p { margin:0; }
 .emptyTitle { color:var(--mt-ink); font-size:18px; font-weight:700; margin-bottom:8px !important; }
+.net { margin:2px 0 6px; font-size:24px; font-weight:800; }
+.sources { list-style:none; margin:0; padding:0; }
+.sources li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--mt-border-soft); }
+.sources li:first-child { border-top:none; }
+.sources small { font-size:12px; color:var(--mt-caption); white-space:nowrap; }
+.chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.chip { display:inline-flex; align-items:center; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; background:var(--mt-surface-soft); color:var(--mt-body); border:1px solid var(--mt-border); }
+.transferChip { background:#E8EEF8; color:#2B4C7E; border-color:#C9D6EC; }
 .emptyMonth { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:20px 16px; text-align:center; color:var(--mt-caption); font-size:13px; line-height:1.5; }
 .emptyMonth p { margin:0; }
 .emptyMonth .emptyTitle { font-size:15px; margin-bottom:4px !important; }

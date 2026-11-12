@@ -13,7 +13,7 @@ export type SourceEventStatus =
 
 export type PipelineStage = "normalize" | "interpret" | "match" | "decide" | "post";
 
-export type PendingReason = "awaitingClarification" | "aiQuotaExhausted" | "providerOutcomeUnknown";
+export type PendingReason = "awaitingClarification" | "aiQuotaExhausted" | "providerOutcomeUnknown" | "aiQuestion";
 
 export type DeadLetterReason =
   "attemptsExhausted" | "providerResultMissing" | "stageFailed" | "beforeOpeningBalance";

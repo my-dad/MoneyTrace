@@ -51,6 +51,7 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     resolvedAccountId: null,
     resolvedDestinationAccountId: null,
     userConfirmed: false,
+    clarifications: [],
   };
 }
 
@@ -139,6 +140,7 @@ function withoutClaimAndReasons(e: SourceEventRecord): SourceEventRecord {
     resolvedAccountId: e.resolvedAccountId,
     resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
+    clarifications: e.clarifications,
   };
 }
 
@@ -239,6 +241,16 @@ export function decideReopen(
   };
 }
 
+function keepsTransferPairing(event: SourceEventRecord, decision: UserDecision): boolean {
+  return (
+    event.matchKind === "transferCounterpart" &&
+    event.candidate !== null &&
+    decision.candidate.amountMinor === event.candidate.amountMinor &&
+    decision.candidate.currency === event.candidate.currency &&
+    (decision.resolvedAccountId === undefined || decision.resolvedAccountId === event.resolvedAccountId)
+  );
+}
+
 /** Only a parked-for-the-user event accepts an answer, and the answer never changes its status. */
 export function decideUserDecision(
   event: SourceEventRecord | null,
@@ -251,8 +263,11 @@ export function decideUserDecision(
     userConfirmed: decision.userConfirmed,
     // A possible match the user saw is now judged ("none"). If no match was ever shown, matching
     // reruns with the user's answer (null), so a supplied date or account can't hide a duplicate.
-    matchKind: event.matchKind === null || event.matchKind === "none" ? null : "none",
-    matchedTransactionId: null,
+    // A transfer pairing found before the user tapped Record stands, unless they changed the amount
+    // or the source it was found on.
+    ...(decision.pairAsTransfer === true || keepsTransferPairing(event, decision)
+      ? { matchKind: "transferCounterpart" as const, matchedTransactionId: event.matchedTransactionId }
+      : { matchKind: event.matchKind === null || event.matchKind === "none" ? null : ("none" as const), matchedTransactionId: null }),
     ...(decision.resolvedAccountId !== undefined
       ? { resolvedAccountId: decision.resolvedAccountId }
       : {}),
@@ -300,5 +315,21 @@ export function decidePark(
     parkedStage: stage,
     version: event.version + 1,
     terminalAtMs: null,
+  };
+}
+
+/** "Skip" is stored as this answer; the next read uses DeepSeek's reading so far instead of asking it again. */
+export const SKIPPED_ANSWER = "(skipped)";
+export const MAX_AI_QUESTIONS = 3;
+
+/** Only an event waiting on DeepSeek's latest, unanswered question accepts an answer. */
+export function decideAnswer(event: SourceEventRecord | null, answer: string, nowMs: number): SourceEventRecord | null {
+  if (event === null || event.status !== "pending" || event.pendingReason !== "aiQuestion" || event.claim !== null) return null;
+  const last = event.clarifications.at(-1);
+  if (last === undefined || last.answer !== null) return null;
+  return {
+    ...event,
+    clarifications: [...event.clarifications.slice(0, -1), { ...last, answer, answeredAtMs: nowMs }],
+    version: event.version + 1,
   };
 }

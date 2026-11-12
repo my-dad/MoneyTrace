@@ -11,6 +11,8 @@ test("the dashboard shows the demo month", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Where it went" }).getByRole("listitem")).toHaveCount(4);
   await expect(page.getByText("৳1,740 more than this time last month")).toBeVisible();
   await expect(page.getByRole("navigation")).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Net money" })).toContainText("৳1,25,630");
+  await expect(page.getByRole("region", { name: "Recent" }).getByText("Transfer", { exact: true }).first()).toBeVisible();
 });
 
 test("the chat opens, a demo send says nothing was saved, Escape closes it", async ({ page }) => {

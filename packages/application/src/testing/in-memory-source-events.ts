@@ -28,6 +28,7 @@ import {
   decideFinishParked,
   decidePark,
   decideReopen,
+  decideAnswer,
   decideUserDecision,
   holdsClaim,
   isLeaseExpired,
@@ -221,6 +222,14 @@ export class InMemorySourceEvents implements SourceEventRepository {
     if (next === null) return Promise.resolve("stale");
     d.events.set(id, next);
     return Promise.resolve("finished");
+  }
+
+  recordAnswer(ownerId: OwnerId, id: SourceEventId, answer: string, nowMs: number): Promise<"applied" | "stale"> {
+    const d = this.data(ownerId);
+    const next = decideAnswer(d.events.get(id) ?? null, answer, nowMs);
+    if (next === null) return Promise.resolve("stale");
+    d.events.set(id, next);
+    return Promise.resolve("applied");
   }
 
   applyUserDecision(

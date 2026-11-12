@@ -86,6 +86,7 @@ describe("LedgerCandidateReader", () => {
         occurredAtMs: T,
         reference: "REF1",
         isAuthorization: false,
+        intentType: "purchase",
       },
     ]);
   });

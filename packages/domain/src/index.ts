@@ -15,3 +15,4 @@ export * from "./evidence/sensitive";
 export * from "./evidence/candidate";
 export * from "./evidence/sms-parser";
 export * from "./evidence/matching";
+export * from "./evidence/sources";
