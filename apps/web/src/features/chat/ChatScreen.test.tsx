@@ -285,6 +285,8 @@ describe("reads", () => {
       watchBalances: (onValue) => memory.watchBalances(onValue),
       watchFollowUps: (onValue) => memory.watchFollowUps(onValue),
       watchExpenseEntries: () => () => undefined,
+      watchIncomeEntries: () => () => undefined,
+      watchAiUsage: () => () => undefined,
       watchSourceEvents: (_limit, _onValue, onError) => {
         onError?.(new Error("denied"));
         return () => undefined;
@@ -302,6 +304,8 @@ describe("reads", () => {
       watchBalances: (onValue) => memory.watchBalances(onValue),
       watchFollowUps: (onValue) => memory.watchFollowUps(onValue),
       watchExpenseEntries: () => () => undefined,
+      watchIncomeEntries: () => () => undefined,
+      watchAiUsage: () => () => undefined,
       watchSourceEvents: () => unsubscribe,
     };
     const { unmount } = render(<ChatScreen gateway={gateway} commands={fakeCommands()} />);

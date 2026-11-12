@@ -18,6 +18,8 @@ const stalled: ReadModelGateway = {
   watchFollowUps: () => () => undefined,
   watchSourceEvents: () => () => undefined,
   watchExpenseEntries: () => () => undefined,
+  watchIncomeEntries: () => () => undefined,
+  watchAiUsage: () => () => undefined,
 };
 
 function renderScreen(gateway: ReadModelGateway = createFixtureReadModels(), selectedId: string | null = null) {

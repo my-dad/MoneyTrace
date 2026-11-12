@@ -21,7 +21,7 @@ describe("ActivityDetail", () => {
     expect(screen.getByText(/Card \*\*7702 used for BDT 2,150.00/)).toBeTruthy();
     expect(screen.getByText("Read by the city-sms parser (v1)")).toBeTruthy();
     expect(screen.getByText(/Recorded · saved to your ledger/)).toBeTruthy();
-    expect(screen.getByText("City Bank Amex ••7702")).toBeTruthy();
+    expect(screen.getByText("City Bank Amex")).toBeTruthy();
   });
 
   it("offers correction only for a posted item", () => {

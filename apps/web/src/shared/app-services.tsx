@@ -15,6 +15,7 @@ import { isFixtureMode } from "./data-source";
 import { createFirebaseReadModelGateway } from "./firebase-read-model-gateway";
 import { createFixtureCommands } from "./fixture-commands";
 import { createFixtureReadModels } from "./fixtures/fixture-read-models";
+import { FIXTURE_NOW_MS } from "./fixtures/household";
 import type { ReadModelGateway } from "./read-model-gateway";
 
 export type AppServices = {
@@ -28,6 +29,8 @@ export type AppServices = {
   /** Preferences and AI usage; fixture-only until functionality resumes. */
   settings: SettingsSource | null;
   fixture: boolean;
+  /** The app's "now". The demo is pinned to 6 Nov 2026 20:00 Dhaka so its figures never drift. */
+  nowMs: () => number;
 };
 
 const AppServicesContext = createContext<AppServices | null>(null);
@@ -42,6 +45,7 @@ export function createAppServices(): AppServices {
       reports: createFixtureReportSource(),
       settings: createFixtureSettingsSource(),
       fixture: true,
+      nowMs: () => FIXTURE_NOW_MS,
     };
   }
   return {
@@ -52,6 +56,7 @@ export function createAppServices(): AppServices {
     reports: null,
     settings: null,
     fixture: false,
+    nowMs: () => Date.now(),
   };
 }
 

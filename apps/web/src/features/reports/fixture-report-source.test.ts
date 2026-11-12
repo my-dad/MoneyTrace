@@ -7,7 +7,7 @@ describe("fixture report source", () => {
 
   it("the current month's expenses match the household fixture", async () => {
     const report = await source.load("calendarMonth", 0);
-    const fixtureTotal = FIXTURE_EXPENSE_ENTRIES.reduce((sum, entry) => sum + entry.amountMinor, 0);
+    const fixtureTotal = FIXTURE_EXPENSE_ENTRIES.filter((e) => e.occurredAtMs >= Date.parse("2026-11-01T00:00:00+06:00")).reduce((sum, entry) => sum + entry.amountMinor, 0);
     expect(report?.expenseMinor).toBe(1_864_000);
     expect(report?.expenseMinor).toBe(fixtureTotal);
     expect(report?.categories.map((row) => [row.category, row.amountMinor])).toEqual([

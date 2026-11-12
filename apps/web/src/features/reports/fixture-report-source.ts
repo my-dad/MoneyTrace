@@ -34,7 +34,7 @@ const ORDER = ["groceries", "other", "transport", "eating-out"];
 /** November so far, summed from the household's expense entries. */
 function novemberCategories(): Record<string, number> {
   const sums: Record<string, number> = {};
-  for (const entry of FIXTURE_EXPENSE_ENTRIES) {
+  for (const entry of FIXTURE_EXPENSE_ENTRIES.filter((e) => e.occurredAtMs >= Date.parse("2026-11-01T00:00:00+06:00"))) {
     const category = entry.accountId.replace(/^expense-/, "");
     sums[category] = (sums[category] ?? 0) + entry.amountMinor;
   }
@@ -68,8 +68,8 @@ const CURRENT_MOVEMENTS: PeriodReport["movements"] = [
 ];
 
 const CURRENT_CARDS: PeriodReport["cards"] = [
-  { accountId: "card-amex", name: "City Bank Amex ••7702", owedMinor: taka(18_450), dueDate: "2026-11-15" },
-  { accountId: "card-ebl", name: "EBL Visa ••2290", owedMinor: taka(6_120), dueDate: "2026-11-22" },
+  { accountId: "card-amex", name: "City Bank Amex", owedMinor: taka(18_450), dueDate: "2026-11-15" },
+  { accountId: "card-ebl", name: "EBL Visa", owedMinor: taka(6_120), dueDate: "2026-11-22" },
 ];
 
 const CURRENT_UNSETTLED: PeriodReport["unsettled"] = [

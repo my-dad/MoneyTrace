@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import { createFixtureReadModels } from "./fixture-read-models";
 import {
   FIXTURE_ACCOUNTS,
+  FIXTURE_AI_USAGE,
   FIXTURE_BALANCES,
   FIXTURE_EXPENSE_ENTRIES,
   FIXTURE_FOLLOW_UPS,
+  FIXTURE_INCOME_ENTRIES,
+  FIXTURE_NOW_MS,
   FIXTURE_SOURCE_EVENTS,
 } from "./household";
 
@@ -36,7 +39,8 @@ describe("fixture household", () => {
   });
 
   it("November expenses total 18,640 taka", () => {
-    expect(sum(FIXTURE_EXPENSE_ENTRIES.map((e) => e.amountMinor))).toBe(1_864_000);
+    const november = FIXTURE_EXPENSE_ENTRIES.filter((e) => e.occurredAtMs >= Date.parse("2026-11-01T00:00:00+06:00"));
+    expect(sum(november.map((e) => e.amountMinor))).toBe(1_864_000);
     expect(FIXTURE_EXPENSE_ENTRIES.every((e) => e.side === "debit" && e.accountKind === "expense")).toBe(true);
   });
 
@@ -69,5 +73,22 @@ describe("fixture household", () => {
       sourceEvents: FIXTURE_SOURCE_EVENTS.length,
       expenses: FIXTURE_EXPENSE_ENTRIES.length,
     });
+  });
+
+  it("has no card or account digits in account names (CR-006)", () => {
+    expect(FIXTURE_ACCOUNTS.filter((a) => /\d{3,4}/.test(a.name)).map((a) => a.name)).toEqual([]);
+  });
+
+  it("has the demo October and November figures the dashboard shows", () => {
+    const dhaka = (iso: string) => Date.parse(`${iso}+06:00`);
+    const debits = (from: number, to: number) =>
+      sum(FIXTURE_EXPENSE_ENTRIES.filter((e) => e.occurredAtMs >= from && e.occurredAtMs <= to).map((e) => (e.side === "debit" ? e.amountMinor : -e.amountMinor)));
+    expect(debits(dhaka("2026-11-01T00:00:00"), FIXTURE_NOW_MS)).toBe(1_864_000);
+    expect(debits(dhaka("2026-10-01T00:00:00"), dhaka("2026-10-06T20:00:00"))).toBe(1_690_000);
+    expect(debits(dhaka("2026-10-01T00:00:00"), dhaka("2026-10-31T23:59:59"))).toBe(5_230_000);
+    expect(sum(FIXTURE_INCOME_ENTRIES.map((e) => e.amountMinor))).toBe(8_500_000);
+    expect(sum(FIXTURE_AI_USAGE.map((u) => u.actualMicroUsd ?? u.estimatedMicroUsd))).toBe(1_430_000);
+    FIXTURE_INCOME_ENTRIES.forEach((row) => OWNER_COLLECTIONS.ledgerEntries.parse(row));
+    FIXTURE_AI_USAGE.forEach((row) => OWNER_COLLECTIONS.aiUsage.parse(row));
   });
 });

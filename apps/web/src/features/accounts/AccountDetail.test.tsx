@@ -10,7 +10,7 @@ import { createFixtureCashSource } from "./fixture-cash-source";
 afterEach(cleanup);
 
 const DBBL: AccountView = { id: "bank-dbbl", kind: "bank", name: "DBBL Savings", amountMinor: 8_200_000, unexplained: false };
-const AMEX: AccountView = { id: "card-amex", kind: "creditLiability", name: "City Bank Amex ••7702", amountMinor: 1_845_000, unexplained: false };
+const AMEX: AccountView = { id: "card-amex", kind: "creditLiability", name: "City Bank Amex", amountMinor: 1_845_000, unexplained: false };
 const UNEXPLAINED: AccountView = { id: "cash-unassigned", kind: "cash", name: "Cash · place not set", amountMinor: 500_000, unexplained: true };
 
 describe("AccountDetail", () => {

@@ -57,6 +57,8 @@ function stalledGateway(failing: ("accounts" | "balances" | "expenses")[] = []):
     watchFollowUps: () => () => undefined,
     watchSourceEvents: () => () => undefined,
     watchExpenseEntries: (_from, _to, _onValue, onError) => stream("expenses", onError),
+    watchIncomeEntries: () => () => undefined,
+    watchAiUsage: () => () => undefined,
   };
 }
 

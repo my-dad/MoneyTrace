@@ -9,7 +9,7 @@ import {
   type FirestoreError,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import type { ReadModelGateway, Watch } from "./read-model-gateway";
+import type { LedgerEntryRow, ReadModelGateway, Watch } from "./read-model-gateway";
 
 const ownerCollection = (uid: string, name: string) => collection(db, `users/${uid}/${name}`);
 
@@ -57,13 +57,23 @@ export function createFirebaseReadModelGateway(): ReadModelGateway {
       );
     },
     watchExpenseEntries(fromMs, toMs, onValue, onError) {
+      return watch((next, error) => ledgerKind("expense", fromMs, toMs, next, error), onValue, onError);
+    },
+    watchIncomeEntries(fromMs, toMs, onValue, onError) {
+      return watch((next, error) => ledgerKind("income", fromMs, toMs, next, error), onValue, onError);
+    },
+    watchAiUsage(fromMs, toMs, onValue, onError) {
       return watch(
-        (next, error) => {
-          return onSnapshot(query(ownerCollection(requireUid(), "ledgerEntries"), where("accountKind", "==", "expense"), where("occurredAtMs", ">=", fromMs), where("occurredAtMs", "<=", toMs), orderBy("occurredAtMs")), (snapshot) => { next(snapshot.docs.map((doc) => OWNER_COLLECTIONS.ledgerEntries.parse(doc.data()))); }, error);
-        },
+        (next, error) =>
+          onSnapshot(query(ownerCollection(requireUid(), "aiUsage"), where("createdAtMs", ">=", fromMs), where("createdAtMs", "<=", toMs), orderBy("createdAtMs")), (snapshot) => { next(snapshot.docs.map((doc) => OWNER_COLLECTIONS.aiUsage.parse(doc.data()))); }, error),
         onValue,
         onError,
       );
     },
   };
+}
+
+/** Ledger entries of one nominal kind in a time range (the accountKind + occurredAtMs index). */
+function ledgerKind(kind: "expense" | "income", fromMs: number, toMs: number, next: (rows: LedgerEntryRow[]) => void, error: (error: FirestoreError) => void): () => void {
+  return onSnapshot(query(ownerCollection(requireUid(), "ledgerEntries"), where("accountKind", "==", kind), where("occurredAtMs", ">=", fromMs), where("occurredAtMs", "<=", toMs), orderBy("occurredAtMs")), (snapshot) => { next(snapshot.docs.map((doc) => OWNER_COLLECTIONS.ledgerEntries.parse(doc.data()))); }, error);
 }

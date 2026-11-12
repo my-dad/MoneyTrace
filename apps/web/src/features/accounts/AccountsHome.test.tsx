@@ -18,6 +18,8 @@ const SILENT: ReadModelGateway = {
   watchFollowUps: () => () => undefined,
   watchSourceEvents: () => () => undefined,
   watchExpenseEntries: () => () => undefined,
+  watchIncomeEntries: () => () => undefined,
+  watchAiUsage: () => () => undefined,
 };
 
 const renderHome = (gateway: ReadModelGateway = createFixtureReadModels(), selectedId: string | null = null) => {

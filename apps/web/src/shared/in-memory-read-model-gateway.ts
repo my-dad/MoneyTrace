@@ -1,5 +1,7 @@
 import type {
   AccountRow,
+  AiUsageRow,
+  LedgerEntryRow,
   BalanceRow,
   ExpenseEntryRow,
   FollowUpRow,
@@ -22,6 +24,8 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
   private readonly sourceEventListeners = new Set<Listener<SourceEventRow>>();
   private readonly expenseListeners = new Set<Listener<ExpenseEntryRow>>();
   private readonly errorListeners = new Map<string, Set<ErrorListener>>();
+  private readonly income = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
+  private readonly aiUsage = new RangeStore<AiUsageRow>((row) => row.createdAtMs);
 
   private watchError(kind: string, onError?: ErrorListener): void {
     if (onError === undefined) return;
@@ -90,6 +94,24 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
     };
   }
 
+  watchIncomeEntries(fromMs: number, toMs: number, onValue: Listener<LedgerEntryRow>, onError?: ErrorListener): () => void {
+    this.watchError("income", onError);
+    return this.income.watch(fromMs, toMs, onValue);
+  }
+
+  watchAiUsage(fromMs: number, toMs: number, onValue: Listener<AiUsageRow>, onError?: ErrorListener): () => void {
+    this.watchError("aiUsage", onError);
+    return this.aiUsage.watch(fromMs, toMs, onValue);
+  }
+
+  setIncomeEntries(rows: LedgerEntryRow[]): void {
+    this.income.set(rows);
+  }
+
+  setAiUsage(rows: AiUsageRow[]): void {
+    this.aiUsage.set(rows);
+  }
+
   setAccounts(rows: AccountRow[]): void {
     this.accounts = [...rows];
     this.accountListeners.forEach((listener) => {
@@ -125,7 +147,26 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
     });
   }
 
-  fail(kind: "accounts" | "balances" | "followUps" | "sourceEvents" | "expenses"): void {
+  fail(kind: "accounts" | "balances" | "followUps" | "sourceEvents" | "expenses" | "income" | "aiUsage"): void {
     this.errorListeners.get(kind)?.forEach((listener) => { listener(new Error("read failed")); });
+  }
+}
+
+/** Rows filtered by a time range, pushed to every live watcher on each change. */
+class RangeStore<T> {
+  private rows: T[] = [];
+  private readonly listeners = new Set<(rows: T[]) => void>();
+  constructor(private readonly timeOf: (row: T) => number) {}
+
+  watch(fromMs: number, toMs: number, onValue: Listener<T>): () => void {
+    const listener = (rows: T[]) => { onValue(rows.filter((row) => this.timeOf(row) >= fromMs && this.timeOf(row) <= toMs)); };
+    this.listeners.add(listener);
+    listener([...this.rows]);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  set(rows: T[]): void {
+    this.rows = [...rows];
+    this.listeners.forEach((listener) => { listener([...this.rows]); });
   }
 }

@@ -1,8 +1,10 @@
 import type {
   AccountRow,
+  AiUsageRow,
   BalanceRow,
   ExpenseEntryRow,
   FollowUpRow,
+  LedgerEntryRow,
   SourceEventRow,
 } from "../read-model-gateway";
 
@@ -28,8 +30,8 @@ const ACCOUNT_SEEDS: AccountSeed[] = [
   { id: "family-ammu", kind: "familyCash", name: "Ammu", balanceTaka: 4_500 },
   { id: "cash-unassigned", kind: "cash", name: "Cash · place not set", balanceTaka: 5_000 },
   // A liability's raw balance is negative; the amount owed is its negation.
-  { id: "card-amex", kind: "creditLiability", name: "City Bank Amex ••7702", balanceTaka: -18_450 },
-  { id: "card-ebl", kind: "creditLiability", name: "EBL Visa ••2290", balanceTaka: -6_120 },
+  { id: "card-amex", kind: "creditLiability", name: "City Bank Amex", balanceTaka: -18_450 },
+  { id: "card-ebl", kind: "creditLiability", name: "EBL Visa", balanceTaka: -6_120 },
 ];
 
 export const FIXTURE_ACCOUNTS: AccountRow[] = ACCOUNT_SEEDS.map(({ id, kind, name }) => ({
@@ -68,6 +70,15 @@ const EXPENSES: [string, string, number][] = [
   ["other", "2026-11-03T12:00:00", 1_480],
   ["other", "2026-11-04T15:30:00", 1_000],
   ["other", "2026-11-06T12:25:00", 750],
+  // October, for the dashboard's month-to-month comparison: 16,900 by 6 Oct, 52,300 in all.
+  ["groceries", "2026-10-03T10:00:00", 6_100],
+  ["other", "2026-10-04T10:00:00", 5_200],
+  ["transport", "2026-10-05T10:00:00", 2_950],
+  ["eating-out", "2026-10-06T10:00:00", 2_650],
+  ["groceries", "2026-10-20T10:00:00", 12_800],
+  ["other", "2026-10-21T10:00:00", 10_400],
+  ["transport", "2026-10-22T10:00:00", 6_750],
+  ["eating-out", "2026-10-23T10:00:00", 5_450],
 ];
 
 export const FIXTURE_EXPENSE_ENTRIES: ExpenseEntryRow[] = EXPENSES.map(([category, iso, amount], index) => ({
@@ -79,6 +90,38 @@ export const FIXTURE_EXPENSE_ENTRIES: ExpenseEntryRow[] = EXPENSES.map(([categor
   amountMinor: taka(amount),
   currency: "BDT",
   occurredAtMs: at(iso),
+}));
+
+export const FIXTURE_INCOME_ENTRIES: LedgerEntryRow[] = [
+  {
+    id: "tx-salary-nov:2",
+    transactionId: "tx-salary-nov",
+    accountId: "income-salary",
+    accountKind: "income",
+    side: "credit",
+    amountMinor: taka(85_000),
+    currency: "BDT",
+    occurredAtMs: at("2026-11-01T10:00:00"),
+  },
+];
+
+/** AI usage this month: $1.43 of the $5.00 monthly budget. */
+export const FIXTURE_AI_USAGE: AiUsageRow[] = [
+  ["usage-1", "2026-11-02T13:31:00", 600_000],
+  ["usage-2", "2026-11-04T15:31:00", 500_000],
+  ["usage-3", "2026-11-06T16:41:00", 330_000],
+].map(([id, iso, micro]) => ({
+  id: String(id),
+  providerId: "deepseek",
+  model: "deepseek-flash",
+  estimatedMicroUsd: Number(micro),
+  actualMicroUsd: Number(micro),
+  outcome: "success" as const,
+  userApprovedRetry: false,
+  sourceEventId: "se-salary",
+  stage: "interpret" as const,
+  attempt: 1,
+  createdAtMs: at(String(iso)),
 }));
 
 type Candidate = NonNullable<SourceEventRow["candidate"]>;

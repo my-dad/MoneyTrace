@@ -20,6 +20,7 @@ const services = (fixture: boolean): AppServices => ({
   reports: null,
   settings: null,
   fixture,
+  nowMs: () => 0,
 });
 
 describe("AppShell", () => {
