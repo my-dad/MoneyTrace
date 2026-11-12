@@ -15,11 +15,12 @@ the architecture source is
 [`docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md`](docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md).
 Cloud CI and real Firebase environments are intentionally deferred.
 
-On `ui-screens`, every PRD §4 screen (Home, Chat, Activity, Accounts & Cash,
-Reports, Settings/Onboarding, Reminders) is built against fixture data
-(`NEXT_PUBLIC_DATA_SOURCE=fixture`). Actions without a backend report "Not
-available yet" and save nothing. Wiring real sources is the next phase; see
-[`docs/superpowers/progress/ui-screens.md`](docs/superpowers/progress/ui-screens.md).
+The web app is a Google sign-in page and one dashboard with a pop-up chat (PRD
+CR-007, piece 1 of 4; see
+[`docs/superpowers/progress/dashboard-chat.md`](docs/superpowers/progress/dashboard-chat.md)).
+The dashboard reads real read models; demo mode (`NEXT_PUBLIC_DATA_SOURCE=fixture`)
+shows a fixed demo household and its actions save nothing. Next: piece 2 (accounts
+created from SMS), piece 3 (tips from DeepSeek), piece 4 (going live).
 
 ## What it is
 
@@ -85,7 +86,7 @@ User, Account (bank / cash / family-held cash / credit liability), PaymentInstru
 
 ## Screens
 
-Home, AI Chat, Activity/Inbox, Accounts & Cash, Reports (calendar month + configurable salary-cycle), Settings/Onboarding. See PRD §4.
+Sign-in page, then one dashboard (this month's spending, income, unexplained cash, spending by category, money now, recent messages; tips in piece 3) with a pop-up chat that also holds follow-up questions. PRD CR-007 replaces the separate §4 screens.
 
 ## Priorities
 
