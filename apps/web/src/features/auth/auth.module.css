@@ -1,0 +1,7 @@
+.gate { min-height:80dvh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:4px; padding:0 24px; color:var(--mt-ink); }
+.gate h1 { margin:0 0 6px; font-size:28px; font-weight:800; }
+.gate :global(.mt-button) { width:100%; max-width:320px; min-height:52px; }
+.logo { width:64px; height:64px; border-radius:20px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; font-size:26px; margin-bottom:14px; }
+.lead { margin:0 0 24px; max-width:320px; color:var(--mt-body); font-size:15px; line-height:1.55; }
+.error { margin:0 0 12px; color:var(--mt-failed-text); font-size:14px; font-weight:600; }
+.fine { margin:14px 0 0; max-width:300px; font-size:12px; color:var(--mt-caption); line-height:1.5; }

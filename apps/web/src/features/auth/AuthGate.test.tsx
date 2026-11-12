@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import axe from "axe-core";
 import { afterEach, expect, it } from "vitest";
 import { AuthGate } from "./AuthGate";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
@@ -13,6 +14,7 @@ class FakeAuthGateway implements AuthGateway {
   bootstrapResult: Promise<void> = Promise.resolve();
   signInResult: Promise<void> = Promise.resolve();
   signInShouldFail = false;
+  signInError: unknown = new Error("popup closed");
   private listener: ((user: AuthUser | null) => void) | null = null;
 
   onChange(listener: (user: AuthUser | null) => void): () => void {
@@ -25,7 +27,7 @@ class FakeAuthGateway implements AuthGateway {
 
   async signIn(): Promise<void> {
     this.signInCalls += 1;
-    if (this.signInShouldFail) throw new Error("popup closed");
+    if (this.signInShouldFail) throw this.signInError;
     await this.signInResult;
     this.user = { uid: "alice" };
     this.listener?.(this.user);
@@ -184,4 +186,45 @@ it("does not mark a new user ready when an earlier user's retry finishes", async
 
   expect(screen.getByText("Setting up your account")).toBeTruthy();
   expect(screen.queryByText("private app")).toBeNull();
+});
+
+it("the sign-in page has a heading, the line and the button", async () => {
+  renderGate(new FakeAuthGateway());
+  expect(await screen.findByRole("heading", { level: 1, name: "MoneyTrace" })).toBeTruthy();
+  expect(screen.getByText("Paste your bank SMS or tell it about cash. It works out where your money goes.")).toBeTruthy();
+  expect(screen.getByRole("main").contains(screen.getByRole("button", { name: "Sign in with Google" }))).toBe(true);
+});
+
+it("progress text is announced", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  gateway.bootstrapResult = new Promise<void>(() => undefined);
+  renderGate(gateway);
+  expect((await screen.findByRole("status")).textContent).toBe("Setting up your account");
+});
+
+it("the sign-in button is disabled while a sign-in is in flight", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.signInResult = new Promise<void>(() => undefined);
+  renderGate(gateway);
+  fireEvent.click(await screen.findByRole("button", { name: "Sign in with Google" }));
+  fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
+  expect(gateway.signInCalls).toBe(1);
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sign in with Google" }).disabled).toBe(true);
+});
+
+it("closing the pop-up shows no error", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.signInShouldFail = true;
+  gateway.signInError = Object.assign(new Error("closed"), { code: "auth/popup-closed-by-user" });
+  renderGate(gateway);
+  fireEvent.click(await screen.findByRole("button", { name: "Sign in with Google" }));
+  await waitFor(() => { expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sign in with Google" }).disabled).toBe(false); });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("has no axe violations on the sign-in page", async () => {
+  const { container } = renderGate(new FakeAuthGateway());
+  await screen.findByRole("button", { name: "Sign in with Google" });
+  expect((await axe.run(container)).violations).toEqual([]);
 });
