@@ -90,9 +90,9 @@
 **Interfaces (produced):**
 - **AI output:**
   - The `transaction` candidate gains optional `sourceName: string` (1–40 characters) and `sourceMask` (`/^\d{3,4}$/`).
-  - A new variant: `{ kind: "question", text: string (1–300), candidate?: <the same candidate object> }`.
+  - A new variant: `{ kind: "question", text: string (1–300), options?: string[] (at most 4, each 1–40), candidate?: <the same candidate object> }`. Mabrur approved quick answers with mockup H.
 - **Source event:**
-  - Gains `clarifications: { question: string; answer: string | null; askedAtMs: number; answeredAtMs: number | null }[]`, with at most 3 items and a default of `[]`.
+  - Gains `clarifications: { question: string; options: string[]; answer: string | null; askedAtMs: number; answeredAtMs: number | null }[]`, with at most 3 items and a default of `[]`.
   - `pendingReason` adds `"aiQuestion"`.
   - `matchKind` adds `"transferCounterpart"`.
 - **Commands:**
@@ -198,7 +198,7 @@
 
 **Interfaces:**
 - **AI port:**
-  - `AiInterpretation` adds `{ kind: "question"; text: string; candidate: CandidateTransaction | null }`.
+  - `AiInterpretation` adds `{ kind: "question"; text: string; options: string[]; candidate: CandidateTransaction | null }`.
   - `AiContext` gains `clarifications: { question: string; answer: string }[]`.
 - **AI gateway:** `AIGateway.interpret(ownerId, eventId, text, context, round: number)`. The provider id is `${id}` for round 0 and `${id}:r${round}` otherwise.
 - **Interpret stage:**
@@ -245,7 +245,7 @@
   - `DashboardView` replaces `availableMinor`/`cardsOwedMinor` with `netMoneyMinor` (the sum of all source balances, unexplained cash included).
   - `sources: { accountId, label, inMinor, outMinor }[]` for the month, sorted by `outMinor` descending.
 - **Chat:**
-  - `QuestionThread({ event, answerQuestion })` shows each question and answer, a reply box, and Skip.
+  - `QuestionThread({ event, answerQuestion })` shows each question and answer, the latest question's options as quick-answer buttons (a tap sends the option as the answer), a reply box, and Skip.
   - The demo shows `COPY.demoUnavailable`.
 - **Demo data:** sources named per Global Constraints, and one transfer pair.
 

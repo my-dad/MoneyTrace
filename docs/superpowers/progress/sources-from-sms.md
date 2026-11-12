@@ -5,7 +5,7 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 
 | Task | State |
 |---|---|
-| 1 Mockup H | Drawn; awaiting Mabrur's approval |
+| 1 Mockup H | Done: approved by Mabrur 2026-11-12, with quick answers kept |
 | 2 Contracts | Not started |
 | 3 Sources remembered from SMS | Not started |
 | 4 Transfer pairing | Not started |
@@ -15,8 +15,8 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 
 ## Next task
 
-Mabrur reviews `design/screens/H-sources.html`. On approval, record it here, then start Task 2.
+Task 2: contracts.
 
 ## Open decisions
 
-The mockup's six "Decisions to confirm", including quick answers (an optional `options` list on DeepSeek's question).
+None. Quick answers were added to the plan (an optional `options` list on DeepSeek's question).
