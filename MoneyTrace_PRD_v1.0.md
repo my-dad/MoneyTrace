@@ -343,3 +343,16 @@ Status: Accepted by Mabrur on 2026-11-11.
 | Security impact | Fixture mode skips sign-in, so it is allowed only when the Firebase project ID starts with `demo-`, and the build fails otherwise. Fixture actions never report success. The CR-003 callable reviews are delayed further, but CR-002 still bars deployment and real data. |
 | Cost impact | None. No backend or AI usage. |
 | Acceptance criteria | Every screen group in the spec has an approved mockup and a built screen with component tests. The fixture-mode smoke test passes. `pnpm verify` and `pnpm --filter web build` pass. |
+
+## CR-006: Accounts start blank, at ৳0 (2026-11-12)
+
+Status: Accepted by Mabrur on 2026-11-12.
+
+| Field | Record |
+|---|---|
+| Proposed change | An account is created with only a name and a type. The UI asks for no bank, no card or account digits, and no payment instruments, and has no opening-balance step. Every account starts at ৳0, and its balance comes only from activity recorded in MoneyTrace. This narrows FR-02 (no instrument mappings in the UI), FR-03 (no opening balances offered), journey steps 2–3, the onboarding row in section 2 and screen 06. The backend commands for instruments and opening balances stay, with no contract change, but nothing in the UI calls them. Gate 36 has nothing to protect until historical imports exist. |
+| Rationale | Mabrur wants setup to start blank, without entering any bank or card details. |
+| Security impact | Positive: no account or card identifiers are collected or stored. |
+| Cost impact | None. A bank SMS whose account can't be identified waits for the user's answer; it costs no AI usage. |
+| Delivery impact | Without digits an SMS can't be matched to an account, so every pasted bank SMS asks "Which account?". Nothing remembers the answer; remembering it per bank would be a separate feature. Balances show only movement since setup, so a bank account can go below ৳0 (an ATM withdrawal with no income recorded yet shows the bank at −৳4,000), and "Available" is not the real bank balance until income has been recorded. |
+| Acceptance criteria | Setup and Add account ask only for a name and a type. No digits, bank picker or opening-balance field appears anywhere in the UI. Component tests cover both forms; `pnpm verify`, the fixture smoke test and the emulator E2E pass. |
