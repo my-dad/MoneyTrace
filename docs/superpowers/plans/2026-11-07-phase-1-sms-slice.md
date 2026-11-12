@@ -919,5 +919,5 @@ PRD exit gate: **ATM and card workflows correct end to end.**
 - [ ] All four commands in Task 15 Step 3 pass.
 - [ ] Gates 25, 26, 28, 31, 33 and 34 each have a passing test at the level named in this plan.
 - [ ] Parsers exist for all seven providers in the corpus, and `sms-pattern.md` has never been committed: `git log --all --oneline -- sms-pattern.md` prints nothing.
-- [ ] **The outstanding reviews from PRD CR-003 are complete:** Task 12 of Phase 0, web sign-in, restore drill tooling, and a whole-branch review. CR-003 sets this as the deadline.
+- [x] **The outstanding reviews from PRD CR-003 are complete** (2026-11-12, `docs/superpowers/progress/cr-003-reviews.md`): Task 12 of Phase 0, web sign-in, restore drill tooling, and a whole-branch review. CR-003 sets this as the deadline.
 - [ ] Open items are written down for Mabrur: DeepSeek's actual prices, its data-processing terms (PRD section 10, before real data), and tuning `aiAutoPostThresholdBp`.

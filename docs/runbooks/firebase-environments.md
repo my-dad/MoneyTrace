@@ -11,6 +11,9 @@ are not created.
 deploy real Functions until the following controls are implemented and tested:
 
 - App Check enforcement for deployed callables.
+- Sign-in limited to Mabrur's Google account: an allowlist in a `beforeUserCreated` blocking function or the shared callable wrapper. MoneyTrace is single-user, and the AI quota is per account, so any other account would get its own budget (CR-003 review).
+- Anonymous sign-in rejected outside the emulator, both as a disabled provider and as a server-side check of `sign_in_provider` (CR-003 review).
+- Sign-in fallback: use `signInWithRedirect` when the pop-up is blocked or the app runs installed (standalone), checked on a real phone, with `authDomain` same-site with the app (CR-003 review).
 - Per-user and per-IP callable rate limits.
 - Conservative Function `maxInstances`, concurrency, timeout, and minimum-instance settings.
 - Separate Firebase projects for dev, staging, and prod.

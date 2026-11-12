@@ -310,7 +310,7 @@ Status: Accepted by Mabrur (Spark decision recorded in commit `f24b098`; split r
 
 ## CR-003: Start Phase 1 before the 0A reviews finish (2026-11-07)
 
-Status: Accepted by Mabrur on 2026-11-07.
+Status: Accepted by Mabrur on 2026-11-07. Reviews completed 2026-11-12: Task 12 callables, web sign-in, restore drill tooling and the Phase 0 whole-branch review all ran; their critical and important findings are fixed (`docs/superpowers/progress/cr-003-reviews.md`), and the sign-in hardening findings are 0B gate items in `docs/runbooks/firebase-environments.md`.
 
 | Field | Record |
 |---|---|

@@ -19,12 +19,7 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 
 ## Next task
 
-Fix pass done. Waiting for Mabrur on three decisions:
-1. ~~Opening-balance correction~~ Not needed: CR-006 (2026-11-12) removed opening balances from the UI, so every account starts at ৳0 and nobody enters one.
-2. Sign-in I3 (allowlist / reject anonymous) and I4 (redirect fallback, checked on a phone): add to the 0B checklist?
-3. ~~Backup retention~~ Done 2026-11-12: Mabrur asked for it to be configurable. It is `backupDays` in the retention policy (default 14 days, limit 98), with a `BACKUP_RETENTION_DAYS` override, and `pnpm backups:retention` feeds the runbook command.
-
-Then: mark CR-003 complete in the PRD and the Phase 1 exit checklist.
+None. CR-003 is complete (2026-11-12). Mabrur said "do whats best": the sign-in hardening findings (allowlist, no anonymous sign-in, pop-up fallback) went onto the 0B checklist in `docs/runbooks/firebase-environments.md`. Opening-balance correction isn't needed (CR-006), and backup retention is configurable.
 
 ## Fixes made (each test watched failing first, unless noted)
 
