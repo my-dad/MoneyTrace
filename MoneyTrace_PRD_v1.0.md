@@ -369,3 +369,16 @@ Status: Accepted by Mabrur on 2026-11-12. Spec: `docs/superpowers/specs/2026-11-
 | Security impact | Smaller UI surface. Masked last digits read from SMS are stored on auto-created accounts (piece 2); tips send DeepSeek category totals only, never message text or account names (piece 3). |
 | Cost impact | Tips use the AI budget (piece 3). Piece 1 has none. |
 | Acceptance criteria | Piece 1: the spec's tests and commands pass, and the mockup is approved by Mabrur before building. Pieces 2–4 each get their own spec and acceptance criteria. |
+
+## CR-008: Sources read from SMS; credits are income unless they're your own transfer (2026-11-12)
+
+Status: Accepted by Mabrur on 2026-11-12. Spec: `docs/superpowers/specs/2026-11-12-sources-from-sms-design.md` (piece 2 of 4; replaces CR-007's "accounts created from SMS" wording).
+
+| Field | Record |
+|---|---|
+| Proposed change | Every bank account, card, wallet or cash pile money moves through is a *source*. A source is read from the SMS (name plus last digits), remembered the first time it appears, and shown as a chip. Card type is not tracked: every source is an ordinary money account, and a card is a source whose total goes below ৳0 as you spend, so "debit cards are instruments, not balance-bearing accounts" and "a card purchase raises a liability" no longer apply as written. Any debit counts as Spent and any credit as Came in, except a debit and credit of the same amount on two of the user's sources within 30 minutes, which is a transfer and counts in neither. Same-day or uncertain pairs ask once. Refunds count in Came in. |
+| Rationale | Mabrur: "You just need to know what is credit and what is debit." Option 2 chosen over counting every credit, so own transfers don't inflate income. |
+| Kept unchanged | Balanced, append-only ledger; withdrawals are never spending; a card bill payment is never spending (it is a transfer); corrections are reverse and replace; AI proposes, deterministic code posts; integer money. |
+| Security impact | Masked last digits read from SMS are stored with each source (none are typed). DeepSeek's output adds a source name and optional last digits. |
+| Cost impact | None beyond existing AI use. |
+| Acceptance criteria | The spec's tests and commands pass, and Mabrur approves the mockup before building. |
