@@ -26,6 +26,7 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
   private readonly errorListeners = new Map<string, Set<ErrorListener>>();
   private readonly income = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
   private readonly aiUsage = new RangeStore<AiUsageRow>((row) => row.createdAtMs);
+  private readonly sourceEntries = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
 
   private watchError(kind: string, onError?: ErrorListener): void {
     if (onError === undefined) return;
@@ -108,6 +109,15 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
     this.income.set(rows);
   }
 
+  watchSourceEntries(fromMs: number, toMs: number, onValue: Listener<LedgerEntryRow>, onError?: ErrorListener): () => void {
+    this.watchError("sourceEntries", onError);
+    return this.sourceEntries.watch(fromMs, toMs, onValue);
+  }
+
+  setSourceEntries(rows: LedgerEntryRow[]): void {
+    this.sourceEntries.set(rows);
+  }
+
   setAiUsage(rows: AiUsageRow[]): void {
     this.aiUsage.set(rows);
   }
@@ -147,7 +157,7 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
     });
   }
 
-  fail(kind: "accounts" | "balances" | "followUps" | "sourceEvents" | "expenses" | "income" | "aiUsage"): void {
+  fail(kind: "accounts" | "balances" | "followUps" | "sourceEvents" | "expenses" | "income" | "aiUsage" | "sourceEntries"): void {
     this.errorListeners.get(kind)?.forEach((listener) => { listener(new Error("read failed")); });
   }
 }

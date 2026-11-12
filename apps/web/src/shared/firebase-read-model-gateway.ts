@@ -62,6 +62,14 @@ export function createFirebaseReadModelGateway(): ReadModelGateway {
     watchIncomeEntries(fromMs, toMs, onValue, onError) {
       return watch((next, error) => ledgerKind("income", fromMs, toMs, next, error), onValue, onError);
     },
+    watchSourceEntries(fromMs, toMs, onValue, onError) {
+      return watch(
+        (next, error) =>
+          onSnapshot(query(ownerCollection(requireUid(), "ledgerEntries"), where("accountKind", "in", ["bank", "cash", "familyCash", "creditLiability"]), where("occurredAtMs", ">=", fromMs), where("occurredAtMs", "<=", toMs), orderBy("occurredAtMs")), (snapshot) => { next(snapshot.docs.map((doc) => OWNER_COLLECTIONS.ledgerEntries.parse(doc.data()))); }, error),
+        onValue,
+        onError,
+      );
+    },
     watchAiUsage(fromMs, toMs, onValue, onError) {
       return watch(
         (next, error) =>

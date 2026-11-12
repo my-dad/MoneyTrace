@@ -5,6 +5,8 @@ import type { ChatItem, ChatOutcome } from "./chat-view-model";
 import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
 import { TransactionPreview } from "./TransactionPreview";
+import { QuestionThread } from "./QuestionThread";
+import { toRecentItems } from "../dashboard/recent-items";
 import { useAction } from "../../shared/use-action";
 
 type EvidenceItem = Extract<ChatItem, { kind: "evidence" }>;
@@ -78,13 +80,15 @@ export function EvidenceBubble({
 }: {
   item: EvidenceItem;
   accounts: AccountRow[];
-  commands: Pick<Commands, "confirmCandidate" | "retrySourceEvent" | "cancelSourceEvent">;
+  commands: Pick<Commands, "confirmCandidate" | "retrySourceEvent" | "cancelSourceEvent" | "answerQuestion">;
 }) {
   const { event } = item;
   const { busy, failed, run } = useAction();
   const unknown = event.status === "pending" && event.pendingReason === "providerOutcomeUnknown";
   const quota = event.status === "pending" && event.pendingReason === "aiQuotaExhausted";
   const awaiting = event.status === "pending" && event.pendingReason === "awaitingClarification";
+  // The source(s) as chips, the same as the dashboard's Recent list (CR-008).
+  const chips = toRecentItems([event], accounts, 1)[0]?.chips ?? [];
 
   return (
     <>
@@ -96,6 +100,7 @@ export function EvidenceBubble({
         <span className={styles.bubbleTime}>{timeFormat.format(new Date(event.receivedAtMs))}</span>
       </div>
       <div className={styles.reply}>
+        {event.clarifications.length > 0 && <QuestionThread event={event} answerQuestion={commands.answerQuestion} />}
         {awaiting && (
           <TransactionPreview
             event={event}
@@ -104,6 +109,11 @@ export function EvidenceBubble({
           />
         )}
         <OutcomeLine outcome={item.outcome} copy={item.statusCopy} />
+        {item.outcome === "recorded" && chips.length > 0 && (
+          <span className={styles.chips}>
+            {chips.map((chip, index) => <span key={`${chip}-${String(index)}`} className={styles.chip}>{chip}</span>)}
+          </span>
+        )}
         {(unknown || quota) && (
           <>
             {unknown && <p className={styles.note}>{CHAT_COPY.secondCharge}</p>}

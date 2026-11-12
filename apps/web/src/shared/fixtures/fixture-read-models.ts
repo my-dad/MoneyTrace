@@ -6,6 +6,7 @@ import {
   FIXTURE_EXPENSE_ENTRIES,
   FIXTURE_FOLLOW_UPS,
   FIXTURE_INCOME_ENTRIES,
+  FIXTURE_SOURCE_ENTRIES,
   FIXTURE_SOURCE_EVENTS,
 } from "./household";
 
@@ -19,5 +20,6 @@ export function createFixtureReadModels(): InMemoryReadModelGateway {
   gateway.setExpenseEntries(FIXTURE_EXPENSE_ENTRIES);
   gateway.setIncomeEntries(FIXTURE_INCOME_ENTRIES);
   gateway.setAiUsage(FIXTURE_AI_USAGE);
+  gateway.setSourceEntries(FIXTURE_SOURCE_ENTRIES);
   return gateway;
 }

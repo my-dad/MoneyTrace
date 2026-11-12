@@ -10,14 +10,17 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 | 3 Sources remembered from SMS | Done |
 | 4 Transfer pairing | Done |
 | 5 DeepSeek asks until it's clear | Done |
-| 6 Web: chips, Net money and Sources, question thread | In progress (WIP commit) |
+| 6 Web: chips, Net money and Sources, question thread | Done |
 | 7 End-to-end tests, final checks, records | Not started |
 
 ## Next task
 
-Resume Task 6 (web). Done in the WIP commit: demo data (transfer event `se-transfer-bkash`, `FIXTURE_SOURCE_ENTRIES`), view model `netMoneyMinor` + `sources` (replacing availableMinor/cardsOwedMinor), `RecentItem.chips`; their tests pass (17/17).
-Still to do: `watchSourceEntries` in both gateways; DashboardScreen renders Net money + SourcesList and chips (update its tests: "Banks and cash"/"Cards owed" are gone); `answerQuestion` in `PHASE_ONE_COMMANDS` and the chat's QuestionThread (options, reply box, Skip, OTP refusal copy); then verify. Task 5's emulator run passed (445 + 26).
+Task 7: end-to-end tests, final checks, records. The emulator E2E still expects a pasted withdrawal to wait for an answer; with sources it now posts (update it).
 
 ## Open decisions
 
 None. Quick answers were added to the plan (an optional `options` list on DeepSeek's question).
+
+## Mockup differences
+
+- Recent rows repeat the source name in the detail line as well as in the chip.

@@ -99,6 +99,7 @@ function fakeCommands() {
     resolveFollowUp: vi.fn<ChatCommands["resolveFollowUp"]>(() => Promise.resolve({ state: "resolved" })),
     retrySourceEvent: vi.fn<ChatCommands["retrySourceEvent"]>(() => Promise.resolve({ status: "received" })),
     cancelSourceEvent: vi.fn<ChatCommands["cancelSourceEvent"]>(() => Promise.resolve({ status: "cancelled" })),
+    answerQuestion: vi.fn<ChatCommands["answerQuestion"]>(() => Promise.resolve({ status: "received" })),
   };
 }
 
@@ -288,6 +289,7 @@ describe("reads", () => {
       watchExpenseEntries: () => () => undefined,
       watchIncomeEntries: () => () => undefined,
       watchAiUsage: () => () => undefined,
+      watchSourceEntries: () => () => undefined,
       watchSourceEvents: (_limit, _onValue, onError) => {
         onError?.(new Error("denied"));
         return () => undefined;
@@ -307,6 +309,7 @@ describe("reads", () => {
       watchExpenseEntries: () => () => undefined,
       watchIncomeEntries: () => () => undefined,
       watchAiUsage: () => () => undefined,
+      watchSourceEntries: () => () => undefined,
       watchSourceEvents: () => unsubscribe,
     };
     const { unmount } = render(<ChatScreen gateway={gateway} commands={fakeCommands()} />);
