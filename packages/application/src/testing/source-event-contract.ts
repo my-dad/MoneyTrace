@@ -415,6 +415,24 @@ export function describeSourceEventContract(
       expect(await repo.get(alice, asSourceEventId("evt-h2"))).toBeNull();
     });
 
+    it("the same evidence again after it was rejected or cancelled is a new event", async () => {
+      for (const [status, n] of [["rejected", 1], ["cancelled", 2]] as const) {
+        const firstId = `evt-r${String(n)}`;
+        await repo.create(alice, inputOf(firstId, `key-r${String(n)}a`, `hash-r${String(n)}`));
+        const r = await repo.claim(alice, asSourceEventId(firstId), "normalize", "w1", T0);
+        if (r.status !== "claimed") throw new Error("expected claimed");
+        await repo.commitStage(alice, r.claim, { nextStatus: "pending", pendingReason: "awaitingClarification", outputs: [] });
+        expect(await repo.finishParked(alice, asSourceEventId(firstId), status, T0)).toBe("finished");
+        const again = inputOf(`${firstId}-again`, `key-r${String(n)}b`, `hash-r${String(n)}`);
+        expect(await repo.create(alice, again)).toEqual({ status: "created", sourceEventId: asSourceEventId(`${firstId}-again`) });
+        // The newest event now owns the hash, so a third paste is a duplicate of it.
+        expect(await repo.create(alice, inputOf(`${firstId}-third`, `key-r${String(n)}c`, `hash-r${String(n)}`))).toEqual({
+          status: "duplicate",
+          sourceEventId: asSourceEventId(`${firstId}-again`),
+        });
+      }
+    });
+
     it("reports idempotencyConflict for a key reused with a different source hash", async () => {
       expect(await repo.create(alice, inputOf("evt-9", "key-evt-1", "other-hash"))).toEqual({
         status: "idempotencyConflict",

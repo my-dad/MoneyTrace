@@ -125,6 +125,20 @@ describe("IntakeEvidence", () => {
     });
   });
 
+  it("a dated SMS pasted again on another day is still a duplicate", async () => {
+    const first = await submit(SMS, "k1");
+    w.clock.advance(3 * 24 * 60 * 60 * 1000);
+    expect(await submit(SMS, "k2")).toMatchObject({ sourceEventId: first.sourceEventId, duplicate: true });
+  });
+
+  it("undated evidence repeats by day: the same note next month is new, the same day is a duplicate", async () => {
+    const installment = "You have paid BDT 15,000.00 as installment for your loan. BRAC Bank.";
+    const first = await submit(installment, "k1");
+    expect(await submit(installment, "k2")).toMatchObject({ sourceEventId: first.sourceEventId, duplicate: true });
+    w.clock.advance(30 * 24 * 60 * 60 * 1000);
+    expect(await submit(installment, "k3")).toMatchObject({ duplicate: false });
+  });
+
   it("a retried key with the same text is a duplicate", async () => {
     const first = await submit(SMS, "k1");
     expect(await submit(SMS, "k1")).toMatchObject({

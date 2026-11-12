@@ -99,9 +99,12 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
           return duplicateOf(seen.sourceEventId);
         }
         if (byHash.exists) {
-          return duplicateOf(
-            OWNER_COLLECTIONS.idempotencyRecords.parse(byHash.data()).sourceEventId,
-          );
+          const owner = OWNER_COLLECTIONS.idempotencyRecords.parse(byHash.data()).sourceEventId;
+          // Evidence the user rejected or cancelled may be pasted again as a new event (it owns the hash then).
+          if (owner === undefined) return duplicateOf(owner);
+          const previous = await t.get(this.eventRef(ownerId, asSourceEventId(owner)));
+          const status = previous.exists ? toSourceEventRecord(previous.data()).status : undefined;
+          if (status !== "rejected" && status !== "cancelled") return duplicateOf(owner);
         }
         if (existing.exists) {
           throw new DomainError("invalidIntent", "a source event with that ID already exists");

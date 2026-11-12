@@ -84,7 +84,8 @@ export class InMemorySourceEvents implements SourceEventRepository {
       return { status: "duplicate", sourceEventId: byKey.sourceEventId };
     }
     const byHash = d.records.get(sourceHashRecordId(input.sourceHash));
-    if (byHash !== undefined) {
+    // Evidence the user rejected or cancelled may be pasted again as a new event (it owns the hash then).
+    if (byHash !== undefined && !endedByUser(d.events.get(byHash.sourceEventId)?.status)) {
       return { status: "duplicate", sourceEventId: byHash.sourceEventId };
     }
     if (d.events.has(input.sourceEventId)) {
@@ -276,3 +277,6 @@ export class InMemorySourceEvents implements SourceEventRepository {
       .map(([, v]) => ({ ...v }));
   }
 }
+
+const endedByUser = (status: SourceEventRecord["status"] | undefined): boolean =>
+  status === "rejected" || status === "cancelled";
