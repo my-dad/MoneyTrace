@@ -5,7 +5,7 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 
 | Task | State |
 |---|---|
-| 1 Mockup G (dashboard and chat) | Drawn; awaiting Mabrur's approval |
+| 1 Mockup G (dashboard and chat) | Done: approved by Mabrur 2026-11-12, all decisions as drawn |
 | 2 Read models, demo clock and data | Not started |
 | 3 Dashboard view model | Not started |
 | 4 Recent items | Not started |
@@ -17,11 +17,11 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 
 ## Next task
 
-Mabrur reviews `design/screens/G-dashboard.html`. On approval, record it here, then start Task 2.
+Task 2: read models for income and AI usage, demo clock and data.
 
 ## Open decisions
 
-The mockup's "Decisions to confirm" list: sign-in page content, dashboard order, chat button and panel, questions in the chat (no "spent" answer), menu contents, Recent labels, and no tips yet.
+None.
 
 ## Last verification
 
