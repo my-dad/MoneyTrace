@@ -31,7 +31,8 @@ Read this first when resuming. Updated and committed after every task.
 | 10 Build D reports | Done |
 | 11 Mockup E settings and onboarding | Done (approved) |
 | 12 Build E settings and onboarding | Done |
-| 13–14 Mockup/build F | Not started |
+| 13 Mockup F reminders | Drawn; awaiting Mabrur's approval |
+| 14 Build F reminders | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -43,15 +44,15 @@ Read this first when resuming. Updated and committed after every task.
 | C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
 | D Reports | Drawn: `design/screens/D-reports.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | fixture report source, screen (toggle, stepping, empty, error, unexplained line, null source, axe), smoke |
 | E Settings / Onboarding | Drawn: `design/screens/E-settings.html` | Approved 2026-11-12 (all 7 decisions as drawn) | Done | settings source, settings screen, AI budget, reminders form, wizard, Home link, smoke |
-| F Reminders inbox | — | — | — | — |
+| F Reminders inbox | Drawn: `design/screens/F-reminders.html` | Awaiting Mabrur | — | — |
 
 ## Next task
 
-Task 13: draw mockup F (Reminders inbox) at `design/screens/F-reminders.html`, then stop for Mabrur's approval.
+Mabrur reviews `design/screens/F-reminders.html`. On approval: record it here, then Task 14 (build F).
 
 ## Open decisions
 
-None.
+Mockup F asks Mabrur to confirm: the ATM question worded "Where did the ৳5,000 go?" (cash with no place yet, not spending); Answer opens Chat with the question; snooze options 1 hour / tonight 9 pm / tomorrow 9 am with a Snoozed section; Done confirms and changes no money; empty reads "Nothing to answer".
 
 ## Noted for later (not in this plan)
 

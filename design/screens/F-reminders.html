@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F · Reminders — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:780px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .scroll { flex:1; overflow:hidden; padding:0 16px; }
+  .top { padding:20px 16px 8px; }
+  .top h2 { margin:0; font-size:24px; font-weight:800; }
+  .top .sub { margin-top:2px; }
+  .sub { font-size:12px; color:var(--mt-caption); }
+  .chips { display:flex; gap:8px; overflow:hidden; padding:8px 16px 12px; }
+  .chip { flex:none; min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .chip.on { background:var(--mt-ink); color:#fff; border-color:var(--mt-ink); }
+  .chip .n { font-size:11px; font-weight:800; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-radius:999px; padding:1px 6px; }
+
+  .day { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:14px 4px 6px; }
+  .list { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+  .item { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .item:first-child { border-top:none; }
+  .item .ic { width:36px; height:36px; border-radius:12px; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); display:grid; place-items:center; flex:none; color:var(--mt-body); }
+  .item .txt { flex:1; min-width:0; }
+  .item .t { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s { font-size:12px; color:var(--mt-caption); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .amt { text-align:right; flex:none; }
+  .item .amt b { display:block; font-size:14px; }
+  .item.dup .t, .item.dup .amt b { color:var(--mt-caption); }
+  .item.dup .amt b { text-decoration:line-through; }
+  .move { color:var(--mt-body); }
+
+  .status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:4px; }
+  .verified { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .pending { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .needs { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .failed { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .neutral { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .tabbar { display:grid; grid-template-columns:repeat(5,1fr); background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px 18px; font-size:11px; color:var(--mt-caption); text-align:center; }
+  .tabbar span { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tabbar .on { color:var(--mt-ink); font-weight:800; box-shadow:inset 0 3px 0 var(--mt-accent); }
+
+  .empty { text-align:center; padding:72px 24px; }
+  .empty .e-ic { width:56px; height:56px; border-radius:18px; margin:0 auto 14px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; }
+  .empty b { display:block; font-size:16px; margin-bottom:6px; }
+  .empty p { margin:0 0 16px; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:999px; font-size:14px; font-weight:700; border:1px solid var(--mt-border-strong); background:var(--mt-surface); color:var(--mt-ink); }
+  .btn.primary { background:var(--mt-accent); color:#fff; border-color:var(--mt-accent); }
+  .btn.block { width:100%; box-sizing:border-box; }
+  .skel { height:56px; border-top:1px solid var(--mt-border-soft); display:flex; align-items:center; gap:12px; padding:0 14px; }
+  .skel i { display:block; height:10px; border-radius:6px; background:var(--mt-border-soft); }
+  .alert { margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-failed-tint); color:var(--mt-failed-text); font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+  /* Detail */
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border-soft); font-weight:700; }
+  .bar .back { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; margin-left:-10px; }
+  .hero { padding:20px 16px 8px; }
+  .hero .kind { font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .hero .big { font-size:32px; font-weight:800; margin:4px 0; }
+  .card { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:10px 16px; }
+  .card h4 { margin:0 0 8px; font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:7px 0; border-top:1px solid var(--mt-border-soft); }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv span:last-child { font-weight:600; text-align:right; }
+  .sms { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); border-radius:12px; padding:10px 12px; color:var(--mt-body); }
+  .note { font-size:12px; color:var(--mt-caption); line-height:1.5; margin-top:8px; }
+  .actions { display:flex; gap:10px; padding:6px 16px 16px; }
+  .info { margin:10px 16px; padding:12px 14px; border-radius:14px; border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; background:var(--mt-surface-soft); }
+
+  /* Sheet */
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:10px 16px 24px; }
+  .grab { width:40px; height:4px; border-radius:4px; background:var(--mt-border-strong); margin:0 auto 14px; }
+  .sheet h3 { margin:0 0 4px; font-size:18px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+  .seg span { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+  .seg .on { border:2px solid var(--mt-ink); }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .input { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; box-sizing:border-box; color:var(--mt-ink); }
+  .input.area { min-height:76px; }
+  .input.err { border-color:var(--mt-failed-text); }
+  .errtxt { font-size:12px; color:var(--mt-failed-text); margin-top:6px; font-weight:600; }
+  .result { margin-top:12px; padding:10px 12px; border-radius:12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:13px; font-weight:700; }
+
+  /* Desktop */
+  .desktop { width:1280px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; display:grid; grid-template-columns:232px 1fr 440px; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .rail { background:var(--mt-surface-soft); border-right:1px solid var(--mt-border); padding:22px 14px; display:flex; flex-direction:column; gap:4px; font-size:14px; }
+  .rail b { margin:0 6px 20px; font-size:16px; }
+  .rail span { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:12px; color:var(--mt-body); }
+  .rail .on { background:var(--mt-surface); border:1px solid var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); color:var(--mt-ink); font-weight:800; }
+  .dmain { padding:24px 28px; overflow:hidden; }
+  .dside { background:var(--mt-surface); border-left:1px solid var(--mt-border); overflow:hidden; }
+  .item.sel { background:var(--mt-accent-tint); }
+</style>
+</head>
+<body>
+<style>
+  .group-h { display:flex; justify-content:space-between; align-items:baseline; margin:16px 4px 6px; }
+  .group-h .day { margin:0; }
+  .group-h b { font-size:13px; }
+  .item .ic { font-size:14px; }
+  .unx { border:1px dashed var(--mt-border-dashed); background:var(--mt-surface-soft); }
+  .unx .t { font-weight:600; }
+  .owed { font-size:11px; color:var(--mt-caption); font-weight:600; }
+  .add { display:flex; gap:10px; padding:14px 16px; }
+  .inst { display:flex; gap:10px; flex-wrap:wrap; }
+  .pill { border:1px solid var(--mt-border); background:var(--mt-surface-soft); border-radius:12px; padding:8px 12px; font-size:13px; font-weight:600; }
+  .pill span { display:block; font-size:11px; font-weight:500; color:var(--mt-caption); }
+  .diff { margin-top:12px; padding:12px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; }
+  .diff b { font-size:18px; display:block; margin:2px 0; }
+  .steps { display:flex; gap:6px; margin:4px 0 14px; }
+  .steps i { flex:1; height:4px; border-radius:4px; background:var(--mt-border); }
+  .steps i.on { background:var(--mt-accent); }
+  .form { padding:8px 16px 16px; display:flex; flex-direction:column; gap:14px; }
+  .hint { font-size:12px; color:var(--mt-caption); margin-top:6px; line-height:1.45; }
+  .select { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; justify-content:space-between; align-items:center; background:var(--mt-surface); }
+  .radios { display:flex; flex-direction:column; gap:8px; }
+  .radio { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; gap:10px; align-items:center; }
+  .radio.on { border:2px solid var(--mt-ink); }
+  .radio i { width:16px; height:16px; border-radius:999px; border:2px solid var(--mt-border-strong); flex:none; }
+  .radio.on i { border:5px solid var(--mt-ink); }
+  .fixedbar { padding:12px 16px 20px; border-top:1px solid var(--mt-border-soft); background:var(--mt-surface); display:flex; gap:10px; }
+  .fixedbar .btn { flex:1; }
+</style>
+<style>
+  .fu { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:0 0 10px; }
+  .fu .q { font-size:15px; font-weight:700; line-height:1.4; }
+  .fu .d { font-size:13px; color:var(--mt-body); line-height:1.5; margin-top:4px; }
+  .fu .m { font-size:12px; color:var(--mt-caption); margin-top:8px; }
+  .fu .acts { display:flex; gap:8px; margin-top:12px; }
+  .fu .acts .btn { min-height:40px; padding:0 14px; font-size:13px; }
+  .fu.snoozed { background:var(--mt-surface-soft); }
+  .fu.snoozed .q { font-weight:600; color:var(--mt-body); }
+  .sec { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:16px 4px 8px; display:flex; justify-content:space-between; }
+  .opt { min-height:52px; display:flex; justify-content:space-between; align-items:center; padding:0 4px; border-top:1px solid var(--mt-border-soft); font-size:15px; }
+  .opt:first-of-type { border-top:none; }
+  .opt span { font-size:12px; color:var(--mt-caption); }
+  .bubble { max-width:82%; padding:10px 14px; border-radius:18px; font-size:14px; line-height:1.45; margin:8px 16px; }
+  .bubble.ai { background:var(--mt-surface); border:1px solid var(--mt-border); border-bottom-left-radius:6px; }
+  .bubble.me { background:var(--mt-ink); color:#fff; margin-left:auto; border-bottom-right-radius:6px; }
+  .composer { display:flex; gap:8px; padding:10px 12px 18px; border-top:1px solid var(--mt-border); background:var(--mt-surface); }
+  .composer .input { flex:1; }
+  .ctx { margin:12px 16px 4px; font-size:12px; color:var(--mt-caption); }
+</style>
+<div class="page">
+  <header>
+    <h1>F · Reminders</h1>
+    <p>Questions MoneyTrace needs you to answer, mostly about cash it can't place. The wording never says money was spent: unexplained cash is only unexplained. Opened from the bell in the Home header (phone) or the rail (desktop). This inbox is the reliable fallback when push notifications are off.</p>
+  </header>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">F1 · Open questions, with snoozed ones below</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="scroll" style="padding-top:8px">
+          <div class="sec"><span>To answer</span><span>2</span></div>
+          <div class="fu">
+            <div class="q">Where did the ৳5,000 go?</div>
+            <div class="d">Taken from DBBL at an ATM on 5 Nov, 7:02 pm. Until you say, it's cash with no place yet, not spending.</div>
+            <div class="m">Asked 5 Nov · due tonight 9:00 pm</div>
+            <div class="acts"><span class="btn primary">Answer</span><span class="btn">Snooze</span><span class="btn">Done</span></div>
+          </div>
+          <div class="fu">
+            <div class="q">Is ৳7,200 still right for your Wallet?</div>
+            <div class="d">Nothing has been recorded for it in 3 days.</div>
+            <div class="m">Asked 6 Nov · due tomorrow 9:00 pm</div>
+            <div class="acts"><span class="btn primary">Answer</span><span class="btn">Snooze</span><span class="btn">Done</span></div>
+          </div>
+          <div class="sec"><span>Snoozed</span><span>1</span></div>
+          <div class="fu snoozed">
+            <div class="q">Home cash counted ৳300 less than expected. What explains it?</div>
+            <div class="m">Snoozed until 1 Dec, 9:00 am</div>
+            <div class="acts"><span class="btn">Answer now</span></div>
+          </div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">F2 · Answer opens Chat with the question</p>
+      <div class="phone">
+        <div class="top"><h2>Chat</h2></div>
+        <div class="ctx">Answering a reminder</div>
+        <div class="bubble ai">Where did the ৳5,000 from the ATM on 5 Nov go? You can split it, for example “3,000 to Ammu, rest in my wallet”.</div>
+        <div style="flex:1"></div>
+        <div class="composer"><div class="input">Type your answer…</div><span class="btn primary">Send</span></div>
+        <div class="tabbar"><span>Home</span><span class="on">Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">F3 · Snooze picker</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="scroll" style="padding-top:8px"><div class="fu"><div class="q">Where did the ৳5,000 go?</div></div></div>
+        <div class="scrim"></div>
+        <div class="sheet"><div class="grab"></div><h3>Ask again…</h3>
+          <div class="opt">In 1 hour<span>8:00 pm</span></div>
+          <div class="opt">Tonight<span>9:00 pm</span></div>
+          <div class="opt">Tomorrow morning<span>Sat 9:00 am</span></div>
+          <div style="display:flex;margin-top:10px"><span class="btn block">Cancel</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">F4 · Done · confirm, then the demo result</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="scroll" style="padding-top:8px"><div class="fu"><div class="q">Is ৳7,200 still right for your Wallet?</div></div></div>
+        <div class="scrim"></div>
+        <div class="sheet"><div class="grab"></div><h3>Mark as done?</h3>
+          <p class="note" style="font-size:13px">This closes the question without changing any money. If the amount is different, answer it instead so the difference is recorded with a reason.</p>
+          <div class="result" role="status">Not available yet — demo · nothing was saved</div>
+          <div style="display:flex;gap:10px;margin-top:14px"><span class="btn" style="flex:1">Close</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">F5 · Empty</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="empty"><div class="e-ic">✓</div><b>Nothing to answer</b><p>When MoneyTrace can't place some cash or needs a detail, the question shows up here.</p></div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">F6 · Loading and read error</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="scroll" style="padding-top:12px">
+          <p class="sub" role="status">Loading your reminders…</p>
+          <div class="list"><div class="skel" style="border-top:none"><i style="width:70%"></i></div><div class="skel"><i style="width:55%"></i></div></div>
+          <p class="frame-label" style="margin-top:28px">If reminders can't load:</p>
+          <div class="alert" role="alert"><span>Couldn't load your reminders. Nothing has changed; try again.</span><span class="btn" style="min-height:36px">Retry</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <p class="frame-label" style="max-width:none">F7 · Desktop · one column of questions</p>
+    <div class="desktop" style="grid-template-columns:232px 1fr">
+      <div class="rail"><b>MoneyTrace</b><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span><span class="on" style="margin-top:auto">Reminders · 2</span><span>Settings</span></div>
+      <div class="dmain" style="max-width:640px">
+        <h2 style="margin:0;font-size:26px">Reminders</h2>
+        <div class="sec"><span>To answer</span><span>2</span></div>
+        <div class="fu"><div class="q">Where did the ৳5,000 go?</div><div class="d">Taken from DBBL at an ATM on 5 Nov, 7:02 pm. Until you say, it's cash with no place yet, not spending.</div><div class="m">Asked 5 Nov · due tonight 9:00 pm</div><div class="acts"><span class="btn primary">Answer</span><span class="btn">Snooze</span><span class="btn">Done</span></div></div>
+        <div class="fu"><div class="q">Is ৳7,200 still right for your Wallet?</div><div class="d">Nothing has been recorded for it in 3 days.</div><div class="m">Asked 6 Nov · due tomorrow 9:00 pm</div><div class="acts"><span class="btn primary">Answer</span><span class="btn">Snooze</span><span class="btn">Done</span></div></div>
+        <div class="sec"><span>Snoozed</span><span>1</span></div>
+        <div class="fu snoozed"><div class="q">Home cash counted ৳300 less than expected. What explains it?</div><div class="m">Snoozed until 1 Dec, 9:00 am</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>Decisions to confirm</h2>
+    <ul>
+      <li><b>Wording:</b> the ATM question reads “Where did the ৳5,000 go?” and says it is cash with no place yet, not spending.</li>
+      <li><b>Answer</b> opens Chat with the question already asked; the answer is recorded there, with its usual status.</li>
+      <li><b>Snooze</b> offers in 1 hour, tonight (9:00 pm) and tomorrow morning (9:00 am). Snoozed questions move to their own section and can be answered early.</li>
+      <li><b>Done</b> asks to confirm and says it changes no money; a different amount should be answered instead.</li>
+      <li><b>Empty</b> reads “Nothing to answer”.</li>
+    </ul>
+  </section>
+</div>
+
+</body>
+</html>
