@@ -8,7 +8,7 @@ Read this file first when resuming.
 
 | # | Review | Scope | Reviewer | Status |
 |---|---|---|---|---|
-| 1 | Phase 0 Task 12, authenticated callables (gate 35) | `apps/functions/src/callable/*` at HEAD; original diff `3bade59..d548607` | Fresh reviewer (opus), read-only | Running |
+| 1 | Phase 0 Task 12, authenticated callables (gate 35) | `apps/functions/src/callable/*` at HEAD; original diff `3bade59..d548607` | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 2 Important, 8 Minor); no cross-user exploit found |
 | 2 | Web sign-in | `apps/web/src/features/auth/*`, Firebase wiring, fixture guard | Fresh reviewer (opus), read-only | Running |
 | 3 | Restore drill tooling | `tools/restore-drill/*`, `docs/runbooks/restore-drill*.md` (`ebebf7f`) | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 5 Important, 8 Minor) |
 | 4 | Phase 0 whole-branch review (0A gate) | `a4b05d2..master`, graded at HEAD | Fresh reviewer (opus), read-only | Running |
@@ -22,6 +22,16 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 Wait for the four review reports, then sort the findings and fix them.
 
 ## Findings
+
+### Review 1: Task 12 callables (with fixes)
+
+No cross-user exploit was found: the owner comes only from the token, schemas are strict, every path is scoped by owner, and the rules deny all client writes.
+
+Important:
+1. The emulator tests don't prove isolation for most Phase 1 callables. Two "another user's" tests use ids that don't exist for anyone. Fix: a test matrix where Bob calls every callable with Alice's real ids, checks Alice's documents are unchanged afterwards, and fails when a new callable has no entry.
+2. A wrong opening balance can never be corrected through any callable. This is a new capability, so it needs Mabrur's decision.
+
+Minor: 8 items (in the ledger). Notes for 0B: restrict sign-up, or add a global AI spend cap, because the quota applies per user.
 
 ### Review 3: restore drill (with fixes)
 
