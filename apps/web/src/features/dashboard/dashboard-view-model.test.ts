@@ -4,7 +4,9 @@ import {
   FIXTURE_BALANCES,
   FIXTURE_EXPENSE_ENTRIES,
   FIXTURE_INCOME_ENTRIES,
+  FIXTURE_ACCOUNTS,
   FIXTURE_NOW_MS,
+  FIXTURE_SOURCE_ENTRIES,
 } from "../../shared/fixtures/household";
 import type { AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
 import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
@@ -24,6 +26,8 @@ function view(offset: number, overrides: Partial<Parameters<typeof buildDashboar
     nowMs: NOW,
     offset,
     previousLabel: previous.label.split(" ")[0] ?? "",
+    accounts: FIXTURE_ACCOUNTS,
+    sourceEntries: inRange(FIXTURE_SOURCE_ENTRIES, month),
     ...overrides,
   });
 }
@@ -97,18 +101,24 @@ describe("buildDashboard", () => {
     expect(v.spentMinor).toBe(-2_000);
   });
 
-  it("a card in credit owes nothing", () => {
-    const v = view(0, { balances: [balance("card-a", "creditLiability", -1_845_000), balance("card-b", "creditLiability", 50_000)] });
-    expect(v.cardsOwedMinor).toBe(1_845_000);
+  it("net money is everything in minus everything out across all sources (CR-008)", () => {
+    expect(view(0).netMoneyMinor).toBe(12_563_000);
+    expect(view(0, { balances: [balance("card-a", "creditLiability", -1_845_000), balance("bank-a", "bank", 2_000_000)] }).netMoneyMinor).toBe(155_000);
+  });
+
+  it("lists each source's money in and out this month, the system wallet left out", () => {
+    expect(view(0).sources).toEqual([
+      { accountId: "bank-dbbl", label: "DBBL Savings", inMinor: 8_500_000, outMinor: 1_500_000 },
+      { accountId: "card-amex", label: "City Bank Amex", inMinor: 0, outMinor: 215_000 },
+      { accountId: "bank-bkash", label: "bKash", inMinor: 1_000_000, outMinor: 95_000 },
+      { accountId: "cash-wallet", label: "Wallet", inMinor: 0, outMinor: 65_000 },
+    ]);
   });
 
   it("hides negative unexplained cash", () => {
     expect(view(0, { balances: [balance("cash-unassigned", "cash", -100)] }).unexplainedCashMinor).toBe(0);
   });
 
-  it("availableMinor sums bank, cash (including the system wallet) and family cash", () => {
-    expect(view(0).availableMinor).toBe(15_020_000);
-  });
 
   it("hasActivity is false with no entries", () => {
     expect(view(0, { expenses: [], income: [] }).hasActivity).toBe(false);

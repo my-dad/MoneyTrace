@@ -56,4 +56,11 @@ describe("toRecentItems", () => {
     expect(items[0]?.id).toBe("fresh");
     expect(items[0]?.detail).toMatch(/29 Mar/);
   });
+
+  it("shows the source as a chip, and a paired transfer as Transfer with both sources (CR-008)", () => {
+    const items = toRecentItems(FIXTURE_SOURCE_EVENTS, FIXTURE_ACCOUNTS, 50);
+    expect(items.find((i) => i.id === "se-salary")?.chips).toEqual(["DBBL Savings"]);
+    expect(items.find((i) => i.id === "se-transfer-bkash")?.chips).toEqual(["Transfer", "DBBL Savings", "bKash"]);
+    expect(items.find((i) => i.id === "se-transfer-bkash")?.title).toBe("Transfer");
+  });
 });

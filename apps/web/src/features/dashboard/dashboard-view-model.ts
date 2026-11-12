@@ -1,5 +1,5 @@
 import { formatBdt } from "@moneytrace/contracts";
-import type { AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
+import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
 
 /** The system wallet for withdrawn cash with no known place yet. Its balance is never spending. */
 export const SYSTEM_CASH_ACCOUNT_ID = "cash-unassigned";
@@ -43,12 +43,16 @@ function oneMonthEarlier(nowMs: number): number {
 
 export type CategoryRow = { category: string; amountMinor: number; percent: number };
 
+export type SourceRow = { accountId: string; label: string; inMinor: number; outMinor: number };
+
 export type DashboardView = {
   spentMinor: number;
   incomeMinor: number;
   unexplainedCashMinor: number;
-  availableMinor: number;
-  cardsOwedMinor: number;
+  /** Everything in minus everything out across all sources since tracking began (CR-008). */
+  netMoneyMinor: number;
+  /** Each source's money in and out this month; the system wallet for unexplained cash is shown on its own. */
+  sources: SourceRow[];
   categories: CategoryRow[];
   comparison: string | null;
   hasActivity: boolean;
@@ -83,6 +87,8 @@ export function buildDashboard(input: {
   nowMs: number;
   offset: number;
   previousLabel: string;
+  accounts: AccountRow[];
+  sourceEntries: LedgerEntryRow[];
 }): DashboardView {
   const balanceOf = (kinds: BalanceRow["accountKind"][]) =>
     input.balances.filter((b) => kinds.includes(b.accountKind)).reduce((sum, b) => sum + b.debitMinusCreditMinor, 0);
@@ -95,14 +101,26 @@ export function buildDashboard(input: {
     spentMinor,
     incomeMinor: net(input.income, "credit"),
     unexplainedCashMinor: Math.max(0, unexplained),
-    availableMinor: balanceOf(["bank", "cash", "familyCash"]),
-    cardsOwedMinor: input.balances
-      .filter((b) => b.accountKind === "creditLiability")
-      .reduce((sum, b) => sum + Math.max(0, -b.debitMinusCreditMinor), 0),
+    netMoneyMinor: balanceOf(["bank", "cash", "familyCash", "creditLiability"]),
+    sources: sourcesOf(input.sourceEntries, input.accounts),
     categories: categoriesOf(input.expenses),
     comparison: comparisonLine(spentMinor, previous, current ? "this time last month" : input.previousLabel),
     hasActivity: input.expenses.length + input.income.length > 0,
   };
+}
+
+/** Money in (debits) and out (credits) per source; for a card as for a bank, a debit is money in. */
+function sourcesOf(entries: LedgerEntryRow[], accounts: AccountRow[]): SourceRow[] {
+  const names = new Map(accounts.map((a) => [a.id, a.name]));
+  const rows = new Map<string, SourceRow>();
+  for (const entry of entries) {
+    if (entry.accountId === SYSTEM_CASH_ACCOUNT_ID) continue;
+    const row = rows.get(entry.accountId) ?? { accountId: entry.accountId, label: names.get(entry.accountId) ?? entry.accountId, inMinor: 0, outMinor: 0 };
+    if (entry.side === "debit") row.inMinor += entry.amountMinor;
+    else row.outMinor += entry.amountMinor;
+    rows.set(entry.accountId, row);
+  }
+  return [...rows.values()].sort((a, b) => b.outMinor - a.outMinor || a.label.localeCompare(b.label));
 }
 
 /** "$1.43": exact integer cents from micro-USD, truncated. */
