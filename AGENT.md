@@ -21,8 +21,11 @@ The web app is a Google sign-in page and one dashboard with a pop-up chat (PRD
 CR-007, piece 1 of 4; see
 [`docs/superpowers/progress/dashboard-chat.md`](docs/superpowers/progress/dashboard-chat.md)).
 The dashboard reads real read models; demo mode (`NEXT_PUBLIC_DATA_SOURCE=fixture`)
-shows a fixed demo household and its actions save nothing. Next: piece 2 (accounts
-created from SMS), piece 3 (tips from DeepSeek), piece 4 (going live).
+shows a fixed demo household and its actions save nothing. Piece 2 (PRD CR-008)
+reads each SMS's source and remembers it (shown as chips), counts debits as Spent and
+credits as Came in except paired own-account transfers, and lets DeepSeek ask up to 3
+questions about an SMS it can't read clearly. Next: piece 3 (tips from DeepSeek) and
+piece 4 (going live).
 
 ## What it is
 
