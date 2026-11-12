@@ -9,6 +9,7 @@ do not claim a successful drill until the fields below contain observed output.
 | Database restored | |
 | Backup resource | |
 | Backup date | |
+| Backup retention | |
 | Drill date | |
 | Region | `asia-south2` |
 | Expected checksum file | |

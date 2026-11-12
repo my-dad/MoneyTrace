@@ -11,6 +11,8 @@ export const retentionPolicySchema = z
     conversationDays: positiveInt,
     /** Cloud Logging only. Never applies to accounting records. */
     operationalLogDays: positiveInt,
+    /** Managed Firestore backups. Firestore keeps scheduled backups for at most 14 weeks. */
+    backupDays: positiveInt.max(98),
   })
   .strict();
 
@@ -22,4 +24,5 @@ export const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
   providerResultDays: 30,
   conversationDays: 365,
   operationalLogDays: 30,
+  backupDays: 14,
 };

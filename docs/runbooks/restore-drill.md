@@ -23,17 +23,26 @@ entry or a wrong balance is reported.
 
 A staging drill needs managed backups, and backups need the Blaze plan. Until
 Mabrur approves Blaze under the 0B gate (`firebase-environments.md`), stop here.
-Once Blaze is approved, set backups and point-in-time recovery up once, and
-record the retention in `restore-drill-log.md`. The 14-day retention below is a
-placeholder: the spec requires a defined period but doesn't set one, so Mabrur
-confirms it before running this.
+Once Blaze is approved, set backups and point-in-time recovery up once.
+
+Backup retention is configurable. The default is `backupDays` in the retention
+policy (`packages/contracts/src/retention-policy.ts`, currently 14 days).
+Override it for one run with `BACKUP_RETENTION_DAYS`, a whole number of days
+from 1 to 98 (Firestore keeps scheduled backups for at most 14 weeks). Change
+the policy default instead when the period changes for good, because the user
+is told how long backups are kept (PRD section 10).
 
 ```bash
+pnpm -s backups:retention                             # prints the value used, e.g. 14d
+# BACKUP_RETENTION_DAYS=30 pnpm -s backups:retention  # one-off override
 firebase firestore:backups:schedules:create --project moneytrace-staging \
-  --database "(default)" --recurrence DAILY --retention 14d
+  --database "(default)" --recurrence DAILY \
+  --retention "$(pnpm -s backups:retention)"
 firebase firestore:databases:update "(default)" --project moneytrace-staging \
   --point-in-time-recovery ENABLED
 ```
+
+Record the retention used in `restore-drill-log.md`.
 
 The tool refuses any project other than `demo-moneytrace` or one ending in
 `-staging`. A staging run refuses to start while `FIRESTORE_EMULATOR_HOST` is

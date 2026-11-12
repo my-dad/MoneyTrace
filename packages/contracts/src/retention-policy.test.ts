@@ -10,6 +10,7 @@ describe("retention policy", () => {
     "providerResultDays",
     "conversationDays",
     "operationalLogDays",
+    "backupDays",
   ])("rejects zero and negative %s", (field) => {
     expect(
       retentionPolicySchema.safeParse({ ...DEFAULT_RETENTION_POLICY, [field]: 0 }).success,
@@ -22,5 +23,9 @@ describe("retention policy", () => {
     expect(retentionPolicySchema.safeParse({ ...DEFAULT_RETENTION_POLICY, extra: 1 }).success).toBe(
       false,
     );
+  });
+  it("keeps backups within Firestore's 14-week limit", () => {
+    expect(retentionPolicySchema.safeParse({ ...DEFAULT_RETENTION_POLICY, backupDays: 98 }).success).toBe(true);
+    expect(retentionPolicySchema.safeParse({ ...DEFAULT_RETENTION_POLICY, backupDays: 99 }).success).toBe(false);
   });
 });
