@@ -50,10 +50,16 @@ describe("matchCandidate", () => {
       ]),
     ).toEqual({ kind: "duplicate", transactionId: "t1" });
   });
-  it("the identical minute with no reference is a duplicate", () => {
+  it("gate 28: the identical minute with no shared reference asks rather than merges", () => {
     expect(match(candidate(), [existing({ occurredAtMs: T + 20_000 })])).toEqual({
-      kind: "duplicate",
-      transactionId: "t1",
+      kind: "ambiguous",
+      transactionIds: ["t1"],
+    });
+  });
+  it("gate 28: two date-only debits of the same amount on the same day ask rather than merge", () => {
+    expect(match(candidate({ dateOnly: true }), [existing({ occurredAtMs: T })])).toEqual({
+      kind: "ambiguous",
+      transactionIds: ["t1"],
     });
   });
   it("two equal purchases minutes apart with no reference ask rather than merge", () => {

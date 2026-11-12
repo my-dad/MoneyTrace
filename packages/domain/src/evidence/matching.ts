@@ -25,8 +25,6 @@ export type MatchConfig = { windowMs: number };
 
 export const DEFAULT_MATCH_CONFIG: MatchConfig = { windowMs: 600_000 };
 
-const MINUTE_MS = 60_000;
-
 const ids = (rows: readonly ExistingTransaction[]): string[] => rows.map((r) => r.transactionId);
 
 const one = (rows: readonly ExistingTransaction[]): ExistingTransaction | undefined =>
@@ -68,11 +66,9 @@ export function matchCandidate(
   }
   if (authorizations.length > 1) return { kind: "ambiguous", transactionIds: ids(authorizations) };
 
-  const sameMinute = near.filter((e) => Math.abs(e.occurredAtMs - occurredAtMs) < MINUTE_MS);
-  const onlySameMinute = one(sameMinute);
-  if (onlySameMinute !== undefined && near.length === 1) {
-    return { kind: "duplicate", transactionId: onlySameMinute.transactionId };
-  }
+  // Without a shared reference, nearness is never proof: date-only SMS share midnight, and two real
+  // equal charges can share a minute. Ask instead of merging (gate 28). A re-pasted identical SMS
+  // never gets here; intake's source hash already catches it.
   if (near.length > 0) return { kind: "ambiguous", transactionIds: ids(near) };
 
   const counterparts = same.filter(
