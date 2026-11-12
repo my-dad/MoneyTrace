@@ -28,6 +28,7 @@ import {
   RecordOpeningBalance,
   type IdGenerator,
   type Logger,
+  type RateLimiter,
 } from "@moneytrace/application";
 import {
   CryptoIdGenerator,
@@ -36,6 +37,7 @@ import {
   FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
   FirestoreQuotaLedger,
+  FirestoreRateLimiter,
   systemTimeoutSignal,
   FirestoreLedgerWriter,
   FirestoreProviderCallRepository,
@@ -49,9 +51,14 @@ import {
 import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
 import type { Firestore } from "firebase-admin/firestore";
 import { selectAiProvider } from "./ai-selection";
+import { accessPolicyFromEnv, type AccessPolicy } from "./callable/access";
+import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/create-callable";
+
+export type CallGate = { access: AccessPolicy; limiter: RateLimiter; limits: RateLimits; nowMs: () => number };
 
 export type Deps = {
   logger: Logger;
+  callGate: CallGate;
   ids: IdGenerator;
   bootstrapUser: BootstrapUser;
   createAccount: CreateAccount;
@@ -96,6 +103,12 @@ export function composeDeps(db: Firestore): Deps {
   const instruments = new FirestorePaymentInstrumentRepository(db);
   return {
     logger,
+    callGate: {
+      access: accessPolicyFromEnv(process.env),
+      limiter: new FirestoreRateLimiter(db),
+      limits: process.env["FUNCTIONS_EMULATOR"] === "true" ? EMULATOR_RATE_LIMITS : CALLABLE_RATE_LIMITS,
+      nowMs: () => clock.nowMs(),
+    },
     // Built on first use: only the pipeline trigger has the AI key, not every callable.
     get advanceSourceEvent() {
       advance ??= new AdvanceSourceEvent({

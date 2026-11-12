@@ -1,10 +1,17 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
-import { readFirebaseEnv, resolveFirebaseConfig } from "./firebase-config";
+import { readFirebaseEnv, resolveAppCheckSiteKey, resolveFirebaseConfig } from "./firebase-config";
 
 const app = getApps().length > 0 ? getApp() : initializeApp(resolveFirebaseConfig(readFirebaseEnv()));
+
+// Deployed functions enforce App Check, so it starts before any call can be made.
+const appCheckSiteKey = resolveAppCheckSiteKey(readFirebaseEnv());
+if (appCheckSiteKey !== null && typeof window !== "undefined") {
+  initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey), isTokenAutoRefreshEnabled: true });
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

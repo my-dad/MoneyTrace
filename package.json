@@ -11,8 +11,8 @@
     "drill:seed": "tsx tools/restore-drill/drill.ts seed",
     "drill:verify": "tsx tools/restore-drill/drill.ts verify",
     "backups:retention": "tsx tools/restore-drill/backup-retention.ts",
-    "deploy:staging": "pnpm build:functions && firebase deploy --project staging --only firestore,storage,functions",
-    "test:e2e": "MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace firebase emulators:exec --project demo-moneytrace --only auth,firestore,functions \"playwright test --config=e2e/playwright.config.ts\"",
+    "deploy:staging": "pnpm build:functions && pnpm --filter web build && firebase deploy --project staging --only firestore,storage,functions,hosting",
+    "test:e2e": "pnpm build:functions && node apps/functions/write-emulator-secret.mjs && MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace firebase emulators:exec --project demo-moneytrace --only auth,firestore,functions,hosting \"playwright test --config=e2e/playwright.config.ts\"",
     "test": "vitest run --passWithNoTests",
     "test:e2e:fixture": "NEXT_PUBLIC_DATA_SOURCE=fixture NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && playwright test --config=e2e/fixture/playwright.config.ts",
     "test:emulator": "pnpm test:emulator:core && pnpm test:emulator:functions",
@@ -21,7 +21,9 @@
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tools.json",
     "lint": "eslint .",
     "boundaries": "depcruise packages apps --config .dependency-cruiser.cjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test"
+    "verify": "pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test",
+    "serve:web": "firebase emulators:start --only hosting --project demo-moneytrace",
+    "deploy:prod": "pnpm build:functions && pnpm --filter web build && firebase deploy --project prod --only firestore,storage,functions,hosting"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

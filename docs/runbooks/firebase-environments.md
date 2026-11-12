@@ -76,6 +76,16 @@ Functions currently declare `maxInstances: 2` for the source-event trigger and
 `maxInstances: 1` for scheduled jobs. These limits are emulator-tested defaults,
 not a substitute for the Phase 0B rate-limit and spend-cap review.
 
+## Release configuration (per project)
+
+These pair with `docs/release/release-checklist.md`. Run them as Mabrur; never paste a secret into chat.
+
+1. **Allowlist (A1, A2).** `firebase functions:secrets:set ALLOWED_EMAILS --project <alias>`, value: the Google email(s) allowed in, comma-separated. Without it every callable refuses everyone (fails closed). The emulator ignores it.
+2. **App Check (A3).** Register the web app with reCAPTCHA Enterprise in the Firebase console and put its site key in `apps/web/.env.production.local` as `NEXT_PUBLIC_APPCHECK_SITE_KEY` (a real build refuses to start without it). Callables enforce App Check from code; turn on enforcement for Firestore in the console too, after the first successful sign-in.
+3. **Rate-limit cleanup (A4).** Add a Firestore TTL policy on collection group `rateLimits`, field `expiresAt`.
+4. **Web config (B1).** `apps/web/.env.production.local` holds the project's `NEXT_PUBLIC_FIREBASE_*` values (see `apps/web/.env.example`). Set `authDomain` to the Hosting domain (for example `<project>.web.app`) so redirect sign-in stays same-site, and add that domain to Auth's authorized domains.
+5. **Deploy (B3).** `pnpm deploy:staging` or `pnpm deploy:prod` builds Functions and the web export, then deploys rules, Functions and Hosting. A `prod` alias must be added to `.firebaserc` once the project exists.
+
 ## Dev and prod
 
 Create these only after staging passes the region smoke test. Add aliases for

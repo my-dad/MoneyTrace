@@ -4,12 +4,14 @@ import {
   onAuthStateChanged,
   signInAnonymously,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   type User,
 } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { auth, functions } from "../../shared/firebase";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
+import { isStandalone, signInWithFallback } from "./sign-in-method";
 
 function toAuthUser(user: User | null): AuthUser | null {
   return user === null
@@ -28,7 +30,12 @@ export function createFirebaseAuthGateway(): AuthGateway {
       if (process.env.NEXT_PUBLIC_USE_EMULATORS === "1") {
         await signInAnonymously(auth);
       } else {
-        await signInWithPopup(auth, new GoogleAuthProvider());
+        const provider = new GoogleAuthProvider();
+        await signInWithFallback({
+          standalone: isStandalone(),
+          popup: () => signInWithPopup(auth, provider),
+          redirect: () => signInWithRedirect(auth, provider),
+        });
       }
     },
     async signOut() {
