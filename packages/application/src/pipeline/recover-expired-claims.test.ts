@@ -419,4 +419,23 @@ describe("RecoverExpiredClaims", () => {
     expect(result).toMatchObject({ kind: "result", value: "A", retriedAfterUnknown: true });
     expect(provider.calls).toBe(0);
   });
+
+  it("dead-letters a stage that keeps crashing after reusing a stored result, at twice the attempt limit", async () => {
+    const max = PIPELINE_TIMEOUTS.maxAttempts;
+    const { w } = await claimed("interpret");
+    const r = await seed(w, "none");
+    await w.calls.markSucceeded(owner, r.id, 1, "stored", w.clock.nowMs());
+    // Every claim's worker dies before committing; only the lease expiry moves the stage on.
+    for (let round = 0; round < max * 3; round++) {
+      w.clock.advance(LEASE);
+      await w.recovery().execute(w.clock.nowMs(), 10);
+      const event = await w.sourceEvents.get(owner, id);
+      if (event?.status === "deadLetter") break;
+      const c = await w.sourceEvents.claim(owner, id, "interpret", "w", w.clock.nowMs());
+      if (c.status !== "claimed") throw new Error("claim failed");
+    }
+    const event = await w.sourceEvents.get(owner, id);
+    expect(event).toMatchObject({ status: "deadLetter", deadLetterReason: "attemptsExhausted" });
+    expect(event?.stageAttempt).toBe(max * 2);
+  });
 });
