@@ -241,6 +241,16 @@ export function decideReopen(
   };
 }
 
+function keepsTransferPairing(event: SourceEventRecord, decision: UserDecision): boolean {
+  return (
+    event.matchKind === "transferCounterpart" &&
+    event.candidate !== null &&
+    decision.candidate.amountMinor === event.candidate.amountMinor &&
+    decision.candidate.currency === event.candidate.currency &&
+    (decision.resolvedAccountId === undefined || decision.resolvedAccountId === event.resolvedAccountId)
+  );
+}
+
 /** Only a parked-for-the-user event accepts an answer, and the answer never changes its status. */
 export function decideUserDecision(
   event: SourceEventRecord | null,
@@ -253,7 +263,9 @@ export function decideUserDecision(
     userConfirmed: decision.userConfirmed,
     // A possible match the user saw is now judged ("none"). If no match was ever shown, matching
     // reruns with the user's answer (null), so a supplied date or account can't hide a duplicate.
-    ...(decision.pairAsTransfer === true
+    // A transfer pairing found before the user tapped Record stands, unless they changed the amount
+    // or the source it was found on.
+    ...(decision.pairAsTransfer === true || keepsTransferPairing(event, decision)
       ? { matchKind: "transferCounterpart" as const, matchedTransactionId: event.matchedTransactionId }
       : { matchKind: event.matchKind === null || event.matchKind === "none" ? null : ("none" as const), matchedTransactionId: null }),
     ...(decision.resolvedAccountId !== undefined

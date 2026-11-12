@@ -140,4 +140,11 @@ describe("matchCandidate", () => {
       expect(match(candidate(), [other({ occurredAtMs: T + 5 * MIN, intentType: "transfer" })])).toEqual({ kind: "none" });
     });
   });
+
+  it("a withdrawal, fee, refund or transfer is never the new half of a transfer (CR-008)", () => {
+    const income = existing({ accountId: "wallet", direction: "in", intentType: "income", occurredAtMs: T + 5 * MIN });
+    for (const kind of ["withdrawal", "fee", "refund", "transfer"] as const) {
+      expect(match(candidate({ kind }), [income]).kind, kind).not.toBe("transferCounterpart");
+    }
+  });
 });

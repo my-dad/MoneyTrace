@@ -1,4 +1,4 @@
-import { DomainError, detectSensitiveContent, type OwnerId, type SourceEventId } from "@moneytrace/domain";
+import { DomainError, detectSensitiveContent, maskIdentifiers, type OwnerId, type SourceEventId } from "@moneytrace/domain";
 import type { Clock } from "../ports/clock";
 import type { SourceEventRepository } from "../ports/source-event-repository";
 import { SKIPPED_ANSWER } from "../source-event-guards";
@@ -32,7 +32,7 @@ export class AnswerQuestion {
     const event = await sourceEvents.get(input.ownerId, input.sourceEventId);
     if (event === null) throw new DomainError("resourceNotFound", "no such event");
     const nowMs = clock.nowMs();
-    if ((await sourceEvents.recordAnswer(input.ownerId, event.id, text, nowMs)) !== "applied") {
+    if ((await sourceEvents.recordAnswer(input.ownerId, event.id, maskIdentifiers(text), nowMs)) !== "applied") {
       throw new DomainError("invalidTransition", "this message isn't waiting for an answer");
     }
     const fresh = await sourceEvents.get(input.ownerId, event.id);

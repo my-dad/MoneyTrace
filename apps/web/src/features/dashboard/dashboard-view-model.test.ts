@@ -115,6 +115,20 @@ describe("buildDashboard", () => {
     ]);
   });
 
+  it("a corrected transaction counts once in its sources, not three times (CR-008)", () => {
+    const leg = (transactionId: string, accountId: string, side: "debit" | "credit"): LedgerEntryRow => ({ ...entry(accountId, side, 170_000), id: `${transactionId}:${accountId}`, transactionId, accountKind: "bank" });
+    const sourceEntries = [
+      leg("txn-a", "bank-x", "credit"),
+      leg("txn-a:rev", "bank-x", "debit"),
+      leg("txn-a:repl", "bank-x", "credit"),
+      leg("txn-a:repl", "bank-y", "debit"),
+    ];
+    expect(view(0, { sourceEntries, accounts: [] }).sources).toEqual([
+      { accountId: "bank-x", label: "bank-x", inMinor: 0, outMinor: 170_000 },
+      { accountId: "bank-y", label: "bank-y", inMinor: 170_000, outMinor: 0 },
+    ]);
+  });
+
   it("hides negative unexplained cash", () => {
     expect(view(0, { balances: [balance("cash-unassigned", "cash", -100)] }).unexplainedCashMinor).toBe(0);
   });

@@ -30,7 +30,7 @@ function statusOf(event: SourceEventRow): RecentStatus {
     case "posted":
       return "recorded";
     case "pending":
-      return event.pendingReason === "awaitingClarification" ? "waiting" : "inProgress";
+      return event.pendingReason === "awaitingClarification" || event.pendingReason === "aiQuestion" ? "waiting" : "inProgress";
     case "deadLetter":
       return "failed";
     case "rejected":
@@ -46,8 +46,15 @@ const preview = (text: string): string => (text.length > 40 ? `${text.slice(0, 4
 
 export function toRecentItems(events: SourceEventRow[], accounts: AccountRow[], limit: number): RecentItem[] {
   const names = new Map(accounts.map((account) => [account.id, account.name]));
+  // A paired transfer is one item: the half it absorbed (now `txn-<id>:repl`) is not listed again.
+  const absorbed = new Set(
+    events
+      .filter((e) => e.matchKind === "transferCounterpart" && e.matchedTransactionId?.endsWith(":repl") === true)
+      .map((e) => (e.matchedTransactionId ?? "").replace(/^txn-/, "").replace(/:repl$/, "")),
+  );
   // The last messages *sent*: an old SMS pasted today is the newest item, shown with its own date.
-  return [...events]
+  return events
+    .filter((e) => !absorbed.has(e.id))
     .sort((a, b) => b.receivedAtMs - a.receivedAtMs)
     .slice(0, limit)
     .map((event): RecentItem => {

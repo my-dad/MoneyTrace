@@ -38,16 +38,17 @@ export class RetryProviderCall {
     if (!parkedOnProvider) return "notRetryable";
 
     const calls = await providerCalls.listForStage(ownerId, sourceEventId, stage);
-    // A result stored after the event parked (a late worker) needs no approval: the executor
-    // reuses it and the provider is not called again.
-    if (!calls.some(hasResult)) {
-      // Only the most recently attempted unresolved call is approved, so an older fallback's
-      // outcome is not re-run by this one decision.
-      const [latest] = calls
-        .filter(isUnresolved)
-        .sort((a, b) => b.updatedAtMs - a.updatedAtMs || a.id.localeCompare(b.id));
-      if (latest === undefined) return "notRetryable";
+    // Only the most recently attempted unresolved call is approved, so an older fallback's outcome
+    // is not re-run by this one decision. A result stored after it (a late worker) needs no
+    // approval: the executor reuses it. A result from an earlier question round does not count.
+    const [latest] = calls
+      .filter(isUnresolved)
+      .sort((a, b) => b.updatedAtMs - a.updatedAtMs || a.id.localeCompare(b.id));
+    const newestResultAtMs = Math.max(-Infinity, ...calls.filter(hasResult).map((c) => c.updatedAtMs));
+    if (latest !== undefined && latest.updatedAtMs >= newestResultAtMs) {
       await providerCalls.approveRetry(ownerId, latest.id, clock.nowMs());
+    } else if (latest === undefined && newestResultAtMs === -Infinity) {
+      return "notRetryable";
     }
     const reopened = await sourceEvents.reopen(
       ownerId,

@@ -113,8 +113,13 @@ export function buildDashboard(input: {
 function sourcesOf(entries: LedgerEntryRow[], accounts: AccountRow[]): SourceRow[] {
   const names = new Map(accounts.map((a) => [a.id, a.name]));
   const rows = new Map<string, SourceRow>();
+  // A corrected transaction and its reversal cancel out; only the replacement counts.
+  const reversed = new Set(
+    entries.filter((e) => e.transactionId.endsWith(":rev")).map((e) => e.transactionId.slice(0, -":rev".length)),
+  );
   for (const entry of entries) {
     if (entry.accountId === SYSTEM_CASH_ACCOUNT_ID) continue;
+    if (reversed.has(entry.transactionId) || entry.transactionId.endsWith(":rev")) continue;
     const row = rows.get(entry.accountId) ?? { accountId: entry.accountId, label: names.get(entry.accountId) ?? entry.accountId, inMinor: 0, outMinor: 0 };
     if (entry.side === "debit") row.inMinor += entry.amountMinor;
     else row.outMinor += entry.amountMinor;

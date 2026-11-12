@@ -106,6 +106,19 @@ async function pairAsTransfer(
     if (error instanceof DomainError) return ask;
     throw error;
   }
+  // The fee this half's SMS reports is still a real charge on its own source.
+  if (candidate.feeMinor !== undefined && candidate.feeMinor > 0) {
+    const fee = await deps.post.execute({
+      ownerId,
+      occurredAtMs: candidate.occurredAtMs ?? event.receivedAtMs,
+      sourceEventIds: [event.id],
+      actor: event.userConfirmed ? ownerId : "pipeline",
+      idempotencyKey: asIdempotencyKey(`${event.id}-fee`),
+      transactionId: asTransactionId(`txn-${event.id}-fee`),
+      intent: { type: "fee", charged: here, amount: Money.ofMinor(candidate.feeMinor, candidate.currency as CurrencyCode) },
+    });
+    if (fee.status === "idempotencyConflict") return deadLetter("stageFailed");
+  }
   return {
     nextStatus: "posted",
     outputs: [],

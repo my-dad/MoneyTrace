@@ -21,6 +21,7 @@ import { ConfirmCandidate } from "../use-cases/confirm-candidate";
 import { IntakeEvidence } from "../use-cases/intake-evidence";
 import { RecordOpeningBalance } from "../use-cases/record-opening-balance";
 import { AnswerQuestion } from "../use-cases/answer-question";
+import { RetrySourceEvent } from "../use-cases/retry-source-event";
 import { ReverseAndReplace } from "../use-cases/reverse-and-replace";
 import { PostTransaction } from "../use-cases/post-transaction";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "./ai-gateway";
@@ -764,6 +765,78 @@ describe("DeepSeek asks until it's clear (CR-008)", () => {
     await answerer().execute({ ownerId: alice, sourceEventId: id, skip: true });
     expect(await settle(alice, id)).toMatchObject({ status: "pending", pendingReason: "awaitingClarification", candidate: { amountMinor: 200_000 } });
     expect(ai.calls).toBe(1);
+  });
+});
+
+describe("final review fixes (CR-008)", () => {
+  const CARD_DEBIT = smsOf("UCB Debit Card#7777").replace("BDT250.25", "BDT1,700.00").replace("26/03/26 20:30", "21/03/26 16:05");
+  const BKASH_DEPOSIT = smsOf("received deposit from iBanking");
+  const ATM_1700 = WITHDRAWAL_SMS.replace("4,000.00", "1,700.00").replace("29-03-26 @07:45 PM", "21-03-26 @04:30 PM");
+  const bobBalance = (id: string) => ledger.getBalance(bob, asAccountId(id));
+  const answerer = () => new AnswerQuestion({ sourceEvents: w.sourceEvents, clock: w.clock });
+
+  beforeEach(async () => {
+    await accounts.ensure(bob, { id: SYSTEM_CASH_ACCOUNT_ID, kind: "cash", name: "Cash · place not set", currency: "BDT", status: "active", createdAtMs: 1 });
+  });
+
+  it("an AI-read half that needs Record is still paired as a transfer once recorded", async () => {
+    const debit = await run(CARD_DEBIT, bob);
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "unclassifiedCredit", amountMinor: 170_000, currency: "BDT", occurredAtMs: Date.parse("2026-03-21T16:15:00+06:00"), provider: "bkash" } });
+    const credit = await run("got 1700 in bkash from my card", bob);
+    expect(credit.event).toMatchObject({ status: "pending", matchKind: "transferCounterpart" });
+    await confirm.execute({ ownerId: bob, sourceEventId: credit.id, decision: "confirm" });
+    expect(await settle(bob, credit.id)).toMatchObject({ status: "posted", matchKind: "transferCounterpart" });
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${debit.id}`))).toMatchObject({ state: "reversed" });
+    expect(await bobBalance("nominal:income:uncategorized:BDT")).toBe(0);
+  });
+
+  it("a withdrawal after an equal credit is never absorbed into a transfer", async () => {
+    const income = await run(BKASH_DEPOSIT, bob);
+    const atm = await run(ATM_1700, bob);
+    expect(atm.event?.status).toBe("posted");
+    expect(atm.event?.matchKind).not.toBe("transferCounterpart");
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${income.id}`))).toMatchObject({ state: "posted" });
+    expect(await bobBalance(SYSTEM_CASH_ACCOUNT_ID)).toBe(170_000);
+  });
+
+  it("a paired half's fee is still recorded", async () => {
+    await run(CARD_DEBIT, bob);
+    const credit = await run(BKASH_DEPOSIT.replace("Fee Tk 0.00", "Fee Tk 10.00"), bob);
+    expect(credit.event).toMatchObject({ status: "posted", matchKind: "transferCounterpart", candidate: { feeMinor: 1_000 } });
+    expect(await ledger.getTransaction(bob, asTransactionId(`txn-${credit.id}-fee`))).toMatchObject({ intentType: "fee" });
+  });
+
+  it("an equal opposite amount on the previous day is not asked about", async () => {
+    await run(CARD_DEBIT.replace("21/03/26 16:05", "20/03/26 17:00"), bob);
+    const credit = await run(BKASH_DEPOSIT, bob);
+    expect(credit.event).toMatchObject({ status: "posted" });
+    expect(credit.event?.matchKind).toBe("none");
+  });
+
+  it("Retry after a timeout in a later question round makes a new call", async () => {
+    ai.scriptValue({ kind: "question", text: "Paid or received?", options: [], candidate: null });
+    const { id } = await run("Tk2000 trx 8XK2 successful. Nagad.");
+    ai.script({ kind: "unknown", code: "timeout" });
+    await answerer().execute({ ownerId: alice, sourceEventId: id, answer: "paid" });
+    expect(await settle(alice, id)).toMatchObject({ status: "pending", pendingReason: "providerOutcomeUnknown" });
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: 200_000, currency: "BDT", occurredAtMs: NOW, provider: "nagad" } });
+    await new RetrySourceEvent({ sourceEvents: w.sourceEvents, retryProvider: w.retry(), clock: w.clock }).execute({ ownerId: alice, sourceEventId: id });
+    expect(await settle(alice, id)).toMatchObject({ status: "pending", pendingReason: "awaitingClarification", candidate: { amountMinor: 200_000 } });
+    expect(ai.calls).toBe(3);
+  });
+
+  it("Skip with no reading so far waits for the user instead of failing", async () => {
+    ai.scriptValue({ kind: "question", text: "Which?", options: [], candidate: null });
+    const { id } = await run("Tk2000 trx 8XK2 successful. Nagad.");
+    await answerer().execute({ ownerId: alice, sourceEventId: id, skip: true });
+    expect(await settle(alice, id)).toMatchObject({ status: "pending", pendingReason: "awaitingClarification" });
+  });
+
+  it("an answer is stored with account numbers masked", async () => {
+    ai.scriptValue({ kind: "question", text: "Which account?", options: [], candidate: null });
+    const { id } = await run("Tk2000 trx 8XK2 successful. Nagad.");
+    await answerer().execute({ ownerId: alice, sourceEventId: id, answer: "from A/C 1234567890" });
+    expect((await w.sourceEvents.get(alice, id))?.clarifications[0]?.answer).toBe("from A/C **7890");
   });
 });
 

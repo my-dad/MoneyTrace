@@ -500,8 +500,18 @@ describe("transaction preview", () => {
     });
   });
 
-  it("a possible match can be linked to what's already recorded", async () => {
+  it("a possible other half asks if it was a transfer between your own accounts (CR-008)", async () => {
     const { commands } = setup({ events: [awaiting({ matchKind: "possibleCounterpart", matchedTransactionId: "txn-9" })] });
+    expect(log().textContent).toMatch(/Was this ৳[\d,]+ a transfer between your own accounts\?/);
+    expect(screen.queryByRole("button", { name: /same as one already recorded/i })).toBeNull();
+    fireEvent.click(button(/yes, a transfer/i));
+    await waitFor(() => {
+      expect(commands.confirmCandidate).toHaveBeenCalledWith({ sourceEventId: "event-1", decision: "link" });
+    });
+  });
+
+  it("a possible duplicate can be linked to what's already recorded", async () => {
+    const { commands } = setup({ events: [awaiting({ matchKind: "ambiguous", matchedTransactionId: null })] });
     fireEvent.click(button(/same as one already recorded/i));
     await waitFor(() => {
       expect(commands.confirmCandidate).toHaveBeenCalledWith({ sourceEventId: "event-1", decision: "link" });

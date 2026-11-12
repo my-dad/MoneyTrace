@@ -13,13 +13,17 @@ Branch `sources-from-sms`, from `master` (`578d56a`). Executor: Native. Read thi
 | 6 Web: chips, Net money and Sources, question thread | Done |
 | 7 End-to-end tests, final checks, records | Done |
 
+## Final review
+
+Done (fresh reviewer, whole branch): 1 Critical and 9 Important, plus 2 Minors re-graded up. All fixed test-first except the "not a transfer" undo (spec §9), which is Mabrur's call. 9 Minors deferred.
+
 ## Next task
 
-Final whole-branch review, then Mabrur chooses how to integrate `sources-from-sms`.
+Mabrur decides on the "not a transfer" undo, then chooses how to integrate `sources-from-sms`.
 
 ## Last verification
 
-2026-11-12: `pnpm verify` 84 files / 1,382 tests; web build passes; `pnpm test:emulator` 445 + 26; `pnpm test:e2e` 1 passed (salary → Came in with its chip, card purchase → Spent, card debit + bKash credit → Transfer, totals unchanged); `pnpm test:e2e:fixture` 4 passed.
+2026-11-13, after the review fixes: `pnpm verify` 84 files / 1,394 tests; web build passes; `pnpm test:emulator` 445 + 26; `pnpm test:e2e` 1 passed; `pnpm test:e2e:fixture` 4 passed.
 
 ## Open items
 

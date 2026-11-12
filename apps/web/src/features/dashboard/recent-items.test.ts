@@ -63,4 +63,17 @@ describe("toRecentItems", () => {
     expect(items.find((i) => i.id === "se-transfer-bkash")?.chips).toEqual(["Transfer", "DBBL Savings", "bKash"]);
     expect(items.find((i) => i.id === "se-transfer-bkash")?.title).toBe("Transfer");
   });
+
+  it("a message waiting on DeepSeek's question waits for your answer (CR-008)", () => {
+    const [item] = toRecentItems([withStatus("q", { status: "pending", pendingReason: "aiQuestion", candidate: null }, 1)], FIXTURE_ACCOUNTS, 10);
+    expect(item?.statusLabel).toBe("Waiting for your answer");
+  });
+
+  it("a transfer shows once: the half it absorbed is not listed again (CR-008)", () => {
+    const events = [
+      withStatus("first", { status: "posted" }, 1),
+      withStatus("second", { status: "posted", matchKind: "transferCounterpart", matchedTransactionId: "txn-first:repl" }, 2),
+    ];
+    expect(toRecentItems(events, FIXTURE_ACCOUNTS, 10).map((i) => i.id)).toEqual(["second"]);
+  });
 });

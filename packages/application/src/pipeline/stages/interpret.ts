@@ -3,6 +3,14 @@ import type { StageCommit } from "../../ports/source-event-repository";
 import { MAX_AI_QUESTIONS, SKIPPED_ANSWER } from "../../source-event-guards";
 import type { Stage } from "./deps";
 
+/** No reading to show: wait for the user to type what happened, never fail the message (CR-008). */
+const awaitUser = (eventPatch: NonNullable<StageCommit["eventPatch"]>): StageCommit => ({
+  nextStatus: "pending",
+  pendingReason: "awaitingClarification",
+  outputs: [],
+  eventPatch,
+});
+
 const interpreted = (eventPatch: StageCommit["eventPatch"]): StageCommit => ({
   nextStatus: "interpreted",
   outputs: [],
@@ -40,7 +48,8 @@ export const interpretStage: Stage = async (deps, ownerId, event) => {
   const last = event.clarifications.at(-1);
   // The user skipped DeepSeek's question: go on with its reading so far (CR-008).
   if (last?.answer === SKIPPED_ANSWER) {
-    return interpreted({ candidate: event.candidate, extraction: event.extraction });
+    const sofar = { candidate: event.candidate, extraction: event.extraction };
+    return event.candidate === null ? awaitUser(sofar) : interpreted(sofar);
   }
   const result = await deps.gateway.interpret(
     ownerId,
@@ -76,7 +85,10 @@ export const interpretStage: Stage = async (deps, ownerId, event) => {
   if (value.kind === "question") {
     const extraction = { ...base, confidenceBp: 0 };
     // At the limit, show what it has instead of asking again: the user can still Record or Fix.
-    if (event.clarifications.length >= MAX_AI_QUESTIONS) return interpreted({ candidate: value.candidate, extraction });
+    if (event.clarifications.length >= MAX_AI_QUESTIONS) {
+      const sofar = { candidate: value.candidate, extraction };
+      return value.candidate === null ? awaitUser(sofar) : interpreted(sofar);
+    }
     return {
       nextStatus: "pending",
       pendingReason: "aiQuestion",
