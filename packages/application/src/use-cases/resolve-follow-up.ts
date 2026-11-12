@@ -8,6 +8,7 @@ import {
   asTransactionId,
   type AccountRef,
   type OwnerId,
+  type TransactionId,
   type PostingIntent,
 } from "@moneytrace/domain";
 import type { AccountRecord, AccountRepository } from "../ports/account-repository";
@@ -87,7 +88,7 @@ export class ResolveFollowUp {
     if (followUp.targetTransactionId === undefined) {
       throw new DomainError("invalidIntent", "this follow-up has no transaction");
     }
-    const entries = await reader.getEntries(ownerId, asTransactionId(followUp.targetTransactionId));
+    const entries = await reader.getEntries(ownerId, await currentVersion(reader, ownerId, followUp.targetTransactionId));
     const entry = entries.find((e) => e.accountId === SYSTEM_CASH_ACCOUNT_ID && e.side === "debit");
     if (entry === undefined) throw new DomainError("invalidIntent", "nothing to place");
     const amount = Money.ofMinor(entry.amountMinor, entry.currency);
@@ -118,4 +119,21 @@ export class ResolveFollowUp {
       throw new DomainError("idempotencyConflict", "this was already answered differently");
     }
   }
+}
+
+/**
+ * The withdrawal as it stands now: a corrected one is replaced by `<id>:repl`, so the answer moves
+ * the corrected amount. A withdrawal reversed with no replacement has no cash left to place.
+ */
+async function currentVersion(reader: LedgerReader, ownerId: OwnerId, transactionId: string): Promise<TransactionId> {
+  let id = asTransactionId(transactionId);
+  for (let depth = 0; depth < 32; depth++) {
+    const transaction = await reader.getTransaction(ownerId, id);
+    if (transaction === null) throw new DomainError("invalidIntent", "this follow-up has no transaction");
+    if (transaction.state !== "reversed") return id;
+    const replacement = await reader.getTransaction(ownerId, asTransactionId(`${id}:repl`));
+    if (replacement === null) throw new DomainError("invalidIntent", "this withdrawal was reversed; nothing to place");
+    id = replacement.id;
+  }
+  throw new DomainError("invalidIntent", "too many corrections to follow");
 }

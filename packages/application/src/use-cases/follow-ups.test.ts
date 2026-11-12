@@ -286,6 +286,26 @@ describe("CorrectTransaction", () => {
     expect(r.replacementTransactionId).toBeDefined();
   });
 
+  it("answering the follow-up after a correction moves the corrected amount", async () => {
+    await correct().execute({
+      ownerId: alice,
+      idempotencyKey: "fix-a",
+      transactionId: "t1",
+      replacement: { amountMinor: 300_000, currency: "BDT" },
+      rationale: "wrong amount",
+    });
+    expect(await answer("wallet")).toEqual({ state: "resolved" });
+    expect(await balance("wallet")).toBe(300_000);
+    expect(await balance(SYSTEM_CASH_ACCOUNT_ID)).toBe(0);
+  });
+
+  it("answering the follow-up after a reversal moves nothing", async () => {
+    await correct().execute({ ownerId: alice, idempotencyKey: "fix-b", transactionId: "t1", rationale: "not mine" });
+    await expect(answer("wallet")).rejects.toThrow(code("invalidIntent"));
+    expect(await balance("wallet")).toBe(0);
+    expect(await balance(SYSTEM_CASH_ACCOUNT_ID)).toBe(0);
+  });
+
   it("gate 33: with no replacement it only reverses", async () => {
     const r = await correct().execute({
       ownerId: alice,
