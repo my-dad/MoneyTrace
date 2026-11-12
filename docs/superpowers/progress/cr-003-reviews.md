@@ -20,7 +20,7 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 ## Next task
 
 Fix pass done. Waiting for Mabrur on three decisions:
-1. Opening-balance correction (callables I2): build it now, or in the functionality phase?
+1. ~~Opening-balance correction~~ Not needed: CR-006 (2026-11-12) removed opening balances from the UI, so every account starts at ৳0 and nobody enters one.
 2. Sign-in I3 (allowlist / reject anonymous) and I4 (redirect fallback, checked on a phone): add to the 0B checklist?
 3. ~~Backup retention~~ Done 2026-11-12: Mabrur asked for it to be configurable. It is `backupDays` in the retention policy (default 14 days, limit 98), with a `BACKUP_RETENTION_DAYS` override, and `pnpm backups:retention` feeds the runbook command.
 
