@@ -3,6 +3,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { CashSource } from "../features/accounts/cash-source";
 import { createFixtureCashSource } from "../features/accounts/fixture-cash-source";
+import { createFixtureReportSource } from "../features/reports/fixture-report-source";
+import type { ReportSource } from "../features/reports/report-source";
 import type { AuthGateway } from "../features/auth/auth-gateway";
 import { createFirebaseAuthGateway } from "../features/auth/firebase-auth-gateway";
 import { createFixtureAuthGateway } from "../features/auth/fixture-auth-gateway";
@@ -19,6 +21,8 @@ export type AppServices = {
   commands: Commands;
   /** Account details and cash actions; fixture-only until functionality resumes. */
   cash: CashSource | null;
+  /** Period reports; fixture-only until functionality resumes. */
+  reports: ReportSource | null;
   fixture: boolean;
 };
 
@@ -31,6 +35,7 @@ export function createAppServices(): AppServices {
       readModels: createFixtureReadModels(),
       commands: createFixtureCommands(),
       cash: createFixtureCashSource(),
+      reports: createFixtureReportSource(),
       fixture: true,
     };
   }
@@ -39,6 +44,7 @@ export function createAppServices(): AppServices {
     readModels: createFirebaseReadModelGateway(),
     commands: createFirebaseCommands(),
     cash: null,
+    reports: null,
     fixture: false,
   };
 }

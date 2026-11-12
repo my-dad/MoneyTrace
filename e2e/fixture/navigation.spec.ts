@@ -52,3 +52,13 @@ test("opening an account shows its detail", async ({ page }) => {
   await page.goto("/accounts/new");
   await expect(page.getByRole("heading", { name: "Add account" })).toBeVisible();
 });
+
+test("reports switch period type and step back", async ({ page }) => {
+  await page.goto("/reports");
+  await expect(page.getByRole("heading", { name: "November 2026" })).toBeVisible();
+  await expect(page.getByText("৳18,640")).toBeVisible();
+  await page.getByRole("button", { name: "Salary cycle" }).click();
+  await expect(page.getByRole("heading", { name: "25 Oct – 24 Nov" })).toBeVisible();
+  await page.getByRole("button", { name: "Previous period" }).click();
+  await expect(page.getByRole("heading", { name: "25 Sep – 24 Oct" })).toBeVisible();
+});

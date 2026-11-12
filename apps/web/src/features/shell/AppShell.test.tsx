@@ -17,6 +17,7 @@ const services = (fixture: boolean): AppServices => ({
   readModels: new InMemoryReadModelGateway(),
   commands: createFixtureCommands(),
   cash: null,
+  reports: null,
   fixture,
 });
 
