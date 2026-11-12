@@ -71,6 +71,34 @@ describe("CorrectionSheet", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Reverse it" }));
     fireEvent.change(screen.getByLabelText("Why? (required)"), { target: { value: "Declined" } });
     fireEvent.click(screen.getByRole("button", { name: "Save reversal" }));
-    expect((await screen.findByRole("status")).textContent).toBe("Reversal recorded · saved to your ledger");
+    expect((await screen.findByRole("status")).textContent).toMatch(/^Reversal recorded · saved to your ledger\./);
+  });
+
+  it("keeps reporting what was saved and notes the list doesn't show corrections yet", async () => {
+    const correct = vi.fn(() => Promise.resolve({ reversalTransactionId: "r", status: "recorded" as const }));
+    render(<CorrectionSheet item={posted} correctTransaction={correct} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Reverse it" }));
+    fireEvent.change(screen.getByLabelText("Why? (required)"), { target: { value: "Not mine" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save reversal" }));
+    const status = await screen.findByText(/Reversal recorded/);
+    expect(status.textContent).toContain("This list doesn't show corrections yet");
+    expect(screen.getByRole<HTMLInputElement>("radio", { name: "Correct it" }).disabled).toBe(true);
+  });
+
+  it("says when the correction was already recorded", async () => {
+    const correct = vi.fn(() => Promise.resolve({ reversalTransactionId: "r", status: "alreadyRecorded" as const }));
+    render(<CorrectionSheet item={posted} correctTransaction={correct} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Reverse it" }));
+    fireEvent.change(screen.getByLabelText("Why? (required)"), { target: { value: "Not mine" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save reversal" }));
+    expect((await screen.findByText(/already recorded/)).textContent).toBe("This change was already recorded, so nothing new was saved.");
+  });
+
+  it("closes on Escape", () => {
+    const onClose = vi.fn();
+    render(<CorrectionSheet item={posted} correctTransaction={vi.fn()} onClose={onClose} />);
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
   });
 });

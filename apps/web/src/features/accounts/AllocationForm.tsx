@@ -35,7 +35,7 @@ export function AllocationForm({ from, to, source, onClose }: { from: AccountVie
   }
 
   return (
-    <Sheet title={ACCOUNTS_COPY.giveCash}>
+    <Sheet title={ACCOUNTS_COPY.giveCash} onClose={onClose}>
       <FormField label={ACCOUNTS_COPY.from}>
         {(control) => (
           <select {...control} value={fromId} onChange={(event) => { setFromId(event.target.value); }}>

@@ -35,7 +35,7 @@ export function CashCountFlow({ accounts, source, onClose }: { accounts: Account
 
   if (step === 3 && account !== undefined) {
     return (
-      <Sheet title={ACCOUNTS_COPY.explainTitle}>
+      <Sheet title={ACCOUNTS_COPY.explainTitle} onClose={onClose}>
         <Steps current={3} />
         <AdjustmentForm account={account} differenceMinor={difference} countedMinor={countedMinor} source={source} onBack={() => { setStep(2); }} onClose={onClose} />
       </Sheet>
@@ -43,7 +43,7 @@ export function CashCountFlow({ accounts, source, onClose }: { accounts: Account
   }
 
   return (
-    <Sheet title={ACCOUNTS_COPY.countCash}>
+    <Sheet title={ACCOUNTS_COPY.countCash} onClose={onClose}>
       <Steps current={step} />
       {step === 1 ? (
         <>

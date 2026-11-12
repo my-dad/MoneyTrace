@@ -128,7 +128,7 @@ function SnoozeSheet({
 }) {
   const action = useAction();
   return (
-    <Sheet title={REMINDERS_COPY.askAgain}>
+    <Sheet title={REMINDERS_COPY.askAgain} onClose={onClose}>
       <p className={styles.caption}>{row.question}</p>
       <ul className={styles.options}>
         {snoozeOptions(nowMs).map((option) => (
@@ -155,7 +155,7 @@ function SnoozeSheet({
 function DoneSheet({ row, onClose }: { row: FollowUpRow; onClose: () => void }) {
   const action = useAction();
   return (
-    <Sheet title={REMINDERS_COPY.confirmDone}>
+    <Sheet title={REMINDERS_COPY.confirmDone} onClose={onClose}>
       <p className={styles.caption}>{row.question}</p>
       <p className={styles.body}>{REMINDERS_COPY.confirmDoneBody}</p>
       <ActionStatus busy={action.busy} failed={action.failed} unavailable={action.unavailable} />

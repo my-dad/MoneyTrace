@@ -145,6 +145,8 @@ export const ACTIVITY_COPY = {
   close: "Close",
   correctionRecorded: "Correction recorded · saved to your ledger",
   reversalRecorded: "Reversal recorded · saved to your ledger",
+  changeAlreadyRecorded: "This change was already recorded, so nothing new was saved.",
+  listNotUpdated: "This list doesn't show corrections yet, so the item above still reads as before.",
 } as const;
 
 export const ACCOUNTS_COPY = {
@@ -313,6 +315,7 @@ export const SETTINGS_COPY = {
 } as const;
 
 export const ONBOARDING_COPY = {
+  alreadyRecorded: (names: string) => `${names} already had an opening balance, so it wasn't changed.`,
   step: (n: number) => `Step ${String(n)} of 5`,
   next: "Next",
   back: "Back",

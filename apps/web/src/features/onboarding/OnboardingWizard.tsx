@@ -45,7 +45,9 @@ export function OnboardingWizard({
   const [error, setError] = useState<string | undefined>(undefined);
   const addAction = useAction();
   const finishAction = useAction();
-  const all = [...accounts, ...added];
+  const [unchanged, setUnchanged] = useState<string[]>([]);
+  // The read model also delivers accounts created here, so keep only the ones it hasn't shown yet.
+  const all = [...accounts, ...added.filter((row) => !accounts.some((account) => account.id === row.id))];
 
   function next() {
     if (step === 2 && period.kind === "salaryCycle" && parseStartDay(period.startDay) === null) {
@@ -77,17 +79,22 @@ export function OnboardingWizard({
 
   function finish() {
     const startDay = parseStartDay(period.startDay);
+    setUnchanged([]);
     void finishAction.run(async () => {
       await commands.updateSettings({
         reportingCycle: period.kind === "salaryCycle" && startDay !== null ? { kind: "salaryCycle", startDay } : { kind: "calendarMonth" },
         reminders: { frequency, digestLocalTime: digest, minThresholdMinor: 0 },
       });
+      const kept: string[] = [];
       for (const [accountId, text] of Object.entries(balances)) {
         const amountMinor = parseBdtInput(text);
         if (amountMinor === null) continue;
-        await commands.recordOpeningBalance({ accountId, amountMinor, currency: "BDT", effectiveAtMs: dhakaDayStartMs(asOf) });
+        const response = await commands.recordOpeningBalance({ accountId, amountMinor, currency: "BDT", effectiveAtMs: dhakaDayStartMs(asOf) });
+        if (response.status === "alreadyRecorded") kept.push(all.find((account) => account.id === accountId)?.name ?? accountId);
       }
-      onDone?.();
+      // Never move on as if a typed balance was saved when the server kept the old one.
+      if (kept.length > 0) setUnchanged(kept);
+      else onDone?.();
     });
   }
 
@@ -188,6 +195,7 @@ export function OnboardingWizard({
             {(control) => <input {...control} type="time" value={digest} onChange={(event) => { setDigest(event.target.value); }} />}
           </FormField>
           <ActionStatus busy={finishAction.busy} failed={finishAction.failed} unavailable={finishAction.unavailable} />
+          {unchanged.length > 0 && <p role="status">{ONBOARDING_COPY.alreadyRecorded(unchanged.join(", "))}</p>}
         </>
       )}
 

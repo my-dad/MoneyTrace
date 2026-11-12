@@ -5,6 +5,7 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Commands } from "../../shared/commands";
 import type { AccountRow } from "../../shared/read-model-gateway";
+import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { AccountsScreen } from "./AccountsScreen";
 
 afterEach(cleanup);
@@ -299,5 +300,14 @@ describe("AccountsScreen", () => {
       expect.objectContaining({ amountMinor: 12500050 }),
     );
     expect(screen.getByText(/negative amount means/)).toBeTruthy();
+  });
+
+  it("says a demo save was not saved", async () => {
+    const fake = { ...commands(), createAccount: vi.fn(() => Promise.reject(new DemoUnavailableError())) };
+    render(<AccountsScreen accounts={[]} commands={fake} startAdding />);
+    fireEvent.change(screen.getByLabelText("Account name"), { target: { value: "Wallet" } });
+    fireEvent.change(screen.getByLabelText("Kind"), { target: { value: "cash" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save account" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Not available yet — demo · nothing was saved");
   });
 });

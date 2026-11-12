@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COPY } from "../../shared/copy";
+import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
 import type { AccountRow, FollowUpRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { ChatScreen, type ChatCommands } from "./ChatScreen";
@@ -638,5 +639,12 @@ describe("axe", () => {
       rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
     });
     expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("says a demo send was not saved instead of asking to send again", async () => {
+    const { commands } = setup();
+    commands.submitEvidence.mockImplementation(() => Promise.reject(new DemoUnavailableError()));
+    send("Tk 500 paid");
+    expect((await screen.findByRole("alert")).textContent).toBe(COPY.demoUnavailable);
   });
 });

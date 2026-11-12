@@ -6,6 +6,7 @@ import type { Commands } from "../../shared/commands";
 import { dhakaDate, dhakaDayStartMs, isDateText } from "../../shared/dhaka-date";
 import { parseBdtInput } from "../../shared/parse-bdt-input";
 import type { AccountRow } from "../../shared/read-model-gateway";
+import { ActionStatus } from "../shell/ActionStatus";
 import { useAction } from "../../shared/use-action";
 import { SYSTEM_CASH_ACCOUNT_ID } from "../home/home-view-model";
 import styles from "./accounts.module.css";
@@ -49,7 +50,7 @@ export function AccountsScreen({
   /** Open on the add-account form rather than the list. */
   startAdding?: boolean;
 }) {
-  const { busy, failed, run } = useAction();
+  const { busy, failed, unavailable, run } = useAction();
   const [adding, setAdding] = useState(startAdding);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [instrumentStep, setInstrumentStep] = useState(false);
@@ -76,10 +77,14 @@ export function AccountsScreen({
     setSaved(null);
   }
 
-  const failure = failed && (
-    <p role="alert" className="mt-field__error">
-      {SAVE_FAILED}
-    </p>
+  const failure = unavailable ? (
+    <ActionStatus busy={busy} failed={failed} unavailable />
+  ) : (
+    failed && (
+      <p role="alert" className="mt-field__error">
+        {SAVE_FAILED}
+      </p>
+    )
   );
 
   if (!adding) {

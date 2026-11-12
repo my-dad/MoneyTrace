@@ -48,7 +48,7 @@ Read this first when resuming. Updated and committed after every task.
 
 ## Next task
 
-Final whole-branch review, then finishing-a-development-branch.
+Final review done (0 Critical, 6 Important fixed, 12 Minor deferred, listed below). Next: finishing-a-development-branch (Mabrur picks how to integrate).
 
 Emulator suites need Java 21+. OpenJDK 21 is now the system default (installed 2026-11-12), so `pnpm test:emulator` and `pnpm test:e2e` run as written.
 
@@ -63,6 +63,14 @@ None.
 - Backend commands the UI already calls but which have no implementation: cash count, adjustment, allocation, and closing a follow-up without an answer ("Done").
 - Merge Phase 1 (`phase-1-sms-slice`) before this branch is integrated.
 - DeepSeek pricing and data-processing terms are to be checked before any real data.
+
+## Deferred minors from the final review
+
+- Done in Firebase mode says "demo"; reminders badge ignores expired snoozes; snooze times are fixed at page open.
+- Accounts: phone keyboard order differs from visual order; Count cash can open with only unexplained cash; Give cash shows "Cash · place not set"; an overpaid card reads "−৳500 owed".
+- Settings push switch is under the 44 px touch target; two forms prefill amounts with `minor / 100`.
+- Demo dates drift after November 2026; demo Sign out does nothing visible.
+- After a real correction the Activity list still shows the original as recorded (the sheet now says so); the read model needs to show reversals.
 
 ## Screen walk (Task 15)
 

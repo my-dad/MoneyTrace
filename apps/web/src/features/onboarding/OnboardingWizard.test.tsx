@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import axe from "axe-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureCommands } from "../../shared/fixture-commands";
 import { FIXTURE_ACCOUNTS } from "../../shared/fixtures/household";
 import { OnboardingWizard } from "./OnboardingWizard";
@@ -78,5 +78,33 @@ describe("OnboardingWizard", () => {
   it("has no axe violations", async () => {
     const { container } = open();
     expect((await axe.run(container)).violations).toEqual([]);
+  });
+
+  it("lists a created account once when the read model echoes it", async () => {
+    const commands = { ...createFixtureCommands(), createAccount: vi.fn(() => Promise.resolve({ accountId: "acc-new" })) };
+    const view = render(<OnboardingWizard commands={commands} accounts={ACCOUNTS} />);
+    next();
+    next();
+    fireEvent.change(screen.getByLabelText("Account name"), { target: { value: "Nagad" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add another account" }));
+    await screen.findByText("Nagad");
+    view.rerender(<OnboardingWizard commands={commands} accounts={[...ACCOUNTS, { id: "acc-new", name: "Nagad", kind: "bank" }]} />);
+    expect(screen.getAllByText("Nagad")).toHaveLength(1);
+  });
+
+  it("stays on the last step when an opening balance was already recorded", async () => {
+    const onDone = vi.fn();
+    const commands = {
+      ...createFixtureCommands(),
+      updateSettings: vi.fn(() => Promise.resolve({ updated: true as const })),
+      recordOpeningBalance: vi.fn(() => Promise.resolve({ transactionId: "t", status: "alreadyRecorded" as const })),
+    };
+    render(<OnboardingWizard commands={commands} accounts={ACCOUNTS} onDone={onDone} />);
+    next(); next(); next();
+    fireEvent.change(screen.getByLabelText("DBBL Savings"), { target: { value: "90,000" } });
+    next();
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+    expect((await screen.findByRole("status")).textContent).toBe("DBBL Savings already had an opening balance, so it wasn't changed.");
+    expect(onDone).not.toHaveBeenCalled();
   });
 });

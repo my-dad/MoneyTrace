@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Commands } from "../../shared/commands";
 import { CHAT_COPY, COPY } from "../../shared/copy";
+import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import type {
   AccountRow,
   FollowUpRow,
@@ -35,6 +36,7 @@ const UNCERTAIN_CODES = new Set([
 ]);
 
 function sendFailureCopy(error: unknown): string {
+  if (error instanceof DemoUnavailableError) return COPY.demoUnavailable;
   const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown };
   if (message === "sensitiveEvidence") return COPY.otpRefused;
   if (typeof code === "string" && code.startsWith("functions/") && !UNCERTAIN_CODES.has(code)) {
