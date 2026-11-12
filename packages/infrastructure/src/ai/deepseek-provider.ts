@@ -48,6 +48,7 @@ function toInterpretation(content: string): AiInterpretation {
   if (!parsed.success) return UNUSABLE;
   const output = parsed.data;
   if (output.kind === "notFinancial") return output;
+  if (output.kind === "question") return UNUSABLE;
   const { occurredAtIso, ...rest } = output.candidate;
   return {
     kind: "transaction",

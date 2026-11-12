@@ -64,6 +64,7 @@ const event = (extra: Partial<SourceEventRow> = {}): SourceEventRow => ({
   resolvedAccountId: null,
   resolvedDestinationAccountId: null,
   userConfirmed: false,
+  clarifications: [],
   ...extra,
 });
 

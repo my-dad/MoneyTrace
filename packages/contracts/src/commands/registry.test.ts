@@ -29,6 +29,7 @@ const EXAMPLES: Record<CommandName, unknown> = {
   snoozeFollowUp: { followUpId: "f1", untilMs: 1700000000000 },
   retrySourceEvent: { sourceEventId: "se1" },
   cancelSourceEvent: { sourceEventId: "se1" },
+  answerQuestion: { sourceEventId: "se1", answer: "paid from it" },
   correctTransaction: {
     idempotencyKey: "k2",
     transactionId: "t1",
@@ -90,6 +91,7 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   snoozeFollowUp: { state: "snoozed" },
   retrySourceEvent: { status: "received" },
   cancelSourceEvent: { status: "cancelled" },
+  answerQuestion: { status: "received" },
   correctTransaction: { reversalTransactionId: "r", status: "recorded" },
   recordCustodyTransfer: { transactionId: "t", status: "recorded" },
   upsertCashAllocation: { allocationId: "a" },
@@ -120,7 +122,7 @@ const names = Object.keys(COMMANDS);
 describe("COMMANDS", () => {
   it("has an example for every command and none extra", () => {
     expect(Object.keys(EXAMPLES).sort()).toEqual([...names].sort());
-    expect(names.length).toBe(22);
+    expect(names.length).toBe(23);
   });
   it.each(names)("%s accepts its valid example", (name) => {
     const c = COMMANDS[name as CommandName];
@@ -233,5 +235,13 @@ describe("TRIGGERS", () => {
 describe("function-contracts.md", () => {
   it("documents every command and trigger, and nothing else", () => {
     expect(docHeadings().sort()).toEqual([...names, ...Object.keys(TRIGGERS)].sort());
+  });
+
+  it("answerQuestion takes an answer or a skip, never both or neither", () => {
+    const { request } = COMMANDS.answerQuestion;
+    expect(request.safeParse({ sourceEventId: "se1", skip: true }).success).toBe(true);
+    expect(request.safeParse({ sourceEventId: "se1", answer: "yes", skip: true }).success).toBe(false);
+    expect(request.safeParse({ sourceEventId: "se1" }).success).toBe(false);
+    expect(request.safeParse({ sourceEventId: "se1", answer: "x".repeat(501) }).success).toBe(false);
   });
 });

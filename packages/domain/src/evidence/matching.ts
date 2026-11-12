@@ -19,7 +19,9 @@ export type MatchResult =
   | { kind: "duplicate"; transactionId: string }
   | { kind: "ambiguous"; transactionIds: string[] }
   | { kind: "finalizesAuthorization"; transactionId: string }
-  | { kind: "possibleCounterpart"; transactionId: string };
+  | { kind: "possibleCounterpart"; transactionId: string }
+  /** The other half of the user's own transfer, unique and close in time (CR-008). */
+  | { kind: "transferCounterpart"; transactionId: string; accountId: string };
 
 export type MatchConfig = { windowMs: number };
 

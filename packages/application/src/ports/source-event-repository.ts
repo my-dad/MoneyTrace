@@ -38,6 +38,16 @@ export type SourceEventRecord = {
   resolvedAccountId: string | null;
   resolvedDestinationAccountId: string | null;
   userConfirmed: boolean;
+  /** DeepSeek's questions about this evidence and the user's answers, at most 3 (CR-008). */
+  clarifications: Clarification[];
+};
+
+export type Clarification = {
+  question: string;
+  options: string[];
+  answer: string | null;
+  askedAtMs: number;
+  answeredAtMs: number | null;
 };
 
 export type Extraction = {

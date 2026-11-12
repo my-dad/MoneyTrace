@@ -297,6 +297,7 @@ export const FIXTURE_SOURCE_EVENTS: SourceEventRow[] = EVENT_SEEDS.map((seed) =>
     resolvedAccountId: seed.account ?? null,
     resolvedDestinationAccountId: seed.destination ?? null,
     userConfirmed: seed.sourceType === "chat",
+    clarifications: [],
   };
 });
 

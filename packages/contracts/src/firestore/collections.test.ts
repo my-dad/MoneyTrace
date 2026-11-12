@@ -258,4 +258,12 @@ describe("owner collection schemas", () => {
     expect(deletionLogEntrySchema.safeParse(entry).success).toBe(true);
     expect(deletionLogEntrySchema.safeParse({ ...entry, uid: "x" }).success).toBe(false);
   });
+
+  it("source events keep up to 3 AI questions, with their options and answers", () => {
+    const q = { question: "Paid from it?", options: ["Yes", "No"], answer: null, askedAtMs: 1, answeredAtMs: null };
+    expect(OWNER_COLLECTIONS.sourceEvents.parse(valid.sourceEvents).clarifications).toEqual([]);
+    expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, status: "pending", pendingReason: "aiQuestion", clarifications: [q, q, q] }).success).toBe(true);
+    expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, clarifications: [q, q, q, q] }).success).toBe(false);
+    expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, matchKind: "transferCounterpart" }).success).toBe(true);
+  });
 });

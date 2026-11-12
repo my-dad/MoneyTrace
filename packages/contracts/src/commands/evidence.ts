@@ -70,6 +70,13 @@ export const confirmCandidateResponse = strictObject({
 
 export const retrySourceEventRequest = strictObject({ sourceEventId: documentId });
 export const retrySourceEventResponse = strictObject({ status: sourceEventStatus });
+/** The user's answer to DeepSeek's latest question about this evidence, or a skip. */
+export const answerQuestionRequest = strictObject({
+  sourceEventId: documentId,
+  answer: z.string().trim().min(1).max(500).optional(),
+  skip: z.literal(true).optional(),
+}).refine((r) => (r.answer === undefined) !== (r.skip === undefined), { message: "give an answer or skip, not both" });
+export const answerQuestionResponse = strictObject({ status: sourceEventStatus });
 export const cancelSourceEventRequest = strictObject({ sourceEventId: documentId });
 export const cancelSourceEventResponse = strictObject({ status: sourceEventStatus });
 

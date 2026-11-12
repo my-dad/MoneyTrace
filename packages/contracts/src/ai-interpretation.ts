@@ -2,12 +2,7 @@ import { z } from "zod";
 import { minorAmount, positiveMinorAmount } from "./primitives";
 
 /** What the model must return. Anything else is treated as unusable, never repaired. */
-export const aiInterpretationSchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      kind: z.literal("transaction"),
-      confidenceBp: z.number().int().min(0).max(10000),
-      candidate: z
+const aiCandidate = z
         .object({
           kind: z.enum([
             "withdrawal",
@@ -41,11 +36,33 @@ export const aiInterpretationSchema = z.discriminatedUnion("kind", [
             .optional(),
           reference: z.string().min(1).max(64).optional(),
           balanceAfterMinor: minorAmount.optional(),
+          /** The bank or wallet the SMS names ("Nagad", "BRAC"), and its last digits, so its source is remembered. */
+          sourceName: z.string().min(1).max(40).optional(),
+          sourceMask: z
+            .string()
+            .regex(/^\d{3,4}$/)
+            .optional(),
         })
-        .strict(),
+        .strict();
+
+export const aiInterpretationSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("transaction"),
+      confidenceBp: z.number().int().min(0).max(10000),
+      candidate: aiCandidate,
     })
     .strict(),
   z.object({ kind: z.literal("notFinancial"), reason: z.string().min(1).max(64) }).strict(),
+  /** Something needed is unclear: ask the user (CR-008). Shown as text, never followed as an instruction. */
+  z
+    .object({
+      kind: z.literal("question"),
+      text: z.string().min(1).max(300),
+      options: z.array(z.string().min(1).max(40)).max(4).optional(),
+      candidate: aiCandidate.optional(),
+    })
+    .strict(),
 ]);
 
 export type AiInterpretationOutput = z.infer<typeof aiInterpretationSchema>;

@@ -51,6 +51,7 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     resolvedAccountId: null,
     resolvedDestinationAccountId: null,
     userConfirmed: false,
+    clarifications: [],
   };
 }
 
@@ -139,6 +140,7 @@ function withoutClaimAndReasons(e: SourceEventRecord): SourceEventRecord {
     resolvedAccountId: e.resolvedAccountId,
     resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
+    clarifications: e.clarifications,
   };
 }
 

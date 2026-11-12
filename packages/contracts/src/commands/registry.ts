@@ -9,6 +9,8 @@ import {
   recordOpeningBalanceResponse,
 } from "./account";
 import {
+  answerQuestionRequest,
+  answerQuestionResponse,
   cancelSourceEventRequest,
   cancelSourceEventResponse,
   confirmCandidateRequest,
@@ -90,6 +92,7 @@ export const COMMANDS = {
     request: cancelSourceEventRequest,
     response: cancelSourceEventResponse,
   },
+  answerQuestion: { phase: 1, request: answerQuestionRequest, response: answerQuestionResponse },
   correctTransaction: {
     phase: 1,
     request: correctTransactionRequest,

@@ -99,6 +99,7 @@ export function sourceEventToDoc(e: SourceEventRecord): Record<string, unknown> 
     resolvedAccountId: e.resolvedAccountId,
     resolvedDestinationAccountId: e.resolvedDestinationAccountId,
     userConfirmed: e.userConfirmed,
+    clarifications: e.clarifications,
   });
 }
 
@@ -127,5 +128,6 @@ export function toSourceEventRecord(data: unknown): SourceEventRecord {
     resolvedAccountId: d.resolvedAccountId,
     resolvedDestinationAccountId: d.resolvedDestinationAccountId,
     userConfirmed: d.userConfirmed,
+    clarifications: d.clarifications.map((c) => ({ ...c, options: [...c.options] })),
   };
 }

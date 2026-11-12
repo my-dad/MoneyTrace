@@ -6,7 +6,7 @@ const event = (status: "posted" | "pending" | "deadLetter" | "rejected" | "recei
   stageAttempt: 0, claim: null, parkedStage: null, version: 1, receivedAtMs: 1, terminalAtMs: null,
   providerResultsPurged: false, retainedText: "Tk 500 debited", candidate: null, extraction: null,
   matchedTransactionId: null, matchKind: null, resolvedAccountId: null, resolvedDestinationAccountId: null,
-  userConfirmed: false, ...extra,
+  userConfirmed: false, clarifications: [], ...extra,
 });
 
 describe("chat view model", () => {
