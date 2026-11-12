@@ -3,12 +3,13 @@ import { assertFixtureModeAllowed } from "./src/shared/fixture-guard";
 
 assertFixtureModeAllowed(process.env);
 
-/** The app is one dashboard with a pop-up chat (PRD CR-007); every older screen leads back to it. */
-const OLD_ROUTES = ["/chat", "/activity", "/accounts", "/accounts/new", "/reports", "/reminders", "/settings", "/onboarding"];
-
+/**
+ * A static export served by Firebase Hosting (release blocker B1). The old screens' redirects to the
+ * one dashboard (PRD CR-007) live in `firebase.json`, since a static export has no server.
+ */
 const nextConfig: NextConfig = {
+  output: "export",
   transpilePackages: ["@moneytrace/contracts", "@moneytrace/ui-kit"],
-  redirects: () => Promise.resolve(OLD_ROUTES.map((source) => ({ source, destination: "/", permanent: false }))),
 };
 
 export default nextConfig;

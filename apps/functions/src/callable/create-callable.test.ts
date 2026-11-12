@@ -2,7 +2,9 @@ import { COMMANDS } from "@moneytrace/contracts";
 import { DomainError } from "@moneytrace/domain";
 import { HttpsError } from "firebase-functions/v2/https";
 import { describe, expect, it } from "vitest";
-import { runCallable, type CallableDeps } from "./create-callable";
+import { InMemoryRateLimiter } from "@moneytrace/application/testing";
+import { CALLABLE_OPTIONS, CALLABLE_RATE_LIMITS, runCallable, type CallableDeps } from "./create-callable";
+import { accessPolicyFromEnv } from "./access";
 
 type Logged = { level: string; event: string; fields: Record<string, unknown> };
 
@@ -14,6 +16,7 @@ function harness() {
   const deps = {
     logger: { info: log("info"), warn: log("warn"), error: log("error") },
     ids: { newId: () => "corr-1" },
+    callGate: { access: accessPolicyFromEnv({ FUNCTIONS_EMULATOR: "true" }), limiter: new InMemoryRateLimiter(), limits: CALLABLE_RATE_LIMITS, nowMs: () => 1_700_000_040_000 },
   } as unknown as CallableDeps;
   return { logs, deps };
 }
@@ -166,3 +169,60 @@ describe("runCallable error mapping", () => {
     expect(JSON.stringify(logs)).not.toContain("Zed");
   });
 });
+
+describe("runCallable gate (release blockers A1, A2, A4)", () => {
+  const deployedDeps = (limiter = new InMemoryRateLimiter()) => {
+    const { deps, logs } = harness();
+    const gated = { ...deps, callGate: { access: accessPolicyFromEnv({ ALLOWED_EMAILS: "owner@example.com" }), limiter, limits: CALLABLE_RATE_LIMITS, nowMs: () => 1_700_000_040_000 } } as unknown as CallableDeps;
+    return { deps: gated, logs };
+  };
+  const as = (email: string, provider = "google.com", ip = "203.0.113.7") => ({
+    auth: { uid: "owner", token: { email, email_verified: true, firebase: { sign_in_provider: provider } } },
+    rawRequest: { ip },
+    data: goodData,
+  });
+  const ok = () => Promise.resolve({ accountId: "a" });
+
+  it("refuses an account not on the allowlist as permission-denied, without running the handler", async () => {
+    const { deps } = deployedDeps();
+    let ran = false;
+    const r = await codeOf(runCallable(contract, () => ((ran = true), ok()), deps, as("stranger@example.com")));
+    expect(r).toEqual({ code: "permission-denied", message: "permission-denied" });
+    expect(ran).toBe(false);
+  });
+
+  it("refuses anonymous sign-in when deployed", async () => {
+    const { deps } = deployedDeps();
+    expect((await codeOf(runCallable(contract, ok, deps, as("owner@example.com", "anonymous")))).code).toBe("permission-denied");
+  });
+
+  it("lets the owner through", async () => {
+    const { deps } = deployedDeps();
+    expect(await runCallable(contract, ok, deps, as("owner@example.com"))).toEqual({ accountId: "a" });
+  });
+
+  it("after the per-user limit, calls are resource-exhausted until the next minute", async () => {
+    const { deps, logs } = deployedDeps();
+    for (let i = 0; i < CALLABLE_RATE_LIMITS.userPerMinute; i += 1) await runCallable(contract, ok, deps, as("owner@example.com"));
+    const r = await codeOf(runCallable(contract, ok, deps, as("owner@example.com")));
+    expect(r).toEqual({ code: "resource-exhausted", message: "rateLimited" });
+    expect(logs.some((l) => l.event === "callable.rejected" && l.fields["errorCode"] === "rateLimited")).toBe(true);
+  });
+
+  it("keys the per-IP limit on a hash, never the raw address", async () => {
+    const seen: string[] = [];
+    const limiter = { take: (buckets: readonly { key: string }[]) => (seen.push(...buckets.map((b) => b.key)), Promise.resolve("allowed" as const)) };
+    const { deps } = deployedDeps(limiter as unknown as InMemoryRateLimiter);
+    await runCallable(contract, ok, deps, as("owner@example.com"));
+    expect(seen.some((k) => k.startsWith("ip-"))).toBe(true);
+    expect(seen.join(" ")).not.toContain("203.0.113.7");
+  });
+});
+
+describe("callable options (release blockers A3, A5)", () => {
+  it("enforces App Check outside the emulator and keeps instances small", () => {
+    expect(CALLABLE_OPTIONS).toMatchObject({ enforceAppCheck: true, maxInstances: 3, concurrency: 1, memory: "256MiB", timeoutSeconds: 120 });
+    expect(CALLABLE_OPTIONS.secrets).toContain("ALLOWED_EMAILS");
+  });
+});
+

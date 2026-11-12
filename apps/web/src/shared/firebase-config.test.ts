@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveFirebaseConfig } from "./firebase-config";
+import { resolveAppCheckSiteKey, resolveFirebaseConfig } from "./firebase-config";
 
 const REAL = {
   apiKey: "AIza-real",
@@ -37,7 +37,30 @@ describe("resolveFirebaseConfig", () => {
   });
 });
 
+describe("resolveAppCheckSiteKey (release blocker A3)", () => {
+  it("a real build must carry the App Check site key", () => {
+    expect(resolveAppCheckSiteKey({ appCheckSiteKey: "6Lc-site" })).toBe("6Lc-site");
+    expect(() => resolveAppCheckSiteKey({})).toThrow("NEXT_PUBLIC_APPCHECK_SITE_KEY");
+  });
+
+  it("emulator and fixture builds run without App Check", () => {
+    expect(resolveAppCheckSiteKey({ useEmulators: "1" })).toBeNull();
+    expect(resolveAppCheckSiteKey({ dataSource: "fixture" })).toBeNull();
+  });
+
+  it("is read with a literal access", () => {
+    expect(readFileSync(join(import.meta.dirname, "firebase-config.ts"), "utf8")).toContain("process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY");
+  });
+});
+
 describe("firebase.ts", () => {
+  it("starts App Check with reCAPTCHA Enterprise when a site key is configured", () => {
+    const source = readFileSync(join(import.meta.dirname, "firebase.ts"), "utf8");
+    expect(source).toContain("resolveAppCheckSiteKey(readFirebaseEnv())");
+    expect(source).toContain("new ReCaptchaEnterpriseProvider(");
+    expect(source).toContain("isTokenAutoRefreshEnabled: true");
+  });
+
   it("takes its config from firebase-config", () => {
     const source = readFileSync(join(import.meta.dirname, "firebase.ts"), "utf8");
     expect(source).not.toMatch(/process\.env\[/);

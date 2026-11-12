@@ -9,6 +9,7 @@ export type FirebaseEnv = {
   appId?: string | undefined;
   useEmulators?: string | undefined;
   dataSource?: string | undefined;
+  appCheckSiteKey?: string | undefined;
 };
 
 /**
@@ -25,6 +26,7 @@ export function readFirebaseEnv(): FirebaseEnv {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     useEmulators: process.env.NEXT_PUBLIC_USE_EMULATORS,
     dataSource: process.env.NEXT_PUBLIC_DATA_SOURCE,
+    appCheckSiteKey: process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY,
   };
 }
 
@@ -43,4 +45,15 @@ export function resolveFirebaseConfig(env: FirebaseEnv): FirebaseOptions {
   const missing = FIELDS.filter(([key]) => (env[key] ?? "") === "").map(([, name]) => name);
   if (!local && missing.length > 0) throw new Error(`Missing Firebase config: ${missing.join(", ")}`);
   return Object.fromEntries(FIELDS.map(([key, , demo]) => [key, (env[key] ?? "") === "" ? demo : env[key]]));
+}
+
+/**
+ * The reCAPTCHA Enterprise site key App Check uses (release blocker A3). Deployed functions refuse
+ * calls without an App Check token, so a real build without the key fails here, not at runtime.
+ */
+export function resolveAppCheckSiteKey(env: FirebaseEnv): string | null {
+  if (env.useEmulators === "1" || env.dataSource === "fixture") return null;
+  const key = env.appCheckSiteKey ?? "";
+  if (key === "") throw new Error("Missing App Check config: NEXT_PUBLIC_APPCHECK_SITE_KEY");
+  return key;
 }

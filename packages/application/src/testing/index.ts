@@ -14,3 +14,5 @@ export * from "./in-memory-payment-instruments";
 export * from "./scripted-ai-provider";
 export * from "./follow-up-contract";
 export * from "./in-memory-follow-ups";
+export * from "./in-memory-rate-limiter";
+export * from "./rate-limiter-contract";

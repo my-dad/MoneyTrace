@@ -6,6 +6,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dist/**",
       "**/.next/**",
+      "apps/web/out/**",
       "tooling/boundaries/fixtures/**",
       ".dependency-cruiser.cjs",
     ],
