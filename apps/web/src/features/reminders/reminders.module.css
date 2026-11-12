@@ -1,0 +1,28 @@
+.page { max-width:760px; margin:0 auto; padding:16px 16px 32px; color:var(--mt-ink); }
+.bar { display:flex; align-items:center; gap:4px; margin-bottom:4px; }
+.title { margin:0; font-size:22px; font-weight:800; }
+.back { width:44px; height:44px; margin-left:-10px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; font-size:26px; color:var(--mt-ink); text-decoration:none; }
+.back:focus-visible, .opt:focus-visible { outline:3px solid var(--mt-focus); }
+.caption { margin:0; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+.body { margin:0; font-size:14px; color:var(--mt-body); line-height:1.5; }
+.sec { display:flex; justify-content:space-between; margin:16px 4px 8px; font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; }
+.list { list-style:none; margin:0; padding:0; }
+.item { margin:0 0 10px; padding:14px 16px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; }
+.item p { margin:0; }
+.q { font-size:15px; font-weight:700; line-height:1.4; }
+.d { margin-top:4px !important; font-size:13px; color:var(--mt-body); line-height:1.5; }
+.m { margin-top:8px !important; font-size:12px; color:var(--mt-caption); }
+.acts { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.sleeping { background:var(--mt-surface-soft); }
+.sleeping .q { font-weight:600; color:var(--mt-body); }
+.alert { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px solid var(--mt-border); font-size:13px; font-weight:600; }
+.options { list-style:none; margin:0; padding:0; }
+.opt { width:100%; min-height:52px; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:0 4px; border:0; border-top:1px solid var(--mt-border-soft); background:transparent; font:inherit; font-size:15px; color:var(--mt-ink); cursor:pointer; text-align:left; }
+.options li:first-child .opt { border-top:none; }
+.sheetActions { display:flex; gap:10px; }
+.sheetActions > * { flex:1; }
+@media (min-width: 1024px) {
+  .page { padding-top:28px; }
+  .back { display:none; }
+  .title { font-size:26px; }
+}

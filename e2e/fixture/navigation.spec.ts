@@ -75,3 +75,14 @@ test("onboarding walks to the last step and settings open a section", async ({ p
   await expect(page).toHaveURL(/\/settings\?section=ai$/);
   await expect(page.getByText(/chat and SMS parsing keep working/)).toBeVisible();
 });
+test("reminders list questions, answer opens chat and snooze is demo only", async ({ page }) => {
+  await page.goto("/reminders");
+  await expect(page.getByRole("heading", { name: "Reminders" })).toBeVisible();
+  await expect(page.getByText("Snoozed until 1 Dec, 9:00 am")).toBeVisible();
+  await page.getByRole("button", { name: "Snooze" }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: /Tomorrow morning/ }).click();
+  await expect(page.getByRole("dialog").getByRole("status")).toHaveText("Not available yet — demo · nothing was saved");
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+  await page.getByRole("link", { name: "Answer", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/chat\?followUp=fu-atm$/);
+});

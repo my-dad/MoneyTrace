@@ -1,5 +1,9 @@
-import { NotAvailableYet } from "../../features/shell/NotAvailableYet";
+"use client";
 
-export default function Page() {
-  return <NotAvailableYet />;
+import { RemindersScreen } from "../../features/reminders/RemindersScreen";
+import { useAppServices } from "../../shared/app-services";
+
+export default function RemindersPage() {
+  const { readModels, commands } = useAppServices();
+  return <RemindersScreen gateway={readModels} commands={commands} />;
 }

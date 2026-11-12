@@ -31,8 +31,8 @@ Read this first when resuming. Updated and committed after every task.
 | 10 Build D reports | Done |
 | 11 Mockup E settings and onboarding | Done (approved) |
 | 12 Build E settings and onboarding | Done |
-| 13 Mockup F reminders | Drawn; awaiting Mabrur's approval |
-| 14 Build F reminders | Not started |
+| 13 Mockup F reminders | Done (approved) |
+| 14 Build F reminders | Done |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -44,15 +44,15 @@ Read this first when resuming. Updated and committed after every task.
 | C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
 | D Reports | Drawn: `design/screens/D-reports.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | fixture report source, screen (toggle, stepping, empty, error, unexplained line, null source, axe), smoke |
 | E Settings / Onboarding | Drawn: `design/screens/E-settings.html` | Approved 2026-11-12 (all 7 decisions as drawn) | Done | settings source, settings screen, AI budget, reminders form, wizard, Home link, smoke |
-| F Reminders inbox | Drawn: `design/screens/F-reminders.html` | Awaiting Mabrur | — | — |
+| F Reminders inbox | Drawn: `design/screens/F-reminders.html` | Approved 2026-11-12 (all 5 decisions as drawn) | Done | view model (split, snooze times), screen (sections, wording, answer link, snooze, done, empty, loading, error, axe), smoke |
 
 ## Next task
 
-Mabrur reviews `design/screens/F-reminders.html`. On approval: record it here, then Task 14 (build F).
+Task 15: UI-complete exit — run every suite (including `pnpm test:emulator` and `pnpm test:e2e`), compare screens to mockups, update AGENT.md status/commands, record open items. Then the final whole-branch review.
 
 ## Open decisions
 
-Mockup F asks Mabrur to confirm: the ATM question worded "Where did the ৳5,000 go?" (cash with no place yet, not spending); Answer opens Chat with the question; snooze options 1 hour / tonight 9 pm / tomorrow 9 am with a Snoozed section; Done confirms and changes no money; empty reads "Nothing to answer".
+None.
 
 ## Noted for later (not in this plan)
 
@@ -60,8 +60,11 @@ Mockup F asks Mabrur to confirm: the ATM question worded "Where did the ৳5,000
 - The existing Home layout differs from mockup screen 01 (greeting, bank/cash split, card list). Home is unchanged by this plan.
 - Account detail omits mockup C4's "Verified · matches the last SMS balance" badge: no read model says whether a balance matches an SMS yet.
 - The setup name (step 1) isn't saved: `updateSettings` has no display-name field.
+- Reminders show the follow-up's stored question, not mockup F's short title plus "Taken from DBBL at an ATM on 5 Nov, 7:02 pm": that needs the target transaction joined in. The fixture question also says "yesterday's", which goes stale.
+- Answer links to `/chat?followUp=<id>`; Chat doesn't read the parameter yet (open questions already appear in Chat's timeline).
+- Done has no backend command (contracts can resolve a follow-up only with a destination or "not sure yet"), so it always reports "Not available yet".
 - Account history has no opening-balance line yet (mockup C4 shows one); the fixture history is built from source events only.
 
 ## Last verification
 
-Task 12 (2026-11-12): `pnpm verify` → 96 files, 1399 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 5 passed. The emulator E2E suite runs at Task 15.
+Task 14 (2026-11-12): `pnpm verify` → 98 files, 1413 tests pass. `pnpm test:e2e:fixture` (builds the app) → 6 passed. The emulator E2E suite runs at Task 15.

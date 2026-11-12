@@ -337,3 +337,36 @@ export const ONBOARDING_COPY = {
   remindersTitle: "Gentle reminders",
   remindersBody: "MoneyTrace asks about cash it can't place, like ATM withdrawals. It never assumes unexplained cash was spent.",
 } as const;
+
+export const REMINDERS_COPY = {
+  title: "Reminders",
+  back: "Back to Home",
+  toAnswer: "To answer",
+  snoozed: "Snoozed",
+  answer: "Answer",
+  answerNow: "Answer now",
+  snooze: "Snooze",
+  done: "Done",
+  details: {
+    withdrawalDestination: "Until you say, it's cash with no place yet, not spending.",
+    unreviewedCashActivity: "Nothing has been recorded for it lately. Count it if you're not sure.",
+    reconciliationDifference: "The difference is not counted as spending until you explain it.",
+  },
+  meta: (asked: string, due: string) => `Asked ${asked} · due ${due}`,
+  snoozedUntil: (until: string) => `Snoozed until ${until}`,
+  askAgain: "Ask again…",
+  inOneHour: "In 1 hour",
+  tonight: "Tonight",
+  tomorrowMorning: "Tomorrow morning",
+  cancel: "Cancel",
+  close: "Close",
+  confirmDone: "Mark as done?",
+  confirmDoneBody:
+    "This closes the question without changing any money. If the amount is different, answer it instead so the difference is recorded with a reason.",
+  markDone: "Mark as done",
+  emptyTitle: "Nothing to answer",
+  emptyBody: "When MoneyTrace can't place some cash or needs a detail, the question shows up here.",
+  loading: "Loading your reminders…",
+  readFailed: "Couldn't load your reminders. Nothing has changed; try again.",
+  retry: "Retry",
+} as const;
