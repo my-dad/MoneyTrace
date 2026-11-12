@@ -19,8 +19,38 @@ Each finding is re-graded by its effect on a person using the app. Critical and 
 
 ## Next task
 
-Fix pass, in this order: sign-in C1, I1, I2; Phase 0 I1, I3, I2; callables I1; restore drill I1–I5.
-Waiting for Mabrur: (a) whether to build opening-balance correction now (callables I2); (b) whether sign-in I3 (allowlist) and I4 (redirect fallback) go on the 0B checklist.
+Fix pass done. Waiting for Mabrur on three decisions:
+1. Opening-balance correction (callables I2): build it now, or in the functionality phase?
+2. Sign-in I3 (allowlist / reject anonymous) and I4 (redirect fallback, checked on a phone): add to the 0B checklist?
+3. Backup retention for the restore runbook (14 days is a placeholder).
+
+Then: mark CR-003 complete in the PRD and the Phase 1 exit checklist.
+
+## Fixes made (each test watched failing first, unless noted)
+
+| Finding | Fix | Commit |
+|---|---|---|
+| Sign-in C1: bundle always used demo config | Literal `process.env.NEXT_PUBLIC_*` reads; a real build without config fails; checked that the real bundle carries the staging project | `faf65dd` |
+| Sign-in I2: emulator mode on any project | Guard requires a `demo-` project; `test:e2e` pins `demo-moneytrace` | `faf65dd`, `d790f8d`* |
+| Sign-in I1: Retry could mark the wrong user ready | Retry uses the same guarded bootstrap as the first attempt | `966489d` |
+| Phase 0 I1: corrections dropped category and reference | Reversal mirrors the original; replacement takes its intent's category and keeps the reference | `3938513` |
+| Phase 0 I3: reopen limit untested | Test added; fails when the limit is removed (code restored) | `05beaa0` |
+| Phase 0 I2: false "review clean" line | Phase 0 ledger line annotated as corrected | (ledger, git-ignored) |
+| Callables I1: thin isolation evidence | Emulator matrix: Bob calls all 13 callables with Alice's real ids; her whole tree is unchanged; coverage check for new callables. Code was already correct, so there was no failing run | `6241120` |
+| Restore I1, I2 (+ minor 4) | `verify` on staging needs the restored database and refuses the live one; emulator host must match the project; arguments checked before writes | `8b96aa0` |
+| Restore I3, I4 | Seeded event is terminal; new emulator test runs seed and verify, and catches a lost entry and a wrong balance | `8b96aa0` |
+| Restore I5 | Runbooks rewritten with CLI-checked commands; states backups need Blaze | `a5f6620` |
+
+\* The last commit also gives unit tests an explicit demo Firebase config.
+
+Verification after the pass: `pnpm verify` 100 files / 1,436 tests; web build passes; `pnpm test:emulator` 444 + 26; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 6 passed.
+
+## Deferred minors
+
+- Callables: account and instrument creation aren't idempotent; `updateSettings` before bootstrap returns internal; `documentId` looser than paths; deps resolved outside the try; two mapping paths untested; a repeated `resolveFollowUp` with a different destination reports success; currency mismatch reads as not found; unauthenticated calls aren't logged.
+- Sign-in: demo builds still initialise Firebase; silent sign-out failure; no pending state on the sign-in button; gate screens lack heading, status role and focus handling; no error-code logging; no unit test for the Firebase gateway.
+- Restore drill: a stray `cutoverMarkers/undefined` seed document; locale-dependent sort; weak balance check; dead code in `checksum.ts`; broad `-staging` guard; `deploy:staging` can run; whole `deletionLog` hashed.
+- Phase 0: correction ids grow until about 15 chained corrections fail; a reversal rewrites the whole original; pending promotion drops the authorization's evidence; a quota reservation can leak; account check outside the ledger transaction; unbounded activity reads.
 
 ## Findings
 
