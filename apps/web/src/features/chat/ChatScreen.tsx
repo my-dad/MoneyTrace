@@ -48,9 +48,12 @@ function sendFailureCopy(error: unknown): string {
 export function ChatScreen({
   gateway,
   commands,
+  embedded = false,
 }: {
   gateway: ReadModelGateway;
   commands: ChatCommands;
+  /** Inside the pop-up panel, which supplies its own title bar. */
+  embedded?: boolean;
 }) {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
@@ -122,8 +125,8 @@ export function ChatScreen({
     accepted !== null && !accepted.duplicate && !events.some((event) => event.id === accepted.id);
 
   return (
-    <div className={styles.screen}>
-      <header className={styles.header}>
+    <div className={`${styles.screen ?? ""} ${embedded ? (styles.embedded ?? "") : ""}`}>
+      {!embedded && <header className={styles.header}>
         <Link href="/" aria-label={CHAT_COPY.backToHome} className={styles.back}>
           <svg
             width="22"
@@ -157,7 +160,7 @@ export function ChatScreen({
           <h1>MoneyTrace</h1>
           <span>{CHAT_COPY.subtitle}</span>
         </div>
-      </header>
+      </header>}
 
       {readFailed && (
         <p role="alert" className={styles.banner}>

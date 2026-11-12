@@ -1,0 +1,14 @@
+.fab { position:fixed; right:16px; bottom:calc(20px + env(safe-area-inset-bottom)); z-index:40; width:60px; height:60px; border-radius:999px; border:0; background:var(--mt-accent); color:#fff; display:grid; place-items:center; box-shadow:0 8px 20px rgba(180,80,20,.3); cursor:pointer; }
+.fab:focus-visible { outline:3px solid var(--mt-focus); outline-offset:3px; }
+.badge { position:absolute; top:-2px; right:-2px; min-width:22px; height:22px; padding:0 4px; box-sizing:border-box; border-radius:999px; background:var(--mt-ink); color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center; border:2px solid var(--mt-ground); }
+.panel { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; background:var(--mt-ground); }
+.head { flex:none; display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border); }
+.mark { width:36px; height:36px; border-radius:12px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; flex:none; }
+.title { flex:1; min-width:0; }
+.title h2 { margin:0; font-size:15px; }
+.title span { font-size:12px; color:var(--mt-caption); }
+.close { width:44px; height:44px; flex:none; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); font-size:16px; color:var(--mt-ink); cursor:pointer; }
+.close:focus-visible { outline:3px solid var(--mt-focus); }
+@media (min-width: 1024px) {
+  .panel { left:auto; width:420px; border-left:1px solid var(--mt-border); box-shadow:-12px 0 30px rgba(30,35,32,.08); }
+}

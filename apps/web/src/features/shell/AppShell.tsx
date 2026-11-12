@@ -3,6 +3,7 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { AppServicesProvider, createAppServices, type AppServices } from "../../shared/app-services";
 import { AuthGate } from "../auth/AuthGate";
+import { ChatLauncher } from "../chat/ChatLauncher";
 import { AppNav } from "./AppNav";
 import { DemoMarker } from "./DemoMarker";
 import { OfflineBanner } from "./OfflineBanner";
@@ -22,6 +23,7 @@ export function AppShell({ children, services }: { children: ReactNode; services
           <AppNav />
           <div className={styles.content}>{children}</div>
         </div>
+        <ChatLauncher gateway={resolved.readModels} commands={resolved.commands} nowMs={resolved.nowMs()} />
       </AuthGate>
     </AppServicesProvider>
   );

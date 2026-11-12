@@ -10,14 +10,14 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 | 3 Dashboard view model | Done |
 | 4 Recent items | Done |
 | 5 Dashboard screen | Done |
-| 6 Chat launcher and panel | Not started |
+| 6 Chat launcher and panel | Done |
 | 7 Sign-in page | Not started |
 | 8 Remove old screens | Not started |
 | 9 End-to-end tests, final checks, records | Not started |
 
 ## Next task
 
-Task 6: chat launcher and panel.
+Task 7: sign-in page.
 
 ## Open decisions
 
