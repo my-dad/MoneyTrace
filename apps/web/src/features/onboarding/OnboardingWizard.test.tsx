@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureCommands } from "../../shared/fixture-commands";
@@ -14,9 +14,9 @@ const open = () => render(<OnboardingWizard commands={createFixtureCommands()} a
 const next = () => { fireEvent.click(screen.getByRole("button", { name: "Next" })); };
 
 describe("OnboardingWizard", () => {
-  it("walks all five steps", async () => {
+  it("walks all four steps", async () => {
     open();
-    expect(screen.getByText("Step 1 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 1 of 4")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Welcome to MoneyTrace" })).toBeTruthy();
     next();
     expect(screen.getByRole("heading", { name: "Currency and reports" })).toBeTruthy();
@@ -25,9 +25,7 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("heading", { name: "Where your money sits" })).toBeTruthy();
     expect(screen.getByText("DBBL Savings")).toBeTruthy();
     next();
-    expect(screen.getByRole("heading", { name: "What each holds today" })).toBeTruthy();
-    next();
-    expect(screen.getByText("Step 5 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 4 of 4")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Gentle reminders" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
     expect((await screen.findByRole("status")).textContent).toBe("Not available yet — demo · nothing was saved");
@@ -54,27 +52,6 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("heading", { name: "Currency and reports" })).toBeTruthy();
   });
 
-  it("states opening balances are not income", () => {
-    open();
-    next();
-    next();
-    next();
-    expect(screen.getByText(/starting positions, not income/)).toBeTruthy();
-    expect(screen.getByLabelText("DBBL Savings")).toBeTruthy();
-    expect(screen.getByLabelText("City Bank Amex ••7702 · you owe")).toBeTruthy();
-  });
-
-  it("refuses an opening balance that isn't a number", () => {
-    open();
-    next();
-    next();
-    next();
-    fireEvent.change(screen.getByLabelText("Wallet"), { target: { value: "lots" } });
-    next();
-    expect(screen.getByText("Enter amounts in taka, like 3,500.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "What each holds today" })).toBeTruthy();
-  });
-
   it("has no axe violations", async () => {
     const { container } = open();
     expect((await axe.run(container)).violations).toEqual([]);
@@ -92,19 +69,23 @@ describe("OnboardingWizard", () => {
     expect(screen.getAllByText("Nagad")).toHaveLength(1);
   });
 
-  it("stays on the last step when an opening balance was already recorded", async () => {
+
+
+  it("never asks for an opening balance or account digits (CR-006)", () => {
+    open();
+    for (let step = 1; step <= 4; step += 1) {
+      expect(screen.queryByText(/opening balance|digits|holds today/i)).toBeNull();
+      if (step < 4) next();
+    }
+  });
+
+  it("finishes by saving the settings only, then moves on", async () => {
     const onDone = vi.fn();
-    const commands = {
-      ...createFixtureCommands(),
-      updateSettings: vi.fn(() => Promise.resolve({ updated: true as const })),
-      recordOpeningBalance: vi.fn(() => Promise.resolve({ transactionId: "t", status: "alreadyRecorded" as const })),
-    };
-    render(<OnboardingWizard commands={commands} accounts={ACCOUNTS} onDone={onDone} />);
+    const updateSettings = vi.fn(() => Promise.resolve({ updated: true as const }));
+    render(<OnboardingWizard commands={{ ...createFixtureCommands(), updateSettings }} accounts={ACCOUNTS} onDone={onDone} />);
     next(); next(); next();
-    fireEvent.change(screen.getByLabelText("DBBL Savings"), { target: { value: "90,000" } });
-    next();
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
-    expect((await screen.findByRole("status")).textContent).toBe("DBBL Savings already had an opening balance, so it wasn't changed.");
-    expect(onDone).not.toHaveBeenCalled();
+    await waitFor(() => { expect(onDone).toHaveBeenCalled(); });
+    expect(updateSettings).toHaveBeenCalledTimes(1);
   });
 });

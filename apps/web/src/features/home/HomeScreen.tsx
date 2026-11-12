@@ -101,7 +101,7 @@ export function HomeScreen({
         {failure}
         <EmptyState
           title="Let's set up your first account"
-          description="Add an account and its opening balance so your available money starts from a real number."
+          description="Add your accounts. Each one starts at ৳0 and changes only with what you record."
           action={<Link href="/onboarding" className="mt-button mt-button--primary">Start setup</Link>}
         />
       </main>

@@ -4,8 +4,6 @@ import { Button, FormField } from "@moneytrace/ui-kit";
 import { useState } from "react";
 import type { Commands } from "../../shared/commands";
 import { ONBOARDING_COPY, SETTINGS_COPY } from "../../shared/copy";
-import { dhakaDate, dhakaDayStartMs } from "../../shared/dhaka-date";
-import { parseBdtInput } from "../../shared/parse-bdt-input";
 import type { AccountRow } from "../../shared/read-model-gateway";
 import { useAction } from "../../shared/use-action";
 import { PeriodFields, type PeriodDraft } from "../settings/PeriodFields";
@@ -14,15 +12,14 @@ import settingsStyles from "../settings/settings.module.css";
 import { ActionStatus } from "../shell/ActionStatus";
 import styles from "./onboarding.module.css";
 
-type Step = 1 | 2 | 3 | 4 | 5;
-type WizardCommands = Pick<Commands, "createAccount" | "updateSettings" | "recordOpeningBalance">;
+type Step = 1 | 2 | 3 | 4;
+const LAST: Step = 4;
+type WizardCommands = Pick<Commands, "createAccount" | "updateSettings">;
 type Frequency = "daily" | "weekly" | "off";
 
 const KIND_LABEL: Record<AccountRow["kind"], string> = { bank: "Bank or wallet", cash: "Cash", familyCash: "Held by family", creditLiability: "Credit card" };
-const balanceLabel = (account: Pick<AccountRow, "name" | "kind">) =>
-  account.kind === "creditLiability" ? `${account.name} · ${ONBOARDING_COPY.youOwe}` : account.name;
 
-/** First-time setup. Steps are local state, so Back and Next keep what was entered. */
+/** First-time setup. Steps are local state, so Back and Next keep what was entered. Accounts start at ৳0 (CR-006). */
 export function OnboardingWizard({
   commands,
   accounts,
@@ -38,14 +35,11 @@ export function OnboardingWizard({
   const [added, setAdded] = useState<Pick<AccountRow, "id" | "name" | "kind">[]>([]);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<AccountRow["kind"]>("bank");
-  const [asOf, setAsOf] = useState(() => dhakaDate(Date.now()));
-  const [balances, setBalances] = useState<Record<string, string>>({});
   const [frequency, setFrequency] = useState<Frequency>("daily");
   const [digest, setDigest] = useState("21:00");
   const [error, setError] = useState<string | undefined>(undefined);
   const addAction = useAction();
   const finishAction = useAction();
-  const [unchanged, setUnchanged] = useState<string[]>([]);
   // The read model also delivers accounts created here, so keep only the ones it hasn't shown yet.
   const all = [...accounts, ...added.filter((row) => !accounts.some((account) => account.id === row.id))];
 
@@ -54,12 +48,8 @@ export function OnboardingWizard({
       setError(SETTINGS_COPY.startDayInvalid);
       return;
     }
-    if (step === 4 && Object.values(balances).some((text) => text.trim() !== "" && parseBdtInput(text) === null)) {
-      setError(ONBOARDING_COPY.balancesInvalid);
-      return;
-    }
     setError(undefined);
-    setStep((current) => (current < 5 ? ((current + 1) as Step) : current));
+    setStep((current) => (current < LAST ? ((current + 1) as Step) : current));
   }
 
   function back() {
@@ -79,29 +69,19 @@ export function OnboardingWizard({
 
   function finish() {
     const startDay = parseStartDay(period.startDay);
-    setUnchanged([]);
     void finishAction.run(async () => {
       await commands.updateSettings({
         reportingCycle: period.kind === "salaryCycle" && startDay !== null ? { kind: "salaryCycle", startDay } : { kind: "calendarMonth" },
         reminders: { frequency, digestLocalTime: digest, minThresholdMinor: 0 },
       });
-      const kept: string[] = [];
-      for (const [accountId, text] of Object.entries(balances)) {
-        const amountMinor = parseBdtInput(text);
-        if (amountMinor === null) continue;
-        const response = await commands.recordOpeningBalance({ accountId, amountMinor, currency: "BDT", effectiveAtMs: dhakaDayStartMs(asOf) });
-        if (response.status === "alreadyRecorded") kept.push(all.find((account) => account.id === accountId)?.name ?? accountId);
-      }
-      // Never move on as if a typed balance was saved when the server kept the old one.
-      if (kept.length > 0) setUnchanged(kept);
-      else onDone?.();
+      onDone?.();
     });
   }
 
   return (
     <main className={styles.page}>
       <div className={styles.progress} aria-hidden="true">
-        {[1, 2, 3, 4, 5].map((n) => <span key={n} className={n <= step ? styles.on : undefined} />)}
+        {[1, 2, 3, 4].map((n) => <span key={n} className={n <= step ? styles.on : undefined} />)}
       </div>
       <p className={styles.stepText}>{ONBOARDING_COPY.step(step)}</p>
 
@@ -156,30 +136,6 @@ export function OnboardingWizard({
 
       {step === 4 && (
         <>
-          <h1 className={styles.title}>{ONBOARDING_COPY.balancesTitle}</h1>
-          <p className={styles.info}>{ONBOARDING_COPY.balancesInfo}</p>
-          <FormField label={ONBOARDING_COPY.asOf}>
-            {(control) => <input {...control} type="date" max={dhakaDate(Date.now())} value={asOf} onChange={(event) => { setAsOf(event.target.value); }} />}
-          </FormField>
-          {all.length === 0 ? (
-            <p className={styles.lead}>{ONBOARDING_COPY.noBalances}</p>
-          ) : (
-            <div className={styles.balances}>
-              {all.map((account) => (
-                <FormField key={account.id} label={balanceLabel(account)}>
-                  {(control) => (
-                    <input {...control} inputMode="decimal" placeholder="৳ 0" value={balances[account.id] ?? ""} onChange={(event) => { setBalances((rows) => ({ ...rows, [account.id]: event.target.value })); }} />
-                  )}
-                </FormField>
-              ))}
-            </div>
-          )}
-          {error !== undefined && <p className={styles.error}>{error}</p>}
-        </>
-      )}
-
-      {step === 5 && (
-        <>
           <h1 className={styles.title}>{ONBOARDING_COPY.remindersTitle}</h1>
           <p className={styles.lead}>{ONBOARDING_COPY.remindersBody}</p>
           <fieldset className={settingsStyles.choices}>
@@ -195,13 +151,12 @@ export function OnboardingWizard({
             {(control) => <input {...control} type="time" value={digest} onChange={(event) => { setDigest(event.target.value); }} />}
           </FormField>
           <ActionStatus busy={finishAction.busy} failed={finishAction.failed} unavailable={finishAction.unavailable} />
-          {unchanged.length > 0 && <p role="status">{ONBOARDING_COPY.alreadyRecorded(unchanged.join(", "))}</p>}
         </>
       )}
 
       <div className={styles.actions}>
         {step > 1 && <Button variant="secondary" onClick={back}>{ONBOARDING_COPY.back}</Button>}
-        {step < 5 ? (
+        {step < LAST ? (
           <Button onClick={next}>{ONBOARDING_COPY.next}</Button>
         ) : (
           <Button onClick={finish} disabled={finishAction.busy}>{ONBOARDING_COPY.finish}</Button>

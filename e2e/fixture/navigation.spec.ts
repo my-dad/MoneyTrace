@@ -65,8 +65,8 @@ test("reports switch period type and step back", async ({ page }) => {
 
 test("onboarding walks to the last step and settings open a section", async ({ page }) => {
   await page.goto("/onboarding");
-  await expect(page.getByText("Step 1 of 5")).toBeVisible();
-  for (let step = 0; step < 4; step += 1) await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Step 1 of 4")).toBeVisible();
+  for (let step = 0; step < 3; step += 1) await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByRole("heading", { name: "Gentle reminders" })).toBeVisible();
   await page.getByRole("button", { name: "Finish setup" }).click();
   await expect(page.getByRole("status")).toHaveText("Not available yet — demo · nothing was saved");

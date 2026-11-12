@@ -156,7 +156,7 @@ export const ACCOUNTS_COPY = {
   readFailed: "Couldn't load your accounts. No figures are shown rather than wrong ones.",
   retry: "Retry",
   emptyTitle: "Add your first account",
-  emptyBody: "Add a bank account, wallet, card or cash, with what it holds today. That opening balance is a starting position, not income.",
+  emptyBody: "Add a bank account, wallet, card or cash. Each one starts at ৳0 and changes only with what you record.",
   groupTitle: { bank: "Bank & wallets", cash: "Cash", familyCash: "Held by family", creditLiability: "Credit cards · you owe" },
   owed: "owed",
   cardsNote: "Card dues are money you owe. They aren't taken out of your available money.",
@@ -247,7 +247,7 @@ export const REPORTS_COPY = {
   totalOwed: "Total owed",
   unsettled: "Not settled yet",
   emptyTitle: (label: string) => `Nothing recorded in ${label}`,
-  emptyBody: "Tracking started on 1 Oct 2026. Opening balances are starting positions, so they don't appear as income.",
+  emptyBody: "Tracking started on 1 Oct 2026.",
   later: "Go to a later period",
 } as const;
 
@@ -266,7 +266,7 @@ export const SETTINGS_COPY = {
     privacy: "Privacy",
   },
   accounts: "Accounts",
-  accountsSummary: "Add accounts and opening balances",
+  accountsSummary: "Add and view your accounts",
   cycleSummary: (day: number) => `Salary cycle · starts on the ${String(day)}th`,
   monthSummary: "Calendar month",
   aiSummary: (spent: string, limit: string) => `${spent} of ${limit} this month`,
@@ -307,7 +307,7 @@ export const SETTINGS_COPY = {
   inboxOn: "Always on · the reliable fallback",
   // Privacy
   keeps: "What MoneyTrace keeps",
-  keepsItems: ["The text of SMS and chat messages you send", "Your accounts, with only the last 3–4 digits", "The ledger built from them, with its history of corrections"],
+  keepsItems: ["The text of SMS and chat messages you send", "Your accounts: a name and a type, never an account or card number", "The ledger built from them, with its history of corrections"],
   never: "What it never asks for",
   neverItems: ["Bank passwords or PINs", "One-time codes (OTPs). Messages that look like one are refused and not saved.", "Full card or account numbers"],
   who: "Who sees it",
@@ -315,8 +315,7 @@ export const SETTINGS_COPY = {
 } as const;
 
 export const ONBOARDING_COPY = {
-  alreadyRecorded: (names: string) => `${names} already had an opening balance, so it wasn't changed.`,
-  step: (n: number) => `Step ${String(n)} of 5`,
+  step: (n: number) => `Step ${String(n)} of 4`,
   next: "Next",
   back: "Back",
   finish: "Finish setup",
@@ -328,15 +327,9 @@ export const ONBOARDING_COPY = {
   currencyValue: "Bangladeshi taka (৳ BDT)",
   currencyHint: "Other currencies come later.",
   accountsTitle: "Where your money sits",
-  accountsBody: "Add bank accounts, mobile wallets, cash and cards. Only the last 3–4 digits, never a full number.",
+  accountsBody: "Add bank accounts, mobile wallets, cash and cards. Just a name and a type: each one starts at ৳0.",
   noAccounts: "No accounts yet.",
   addAccount: "Add another account",
-  balancesTitle: "What each holds today",
-  balancesInfo: "Opening balances are starting positions, not income. Later imports of older history won't count them twice.",
-  asOf: "As of",
-  youOwe: "you owe",
-  balancesInvalid: "Enter amounts in taka, like 3,500.",
-  noBalances: "Add accounts first; you can set opening balances later in Accounts.",
   remindersTitle: "Gentle reminders",
   remindersBody: "MoneyTrace asks about cash it can't place, like ATM withdrawals. It never assumes unexplained cash was spent.",
 } as const;
@@ -372,4 +365,18 @@ export const REMINDERS_COPY = {
   loading: "Loading your reminders…",
   readFailed: "Couldn't load your reminders. Nothing has changed; try again.",
   retry: "Retry",
+} as const;
+
+export const ADD_ACCOUNT_COPY = {
+  title: "Add account",
+  back: "← Accounts",
+  name: "Account name",
+  type: "Type",
+  types: { bank: "Bank or mobile wallet", cash: "Cash wallet", familyCash: "Held by family", creditLiability: "Credit card" },
+  startsAtZero: "Every account starts at ৳0.",
+  nameMissing: "Give the account a name.",
+  save: "Save account",
+  saved: (name: string) => `${name} added. It starts at ৳0.`,
+  failed: "That wasn't saved. Please try again.",
+  addAnother: "Add another",
 } as const;
