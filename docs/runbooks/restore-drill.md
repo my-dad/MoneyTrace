@@ -13,46 +13,96 @@ hand-written collection list.
 pnpm test:emulator
 ```
 
-The emulator test seeds a contract-valid document in every registered owner
-collection and verifies that deleting or changing any document changes only
-that collection's checksum. It also checks profile and deletion-log loss.
+The emulator tests seed a contract-valid document in every registered owner
+collection and verify that deleting or changing any document changes only that
+collection's checksum, including profile and deletion-log loss. They also run
+the drill's own `seed` and `verify` end to end, and check that a lost ledger
+entry or a wrong balance is reported.
 
-## Seed a real staging database
+## Before a staging drill (0B only)
 
-This requires Application Default Credentials and an existing staging project.
-The command refuses projects unless the ID is `demo-moneytrace` or ends in
-`-staging`.
+A staging drill needs managed backups, and backups need the Blaze plan. Until
+Mabrur approves Blaze under the 0B gate (`firebase-environments.md`), stop here.
+Once Blaze is approved, set backups and point-in-time recovery up once, and
+record the retention in `restore-drill-log.md`. The 14-day retention below is a
+placeholder: the spec requires a defined period but doesn't set one, so Mabrur
+confirms it before running this.
+
+```bash
+firebase firestore:backups:schedules:create --project moneytrace-staging \
+  --database "(default)" --recurrence DAILY --retention 14d
+firebase firestore:databases:update "(default)" --project moneytrace-staging \
+  --point-in-time-recovery ENABLED
+```
+
+The tool refuses any project other than `demo-moneytrace` or one ending in
+`-staging`. A staging run refuses to start while `FIRESTORE_EMULATOR_HOST` is
+set, so it can never silently drill the emulator instead. Run
+`unset FIRESTORE_EMULATOR_HOST` first.
+
+## Seed staging
 
 ```bash
 gcloud auth application-default login
-pnpm drill:seed --project moneytrace-staging --expected drill-expected.json
+unset FIRESTORE_EMULATOR_HOST
+pnpm drill:seed --project moneytrace-staging --expected /tmp/drill-expected.json
 ```
 
-The seed creates the fixed owner `restore-drill`, posts an opening balance
-through the application use case, validates the remaining seed documents
-against their contract schemas, and writes counts plus SHA-256 hashes to the
-expected file. The expected file contains no raw financial documents and must
-not be committed.
+The seed creates the fixed owner `restore-drill` (it has no Auth user), posts
+an opening balance through the application use case, validates the remaining
+seed documents against their contract schemas, and writes counts plus SHA-256
+hashes to the expected file. The seeded source event is already terminal, so
+deployed triggers and schedules leave it alone. The expected file contains no
+raw financial documents; keep it outside the repository.
 
-## Restore and verify
+## Back up, restore and verify
 
-After a daily Firestore backup exists, restore it into a temporary database
-named `restore-drill` using the Firebase CLI. Check the current CLI flags first:
+The backup must be taken **after** the seed and before anything else changes
+the `restore-drill` owner or the `deletionLog` collection (its whole content is
+hashed). Do not wait for an older daily backup: note the seed time, then wait
+for the next scheduled backup, and check that its snapshot time is later.
 
 ```bash
-firebase firestore:databases:restore --help
-pnpm firebase firestore:databases:restore <backup-resource> \
-  --database restore-drill --project moneytrace-staging
+firebase firestore:backups:list --project moneytrace-staging
+# Use the "name" of a backup whose snapshot time is after the seed.
+firebase firestore:databases:restore --project moneytrace-staging \
+  --backup <backup-name> --database restore-drill
 pnpm drill:verify --project moneytrace-staging \
-  --database restore-drill --expected drill-expected.json
+  --database restore-drill --expected /tmp/drill-expected.json
 ```
 
-Expected output is `checksum match`. Any difference names a registered
-collection, `profile`, `deletionLog`, or `balance:<accountId>` and exits
-non-zero. Delete the temporary database after recording the result.
+`verify` on staging requires `--database` and refuses `(default)`, because
+checking the live database would compare it with itself. A pass prints
+`checksum match in moneytrace-staging/restore-drill`. Any difference names a
+registered collection, `profile`, `deletionLog`, or `balance:<accountId>` and
+exits non-zero. Record the result, with the backup name and both timestamps, in
+`restore-drill-log.md`.
 
-Firestore backups do not include Auth or Storage. Export Auth outside the
-repository, confirm the test UID is present, and delete the export because it
-contains user data. Storage is intentionally not restored: an orphaned
-`temporaryUploads` record must ask for a new upload according to the pipeline
-spec.
+## Clean up
+
+```bash
+firebase firestore:databases:delete restore-drill --project moneytrace-staging
+rm /tmp/drill-expected.json
+```
+
+Then delete the seeded data from the live database: the `users/restore-drill`
+document with all its subcollections, and `deletionLog/restore-drill`. Use the
+Firebase console, or `firebase firestore:delete users/restore-drill --recursive
+--project moneytrace-staging` and `firebase firestore:delete
+deletionLog/restore-drill --project moneytrace-staging`.
+
+## Not covered by this drill
+
+Firestore backups do not include Auth or Storage. For Auth, export it outside
+the repository and check that the expected real user accounts are present, then
+delete the export, because it contains user data:
+
+```bash
+firebase auth:export /tmp/auth-export.json --project moneytrace-staging
+rm /tmp/auth-export.json
+```
+
+Storage is intentionally not restored: an orphaned `temporaryUploads` record
+must ask for a new upload, according to the pipeline spec. Replaying the
+deletion log after a restore (so deleted accounts stay deleted) is Phase 4 work
+and is not exercised yet.

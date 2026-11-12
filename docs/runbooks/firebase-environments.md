@@ -47,6 +47,8 @@ These steps require Mabrur's Google account and billing decision. Do not run
 them from an automated agent.
 
 1. Keep `moneytrace-staging` on Spark for now; do not upgrade or deploy.
+   Managed backups and point-in-time recovery need Blaze, so the restore drill
+   (`restore-drill.md`) cannot run on staging until this changes.
 2. The default Firestore database already exists in `asia-south2`; its location
    is permanent. Stop if any new environment cannot use the approved region.
 3. Enable Google sign-in and verify the web authorized domains manually.
