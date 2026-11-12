@@ -1,6 +1,10 @@
 export type SensitiveKind = "otp" | "pin" | "password" | "fullCardNumber";
 
-const OTP = /\b(?:otp|one[- ]?time[- ]?(?:password|pin|code)|verification code)\b/i;
+const OTP_WORD = String.raw`(?:otp|one[- ]?time[- ]?(?:password|pin|code)|verification code)`;
+/** An OTP is a secret only with its code: "Your OTP is 482913", "482913 is your OTP". */
+const OTP = new RegExp(String.raw`\b${OTP_WORD}\b\D{0,20}\b\d{4,8}\b|\b\d{4,8}\b\D{0,20}\b${OTP_WORD}\b`, "i");
+/** Banks' safety footers ("Never share your PIN", "Do not disclose your password") name secrets without containing any. */
+const ADVISORY = /\b(?:never|do\s*not|don['’]?t|dont)\s+(?:share|disclose|tell|give|reveal)\b[^.!?\n]{0,60}/gi;
 const PIN = /\b(?:t-?)?pin\b.{0,15}\d{4,6}/i;
 const PASSWORD = /\b(?:password|passcode)\b/i;
 const CARD_RUN = /(?<!\d)\d{13,19}(?!\d)/g;
@@ -31,9 +35,10 @@ function hasFullCardNumber(text: string): boolean {
 
 /** Secrets the product must never store or forward (PRD section 10). */
 export function detectSensitiveContent(text: string): SensitiveKind | null {
-  if (OTP.test(text)) return "otp";
-  if (PIN.test(text)) return "pin";
-  if (PASSWORD.test(text)) return "password";
+  const withoutAdvice = text.replace(ADVISORY, " ");
+  if (OTP.test(withoutAdvice)) return "otp";
+  if (PIN.test(withoutAdvice)) return "pin";
+  if (PASSWORD.test(withoutAdvice)) return "password";
   if (hasFullCardNumber(text)) return "fullCardNumber";
   return null;
 }

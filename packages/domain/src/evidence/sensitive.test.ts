@@ -52,4 +52,20 @@ describe("maskIdentifiers", () => {
   it("leaves amounts readable", () => {
     expect(maskIdentifiers("Avl Bal:90000.40")).toBe("Avl Bal:90000.40");
   });
+
+  it("does not refuse a bank SMS for its safety footer", () => {
+    for (const text of [
+      "Tk 700.00 debited from A/C **1234 on 12-Nov-26. Never share your PIN. Helpline 16221",
+      "Your card **9999 was charged BDT 1,900.00. Never share OTP with anyone.",
+      "BDT 500 received. Do not disclose your password or PIN to anyone. Call 16234",
+    ]) {
+      expect(detectSensitiveContent(text), text).toBeNull();
+    }
+  });
+
+  it("still refuses a real code even next to a safety footer", () => {
+    expect(detectSensitiveContent("Your OTP is 482913. Never share your OTP.")).toBe("otp");
+    expect(detectSensitiveContent("482913 is your one-time password for the transfer")).toBe("otp");
+    expect(detectSensitiveContent("Your new PIN is 4821. Never share it.")).toBe("pin");
+  });
 });
