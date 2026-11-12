@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D · Reports — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:780px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .scroll { flex:1; overflow:hidden; padding:0 16px; }
+  .top { padding:20px 16px 8px; }
+  .top h2 { margin:0; font-size:24px; font-weight:800; }
+  .top .sub { margin-top:2px; }
+  .sub { font-size:12px; color:var(--mt-caption); }
+  .chips { display:flex; gap:8px; overflow:hidden; padding:8px 16px 12px; }
+  .chip { flex:none; min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .chip.on { background:var(--mt-ink); color:#fff; border-color:var(--mt-ink); }
+  .chip .n { font-size:11px; font-weight:800; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-radius:999px; padding:1px 6px; }
+
+  .day { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:14px 4px 6px; }
+  .list { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+  .item { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .item:first-child { border-top:none; }
+  .item .ic { width:36px; height:36px; border-radius:12px; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); display:grid; place-items:center; flex:none; color:var(--mt-body); }
+  .item .txt { flex:1; min-width:0; }
+  .item .t { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s { font-size:12px; color:var(--mt-caption); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .amt { text-align:right; flex:none; }
+  .item .amt b { display:block; font-size:14px; }
+  .item.dup .t, .item.dup .amt b { color:var(--mt-caption); }
+  .item.dup .amt b { text-decoration:line-through; }
+  .move { color:var(--mt-body); }
+
+  .status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:4px; }
+  .verified { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .pending { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .needs { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .failed { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .neutral { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .tabbar { display:grid; grid-template-columns:repeat(5,1fr); background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px 18px; font-size:11px; color:var(--mt-caption); text-align:center; }
+  .tabbar span { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tabbar .on { color:var(--mt-ink); font-weight:800; box-shadow:inset 0 3px 0 var(--mt-accent); }
+
+  .empty { text-align:center; padding:72px 24px; }
+  .empty .e-ic { width:56px; height:56px; border-radius:18px; margin:0 auto 14px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; }
+  .empty b { display:block; font-size:16px; margin-bottom:6px; }
+  .empty p { margin:0 0 16px; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:999px; font-size:14px; font-weight:700; border:1px solid var(--mt-border-strong); background:var(--mt-surface); color:var(--mt-ink); }
+  .btn.primary { background:var(--mt-accent); color:#fff; border-color:var(--mt-accent); }
+  .btn.block { width:100%; box-sizing:border-box; }
+  .skel { height:56px; border-top:1px solid var(--mt-border-soft); display:flex; align-items:center; gap:12px; padding:0 14px; }
+  .skel i { display:block; height:10px; border-radius:6px; background:var(--mt-border-soft); }
+  .alert { margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-failed-tint); color:var(--mt-failed-text); font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+  /* Detail */
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border-soft); font-weight:700; }
+  .bar .back { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; margin-left:-10px; }
+  .hero { padding:20px 16px 8px; }
+  .hero .kind { font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .hero .big { font-size:32px; font-weight:800; margin:4px 0; }
+  .card { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:10px 16px; }
+  .card h4 { margin:0 0 8px; font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:7px 0; border-top:1px solid var(--mt-border-soft); }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv span:last-child { font-weight:600; text-align:right; }
+  .sms { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); border-radius:12px; padding:10px 12px; color:var(--mt-body); }
+  .note { font-size:12px; color:var(--mt-caption); line-height:1.5; margin-top:8px; }
+  .actions { display:flex; gap:10px; padding:6px 16px 16px; }
+  .info { margin:10px 16px; padding:12px 14px; border-radius:14px; border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; background:var(--mt-surface-soft); }
+
+  /* Sheet */
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:10px 16px 24px; }
+  .grab { width:40px; height:4px; border-radius:4px; background:var(--mt-border-strong); margin:0 auto 14px; }
+  .sheet h3 { margin:0 0 4px; font-size:18px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+  .seg span { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+  .seg .on { border:2px solid var(--mt-ink); }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .input { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; box-sizing:border-box; color:var(--mt-ink); }
+  .input.area { min-height:76px; }
+  .input.err { border-color:var(--mt-failed-text); }
+  .errtxt { font-size:12px; color:var(--mt-failed-text); margin-top:6px; font-weight:600; }
+  .result { margin-top:12px; padding:10px 12px; border-radius:12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:13px; font-weight:700; }
+
+  /* Desktop */
+  .desktop { width:1280px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; display:grid; grid-template-columns:232px 1fr 440px; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .rail { background:var(--mt-surface-soft); border-right:1px solid var(--mt-border); padding:22px 14px; display:flex; flex-direction:column; gap:4px; font-size:14px; }
+  .rail b { margin:0 6px 20px; font-size:16px; }
+  .rail span { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:12px; color:var(--mt-body); }
+  .rail .on { background:var(--mt-surface); border:1px solid var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); color:var(--mt-ink); font-weight:800; }
+  .dmain { padding:24px 28px; overflow:hidden; }
+  .dside { background:var(--mt-surface); border-left:1px solid var(--mt-border); overflow:hidden; }
+  .item.sel { background:var(--mt-accent-tint); }
+</style>
+</head>
+<body>
+<style>
+  .group-h { display:flex; justify-content:space-between; align-items:baseline; margin:16px 4px 6px; }
+  .group-h .day { margin:0; }
+  .group-h b { font-size:13px; }
+  .item .ic { font-size:14px; }
+  .unx { border:1px dashed var(--mt-border-dashed); background:var(--mt-surface-soft); }
+  .unx .t { font-weight:600; }
+  .owed { font-size:11px; color:var(--mt-caption); font-weight:600; }
+  .add { display:flex; gap:10px; padding:14px 16px; }
+  .inst { display:flex; gap:10px; flex-wrap:wrap; }
+  .pill { border:1px solid var(--mt-border); background:var(--mt-surface-soft); border-radius:12px; padding:8px 12px; font-size:13px; font-weight:600; }
+  .pill span { display:block; font-size:11px; font-weight:500; color:var(--mt-caption); }
+  .diff { margin-top:12px; padding:12px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; }
+  .diff b { font-size:18px; display:block; margin:2px 0; }
+  .steps { display:flex; gap:6px; margin:4px 0 14px; }
+  .steps i { flex:1; height:4px; border-radius:4px; background:var(--mt-border); }
+  .steps i.on { background:var(--mt-accent); }
+  .form { padding:8px 16px 16px; display:flex; flex-direction:column; gap:14px; }
+  .hint { font-size:12px; color:var(--mt-caption); margin-top:6px; line-height:1.45; }
+  .select { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; justify-content:space-between; align-items:center; background:var(--mt-surface); }
+  .radios { display:flex; flex-direction:column; gap:8px; }
+  .radio { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; gap:10px; align-items:center; }
+  .radio.on { border:2px solid var(--mt-ink); }
+  .radio i { width:16px; height:16px; border-radius:999px; border:2px solid var(--mt-border-strong); flex:none; }
+  .radio.on i { border:5px solid var(--mt-ink); }
+  .fixedbar { padding:12px 16px 20px; border-top:1px solid var(--mt-border-soft); background:var(--mt-surface); display:flex; gap:10px; }
+  .fixedbar .btn { flex:1; }
+</style>
+<style>
+  .seg { margin:4px 16px 0; }
+  .seg span { min-height:40px; font-size:13px; }
+  .period { display:flex; align-items:center; justify-content:space-between; padding:10px 16px 4px; }
+  .period b { font-size:16px; }
+  .period .nav { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); color:var(--mt-body); }
+  .period .nav.off { color:var(--mt-border-strong); }
+  .period .mid { text-align:center; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 16px; }
+  .tile { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:12px 14px; }
+  .tile .k { font-size:12px; color:var(--mt-caption); font-weight:600; }
+  .tile .v { font-size:22px; font-weight:800; margin-top:2px; }
+  .trend { margin:0 16px; font-size:13px; color:var(--mt-body); line-height:1.5; }
+  .unxline { margin:10px 16px; padding:10px 14px; border:1px dashed var(--mt-border-dashed); border-radius:14px; background:var(--mt-surface-soft); display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+  .unxline b { white-space:nowrap; }
+  .bars { display:flex; flex-direction:column; gap:12px; }
+  .bar-row .lbl { display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .bar-row .lbl span:last-child { font-weight:700; }
+  .bar-row .track { height:10px; border-radius:6px; background:var(--mt-surface-soft); }
+  .bar-row .fill { height:10px; border-radius:0 4px 4px 0; background:var(--mt-body); }
+  .disc { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-top:1px solid var(--mt-border-soft); font-size:13px; line-height:1.45; }
+  .disc:first-of-type { border-top:none; }
+  .disc .txt { flex:1; }
+  .disc .s { font-size:12px; color:var(--mt-caption); }
+  .disc b { white-space:nowrap; }
+</style>
+<div class="page">
+  <header>
+    <h1>D · Reports</h1>
+    <p>What came in, what was spent and where, for a calendar month or your salary cycle. Only posted transactions count. Cash that isn't explained yet is its own neutral line and is never added to spending; card purchases count as spending when they happen, and card repayments don't count at all.</p>
+  </header>
+
+  <div class="row">
+    <!-- D1 -->
+    <section>
+      <p class="frame-label">D1 · Calendar month · this month so far</p>
+      <div class="phone">
+        <div class="top"><h2>Reports</h2></div>
+        <div class="seg"><span class="on">Calendar month</span><span>Salary cycle</span></div>
+        <div class="period"><span class="nav">‹</span><div class="mid"><b>November 2026</b><div class="sub">1–6 Nov · month so far</div></div><span class="nav off">›</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Came in</div><div class="v">৳85,000</div></div>
+          <div class="tile"><div class="k">Spent</div><div class="v">৳18,640</div></div>
+        </div>
+        <p class="trend">৳1,740 more spent than the same days of October (৳16,900).</p>
+        <div class="unxline"><span>Cash not yet explained<br><span class="sub">From the ATM on 5 Nov · not counted as spending</span></span><b>৳5,000</b></div>
+        <div class="card"><h4>Where it went</h4>
+          <div class="bars">
+            <div class="bar-row"><div class="lbl"><span>Groceries</span><span>৳6,820</span></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Other</span><span>৳5,730</span></div><div class="track"><div class="fill" style="width:84%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Transport</span><span>৳3,150</span></div><div class="track"><div class="fill" style="width:46%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Eating out</span><span>৳2,940</span></div><div class="track"><div class="fill" style="width:43%"></div></div></div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+
+    <!-- D1b -->
+    <section>
+      <p class="frame-label">D1 · continued · movements, cards, open questions (scrolled)</p>
+      <div class="phone">
+        <div class="card" style="margin-top:16px"><h4>Account movements</h4>
+          <div class="kv"><span>DBBL Savings</span><span>+৳80,000</span></div>
+          <div class="kv"><span>City Bank Current</span><span>−৳2,500</span></div>
+          <div class="kv"><span>bKash</span><span>−৳950</span></div>
+          <div class="kv"><span>Wallet</span><span>−৳650</span></div>
+          <div class="kv"><span>Cash · not yet explained</span><span>+৳5,000</span></div>
+          <div class="note">Moves between your own accounts (like the ATM withdrawal) change where money sits, not how much you have.</div>
+        </div>
+        <div class="card"><h4>Cards · you owe</h4>
+          <div class="kv"><span>City Bank Amex ••7702 · due 15 Nov</span><span>৳18,450</span></div>
+          <div class="kv"><span>EBL Visa ••2290 · due 22 Nov</span><span>৳6,120</span></div>
+          <div class="kv"><span>Total owed</span><span>৳24,570</span></div>
+        </div>
+        <div class="card"><h4>Not settled yet</h4>
+          <div class="disc"><div class="txt">Home cash counted less than expected<div class="s">Snoozed until 1 Dec · not counted as spending</div></div><b>৳300</b></div>
+          <div class="disc"><div class="txt">ATM cash with no place yet<div class="s">Needs your answer</div></div><b>৳5,000</b></div>
+          <div class="disc"><div class="txt">Agora Dhanmondi card purchase<div class="s">Waiting for your answer · not included above</div></div><b>৳1,870</b></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+
+    <!-- D2 -->
+    <section>
+      <p class="frame-label">D2 · Salary cycle · 25 Oct – 24 Nov</p>
+      <div class="phone">
+        <div class="top"><h2>Reports</h2></div>
+        <div class="seg"><span>Calendar month</span><span class="on">Salary cycle</span></div>
+        <div class="period"><span class="nav">‹</span><div class="mid"><b>25 Oct – 24 Nov</b><div class="sub">Cycle so far · starts on the 25th · change in Settings</div></div><span class="nav off">›</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Came in</div><div class="v">৳85,000</div></div>
+          <div class="tile"><div class="k">Spent</div><div class="v">৳24,915</div></div>
+        </div>
+        <p class="trend">৳2,115 less spent than the same days of the last cycle (৳27,030).</p>
+        <div class="unxline"><span>Cash not yet explained<br><span class="sub">Not counted as spending</span></span><b>৳5,000</b></div>
+        <div class="card"><h4>Where it went</h4>
+          <div class="bars">
+            <div class="bar-row"><div class="lbl"><span>Groceries</span><span>৳9,220</span></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Other</span><span>৳7,630</span></div><div class="track"><div class="fill" style="width:83%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Transport</span><span>৳4,250</span></div><div class="track"><div class="fill" style="width:46%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Eating out</span><span>৳3,815</span></div><div class="track"><div class="fill" style="width:41%"></div></div></div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <!-- D3 -->
+    <section>
+      <p class="frame-label">D3 · A previous period · October 2026 (complete)</p>
+      <div class="phone">
+        <div class="top"><h2>Reports</h2></div>
+        <div class="seg"><span class="on">Calendar month</span><span>Salary cycle</span></div>
+        <div class="period"><span class="nav">‹</span><div class="mid"><b>October 2026</b><div class="sub">Whole month</div></div><span class="nav">›</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Came in</div><div class="v">৳85,000</div></div>
+          <div class="tile"><div class="k">Spent</div><div class="v">৳52,300</div></div>
+        </div>
+        <p class="trend">No earlier month to compare with. Tracking started on 1 Oct.</p>
+        <div class="card"><h4>Where it went</h4>
+          <div class="bars">
+            <div class="bar-row"><div class="lbl"><span>Groceries</span><span>৳18,900</span></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Other</span><span>৳15,600</span></div><div class="track"><div class="fill" style="width:83%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Transport</span><span>৳9,700</span></div><div class="track"><div class="fill" style="width:51%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Eating out</span><span>৳8,100</span></div><div class="track"><div class="fill" style="width:43%"></div></div></div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+
+    <!-- D4 -->
+    <section>
+      <p class="frame-label">D4 · Empty period · before tracking started</p>
+      <div class="phone">
+        <div class="top"><h2>Reports</h2></div>
+        <div class="seg"><span class="on">Calendar month</span><span>Salary cycle</span></div>
+        <div class="period"><span class="nav off">‹</span><div class="mid"><b>September 2026</b><div class="sub">Whole month</div></div><span class="nav">›</span></div>
+        <div class="empty"><div class="e-ic">📊</div><b>Nothing recorded in September</b><p>Tracking started on 1 Oct 2026. Opening balances are starting positions, so they don't appear as income.</p><span class="btn">Go to October</span></div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+
+    <!-- D5 -->
+    <section>
+      <p class="frame-label">D5 · Loading, read error, and Not available yet (live mode, before reports are built)</p>
+      <div class="phone">
+        <div class="top"><h2>Reports</h2><div class="sub" role="status">Loading this period…</div></div>
+        <div class="tiles"><div class="tile"><div class="skel" style="border:none;padding:0;height:40px"><i style="width:70%"></i></div></div><div class="tile"><div class="skel" style="border:none;padding:0;height:40px"><i style="width:60%"></i></div></div></div>
+        <p class="frame-label" style="margin:20px 16px 0">If the report can't load:</p>
+        <div class="alert" style="margin:10px 16px" role="alert"><span>Couldn't load this report. No figures are shown rather than wrong ones.</span><span class="btn" style="min-height:36px">Retry</span></div>
+        <p class="frame-label" style="margin:20px 16px 0">Live mode, before reports are connected:</p>
+        <div class="empty" style="padding:28px 24px"><b>Not available yet</b><p>This part of MoneyTrace isn't built yet.</p></div>
+        <div style="flex:1"></div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Desktop -->
+  <section>
+    <p class="frame-label" style="max-width:none">D6 · Desktop · summary and categories left, movements, cards and open questions right</p>
+    <div class="desktop" style="grid-template-columns:232px 1fr 380px">
+      <div class="rail"><b>MoneyTrace</b><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span class="on">Reports</span></div>
+      <div class="dmain">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0;font-size:26px">Reports</h2>
+          <div class="seg" style="margin:0;width:320px"><span class="on">Calendar month</span><span>Salary cycle</span></div>
+        </div>
+        <div class="period" style="padding:14px 0 4px;justify-content:flex-start;gap:16px"><span class="nav">‹</span><div><b>November 2026</b><div class="sub">1–6 Nov · month so far</div></div><span class="nav off">›</span></div>
+        <div class="tiles" style="margin:12px 0;grid-template-columns:1fr 1fr 1fr">
+          <div class="tile"><div class="k">Came in</div><div class="v">৳85,000</div></div>
+          <div class="tile"><div class="k">Spent</div><div class="v">৳18,640</div></div>
+          <div class="tile" style="border-style:dashed;background:var(--mt-surface-soft)"><div class="k">Cash not yet explained</div><div class="v">৳5,000</div><div class="sub">Not counted as spending</div></div>
+        </div>
+        <p class="trend" style="margin:0 0 6px">৳1,740 more spent than the same days of October (৳16,900).</p>
+        <div class="card" style="margin:10px 0"><h4>Where it went</h4>
+          <div class="bars">
+            <div class="bar-row"><div class="lbl"><span>Groceries</span><span>৳6,820</span></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Other</span><span>৳5,730</span></div><div class="track"><div class="fill" style="width:84%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Transport</span><span>৳3,150</span></div><div class="track"><div class="fill" style="width:46%"></div></div></div>
+            <div class="bar-row"><div class="lbl"><span>Eating out</span><span>৳2,940</span></div><div class="track"><div class="fill" style="width:43%"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dside" style="padding:12px 0">
+        <div class="card"><h4>Account movements</h4>
+          <div class="kv"><span>DBBL Savings</span><span>+৳80,000</span></div>
+          <div class="kv"><span>City Bank Current</span><span>−৳2,500</span></div>
+          <div class="kv"><span>bKash</span><span>−৳950</span></div>
+          <div class="kv"><span>Wallet</span><span>−৳650</span></div>
+          <div class="kv"><span>Cash · not yet explained</span><span>+৳5,000</span></div>
+        </div>
+        <div class="card"><h4>Cards · you owe</h4>
+          <div class="kv"><span>Amex ••7702 · due 15 Nov</span><span>৳18,450</span></div>
+          <div class="kv"><span>EBL ••2290 · due 22 Nov</span><span>৳6,120</span></div>
+        </div>
+        <div class="card"><h4>Not settled yet</h4>
+          <div class="disc"><div class="txt">Home cash counted less<div class="s">Snoozed until 1 Dec</div></div><b>৳300</b></div>
+          <div class="disc"><div class="txt">ATM cash with no place yet<div class="s">Needs your answer</div></div><b>৳5,000</b></div>
+          <div class="disc"><div class="txt">Agora card purchase<div class="s">Not included above</div></div><b>৳1,870</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>Decisions to confirm</h2>
+    <ul>
+      <li><b>Toggle</b> between Calendar month and Salary cycle at the top; arrows step to earlier periods. The cycle start day (the 25th) is set in Settings.</li>
+      <li><b>Cash not yet explained</b> is its own dashed, neutral line, never part of Spent.</li>
+      <li><b>Trend</b> is one plain sentence against the same days of the previous period, not a chart.</li>
+      <li><b>Where it went</b> is one bar per category, largest first, with the amount written beside each bar.</li>
+      <li><b>Not settled yet</b> lists cash differences, unplaced cash and purchases waiting for an answer, which are left out of the totals until resolved.</li>
+      <li><b>Before tracking started</b>, a period is empty and says why, rather than showing zeros.</li>
+    </ul>
+  </section>
+</div>
+
+</body>
+</html>

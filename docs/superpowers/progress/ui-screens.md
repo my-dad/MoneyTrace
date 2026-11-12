@@ -27,7 +27,8 @@ Read this first when resuming. Updated and committed after every task.
 | 6 Build B activity | Done |
 | 7 Mockup C accounts and cash | Done (approved) |
 | 8 Build C accounts and cash | Done |
-| 9–14 Mockups/builds D–F | Not started |
+| 9 Mockup D reports | Drawn; awaiting Mabrur's approval |
+| 10–14 Build D, mockups/builds E–F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -37,17 +38,17 @@ Read this first when resuming. Updated and committed after every task.
 | A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
 | B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
 | C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
-| D Reports | — | — | — | — |
+| D Reports | Drawn: `design/screens/D-reports.html` | Awaiting Mabrur | — | — |
 | E Settings / Onboarding | — | — | — | — |
 | F Reminders inbox | — | — | — | — |
 
 ## Next task
 
-Task 9: draw mockup D (Reports) at `design/screens/D-reports.html`, then stop for Mabrur's approval.
+Mabrur reviews `design/screens/D-reports.html`. On approval: record it here, then Task 10 (build D).
 
 ## Open decisions
 
-None.
+Mockup D asks Mabrur to confirm: the Calendar month / Salary cycle toggle with arrows for earlier periods (cycle start day set in Settings); unexplained cash as its own neutral line, never in Spent; the trend as one sentence against the same days of the previous period; one bar per category with amounts; a "Not settled yet" list kept out of totals; an empty period before tracking started that says why.
 
 ## Noted for later (not in this plan)
 
