@@ -16,9 +16,6 @@ const services = (fixture: boolean): AppServices => ({
   auth: createFixtureAuthGateway(),
   readModels: new InMemoryReadModelGateway(),
   commands: createFixtureCommands(),
-  cash: null,
-  reports: null,
-  settings: null,
   fixture,
   nowMs: () => 0,
 });
@@ -34,5 +31,12 @@ describe("AppShell", () => {
     render(<AppShell services={services(false)}><p>content</p></AppShell>);
     expect(await screen.findByText("content")).toBeTruthy();
     expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("renders the content and the chat button, with no navigation", async () => {
+    render(<AppShell services={services(true)}><p>content</p></AppShell>);
+    expect(await screen.findByText("content")).toBeTruthy();
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.getByRole("button", { name: /Open chat/ })).toBeTruthy();
   });
 });

@@ -1,12 +1,6 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { CashSource } from "../features/accounts/cash-source";
-import { createFixtureCashSource } from "../features/accounts/fixture-cash-source";
-import { createFixtureReportSource } from "../features/reports/fixture-report-source";
-import type { ReportSource } from "../features/reports/report-source";
-import { createFixtureSettingsSource } from "../features/settings/fixture-settings-source";
-import type { SettingsSource } from "../features/settings/settings-source";
 import type { AuthGateway } from "../features/auth/auth-gateway";
 import { createFirebaseAuthGateway } from "../features/auth/firebase-auth-gateway";
 import { createFixtureAuthGateway } from "../features/auth/fixture-auth-gateway";
@@ -22,12 +16,6 @@ export type AppServices = {
   auth: AuthGateway;
   readModels: ReadModelGateway;
   commands: Commands;
-  /** Account details and cash actions; fixture-only until functionality resumes. */
-  cash: CashSource | null;
-  /** Period reports; fixture-only until functionality resumes. */
-  reports: ReportSource | null;
-  /** Preferences and AI usage; fixture-only until functionality resumes. */
-  settings: SettingsSource | null;
   fixture: boolean;
   /** The app's "now". The demo is pinned to 6 Nov 2026 20:00 Dhaka so its figures never drift. */
   nowMs: () => number;
@@ -41,9 +29,6 @@ export function createAppServices(): AppServices {
       auth: createFixtureAuthGateway(),
       readModels: createFixtureReadModels(),
       commands: createFixtureCommands(),
-      cash: createFixtureCashSource(),
-      reports: createFixtureReportSource(),
-      settings: createFixtureSettingsSource(),
       fixture: true,
       nowMs: () => FIXTURE_NOW_MS,
     };
@@ -52,9 +37,6 @@ export function createAppServices(): AppServices {
     auth: createFirebaseAuthGateway(),
     readModels: createFirebaseReadModelGateway(),
     commands: createFirebaseCommands(),
-    cash: null,
-    reports: null,
-    settings: null,
     fixture: false,
     nowMs: () => Date.now(),
   };

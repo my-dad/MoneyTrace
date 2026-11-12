@@ -4,7 +4,6 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { AppServicesProvider, createAppServices, type AppServices } from "../../shared/app-services";
 import { AuthGate } from "../auth/AuthGate";
 import { ChatLauncher } from "../chat/ChatLauncher";
-import { AppNav } from "./AppNav";
 import { DemoMarker } from "./DemoMarker";
 import { OfflineBanner } from "./OfflineBanner";
 import styles from "./shell.module.css";
@@ -19,10 +18,7 @@ export function AppShell({ children, services }: { children: ReactNode; services
       {resolved.fixture && <DemoMarker />}
       <OfflineBanner />
       <AuthGate gateway={resolved.auth}>
-        <div className={`${styles.frame ?? ""} ${resolved.fixture ? (styles.withDemo ?? "") : ""}`}>
-          <AppNav />
-          <div className={styles.content}>{children}</div>
-        </div>
+        <div className={styles.content}>{children}</div>
         <ChatLauncher gateway={resolved.readModels} commands={resolved.commands} nowMs={resolved.nowMs()} />
       </AuthGate>
     </AppServicesProvider>
