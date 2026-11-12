@@ -118,7 +118,11 @@ function decisionRecord(
 export const decideStage: Stage = async (deps, ownerId, parkedEvent, claim) => {
   let event = parkedEvent;
   if (event.candidate === null && event.extraction?.notFinancialReason !== undefined) {
-    return { nextStatus: "rejected", outputs: [] };
+    // A bank's own parser saying "declined" or "promotional" is exact. The AI saying "not about
+    // money" may be wrong about real evidence, so the user decides (PRD: unclear goes to review).
+    return event.extraction.source === "ai"
+      ? { nextStatus: "pending", pendingReason: "awaitingClarification", outputs: [] }
+      : { nextStatus: "rejected", outputs: [] };
   }
   if (event.matchKind === "duplicate" && !event.userConfirmed) {
     return { nextStatus: "linkedAsDuplicate", outputs: [] };

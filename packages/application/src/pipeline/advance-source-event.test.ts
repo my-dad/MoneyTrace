@@ -496,10 +496,11 @@ describe("AI fallback", () => {
     expect(event).toMatchObject({ status: "deadLetter", deadLetterReason: "stageFailed" });
   });
 
-  it("AI saying no money moved ends as rejected", async () => {
+  it("AI saying no money moved asks the user rather than rejecting on its own", async () => {
     ai.scriptValue({ kind: "notFinancial", reason: "greeting" });
     expect((await run("hello there")).event).toMatchObject({
-      status: "rejected",
+      status: "pending",
+      pendingReason: "awaitingClarification",
       extraction: { notFinancialReason: "greeting" },
     });
   });
