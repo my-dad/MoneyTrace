@@ -1,9 +1,10 @@
 # Firebase environments
 
 This runbook covers the Phase 0B deployment gate. The repository supports the
-local `demo-moneytrace` emulator project and has a user-created staging project
-`moneytrace-staging` in alias `staging`. Development and production projects
-are not created.
+local `demo-moneytrace` emulator project. Mabrur chose two real environments on
+2026-11-13: **dev** and **prod** (no separate staging). The existing project
+`moneytrace-staging` is the dev project (alias `dev`); its ID can't be renamed
+and its Firestore database is already in `asia-south2`. Prod is not created yet.
 
 ## Security and billing decision
 
@@ -16,10 +17,10 @@ deploy real Functions until the following controls are implemented and tested:
 - Sign-in fallback: use `signInWithRedirect` when the pop-up is blocked or the app runs installed (standalone), checked on a real phone, with `authDomain` same-site with the app (CR-003 review).
 - Per-user and per-IP callable rate limits.
 - Conservative Function `maxInstances`, concurrency, timeout, and minimum-instance settings.
-- Separate Firebase projects for dev, staging, and prod.
+- Separate Firebase projects for dev and prod (Mabrur, 2026-11-13).
 - 2FA and least-privilege Google Cloud access; no committed service-account keys.
 - A supported billing spend cap plus alerts for invocations, errors, Storage, egress, and AI usage.
-- Emulator security tests and a staging abuse/penetration checklist.
+- Emulator security tests and an abuse/penetration checklist run on dev.
 
 The current code already authenticates callable requests, derives ownership from
 the verified token, denies unauthorized Firestore/Storage access through rules,
@@ -44,14 +45,14 @@ The emulator command builds Functions, then starts Auth, Firestore, Storage,
 and Functions using the ports in `firebase.json`. It does not contact a real
 Firebase project.
 
-## Staging gate
+## Dev gate
 
 These steps require Mabrur's Google account and billing decision. Do not run
 them from an automated agent.
 
-1. Keep `moneytrace-staging` on Spark for now; do not upgrade or deploy.
+1. Keep `moneytrace-staging` (alias `dev`) on Spark until the controls above are met; do not upgrade or deploy.
    Managed backups and point-in-time recovery need Blaze, so the restore drill
-   (`restore-drill.md`) cannot run on staging until this changes.
+   (`restore-drill.md`) cannot run on dev until this changes.
 2. The default Firestore database already exists in `asia-south2`; its location
    is permanent. Stop if any new environment cannot use the approved region.
 3. Enable Google sign-in and verify the web authorized domains manually.
@@ -59,7 +60,7 @@ them from an automated agent.
 
    ```bash
    firebase use --add
-   # alias: staging
+   # alias: dev
    ```
 
 5. Deploy the rules, Storage rules, and Functions only after the temporary
@@ -84,11 +85,11 @@ These pair with `docs/release/release-checklist.md`. Run them as Mabrur; never p
 2. **App Check (A3).** Register the web app with reCAPTCHA Enterprise in the Firebase console and put its site key in `apps/web/.env.production.local` as `NEXT_PUBLIC_APPCHECK_SITE_KEY` (a real build refuses to start without it). Callables enforce App Check from code; turn on enforcement for Firestore in the console too, after the first successful sign-in.
 3. **Rate-limit cleanup (A4).** Add a Firestore TTL policy on collection group `rateLimits`, field `expiresAt`.
 4. **Web config (B1).** `apps/web/.env.production.local` holds the project's `NEXT_PUBLIC_FIREBASE_*` values (see `apps/web/.env.example`). Set `authDomain` to the Hosting domain (for example `<project>.web.app`) so redirect sign-in stays same-site, and add that domain to Auth's authorized domains.
-5. **Deploy (B3).** `pnpm deploy:staging` or `pnpm deploy:prod` builds Functions and the web export, then deploys rules, Functions and Hosting. A `prod` alias must be added to `.firebaserc` once the project exists.
+5. **Deploy (B3).** `pnpm deploy:dev` or `pnpm deploy:prod` builds Functions and the web export, then deploys rules, Functions and Hosting. A `prod` alias must be added to `.firebaserc` once the project exists.
 
-## Dev and prod
+## Prod
 
-Create these only after staging passes the region smoke test. Add aliases for
+Create prod only after dev passes the region smoke test. Add aliases for
 the actual project IDs; never commit credentials or service-account keys.
 Configure billing alerts and confirm the default Cloud Logging bucket has
 30-day retention. Alerts notify but do not cap spending.
@@ -97,12 +98,12 @@ The planned deployment command is intentionally not enabled yet. When real
 projects exist, the documented sequence is:
 
 ```bash
-pnpm deploy:staging
+pnpm deploy:dev
 ```
 
-That command must build Functions and deploy Firestore rules, Storage rules,
-and Functions to the `staging` alias. Verify its flags and target before first
-use.
+That command builds Functions and the web export, then deploys Firestore rules,
+Storage rules, Functions and Hosting to the `dev` alias. Verify its flags and
+target before first use.
 
 ## CI and branch protection
 

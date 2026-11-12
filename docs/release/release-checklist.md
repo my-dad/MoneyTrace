@@ -19,7 +19,7 @@ Owner: **Code** = buildable here and verified by tests. **Mabrur** = needs his G
 
 - [x] B1 **Web hosting:** the web app builds to a deployable target and `firebase.json` serves it, with the PWA files. — Code (choice: Firebase Hosting static export, recommended because it works on the free tier; App Hosting needs Blaze)
 - [ ] B2 **CI:** GitHub Actions runs `pnpm verify`, the web build and `pnpm test:emulator` on every PR, and the checks are required on `master`. — Code done (`.github/workflows/ci.yml`). Remaining: first green run on GitHub, then Mabrur makes the three jobs required in branch protection.
-- [x] B3 **Deploy command** `pnpm deploy:staging` (and a prod one) checked for flags and targets. — Code
+- [x] B3 **Deploy command** `pnpm deploy:dev` and `pnpm deploy:prod` checked for flags and targets. — Code
 - [ ] B4 **Release gates 25–36** (27, 29, 30 deferred by CR-001) each mapped to a passing test. Mapped 2026-11-13:
   - 25 withdrawal: `strategies.test.ts`, `advance-source-event.test.ts`, `pipeline.emulator.test.ts`
   - 26 card purchase + partial repayment: same three, plus `firestore-ledger.emulator.test.ts`
@@ -38,21 +38,21 @@ Owner: **Code** = buildable here and verified by tests. **Mabrur** = needs his G
 - [ ] C2 Upgrade to Blaze, with a budget, alerts (invocations, errors, Storage, egress, AI) and a spend cap.
 - [ ] C3 DeepSeek data-processing terms read and accepted for real SMS text (CLAUDE.md, security and privacy).
 - [ ] C4 DeepSeek key set with `firebase functions:secrets:set DEEPSEEK_API_KEY`. Never pasted into chat.
-- [ ] C5 Decide whether a separate dev project is needed, or only staging and prod (the runbook lists all three).
+- [x] C5 Environments: dev and prod (Mabrur, 2026-11-13). The existing `moneytrace-staging` project is dev.
 
 ## D. Environments (Together)
 
-- [ ] D1 Staging region smoke test in `asia-south2` (trigger and schedule), with the delay recorded in `docs/adr/0004-region.md`.
+- [ ] D1 Dev region smoke test in `asia-south2` (trigger and schedule), with the delay recorded in `docs/adr/0004-region.md`.
 - [ ] D2 Prod project created in the approved region; Google sign-in enabled; authorized domains set.
-- [ ] D3 Allowlist secret `ALLOWED_EMAILS` set in staging and prod; Firestore TTL on `rateLimits.expiresAt`.
-- [ ] D4 App Check registered (reCAPTCHA Enterprise) for staging and prod.
+- [ ] D3 Allowlist secret `ALLOWED_EMAILS` set in dev and prod; Firestore TTL on `rateLimits.expiresAt`.
+- [ ] D4 App Check registered (reCAPTCHA Enterprise) for dev and prod.
 - [ ] D5 Backups and point-in-time recovery on; first restore drill matched (`docs/runbooks/restore-drill.md`).
-- [ ] D6 Staging abuse and penetration checklist run (another Google account, no App Check token, a burst of calls, a direct Firestore write).
+- [ ] D6 Dev abuse and penetration checklist run (another Google account, no App Check token, a burst of calls, a direct Firestore write).
 
 ## E. Pilot (Together)
 
 - [ ] E1 Real SMS from each provider through the deployed parsers and DeepSeek; its questions make sense (`interpret-v2` has only met scripted and fake providers).
-- [ ] E2 AI quota, metering and the "DeepSeek down" fallback observed on staging.
+- [ ] E2 AI quota, metering and the "DeepSeek down" fallback observed on dev.
 - [ ] E3 Installed PWA on Mabrur's phone: sign-in, paste, chat questions, dashboard.
 
 ## Not blocking release

@@ -2,6 +2,8 @@
 
 Status: accepted, pending staging smoke test
 
+Note (2026-11-13): there is no separate staging project any more. The "staging" smoke test below runs on the dev project (`moneytrace-staging`, alias `dev`).
+
 ## Context
 
 MoneyTrace is intended for Bangladesh. Firestore's location is permanent, so

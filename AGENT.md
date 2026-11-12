@@ -138,7 +138,7 @@ pnpm test:e2e:fixture
 and the unit test suite. `pnpm test:emulator` builds Functions and runs the
 emulator suite against the local demo project. `pnpm test:e2e` builds the web
 app and runs emulator-gated Playwright smoke paths. `pnpm test:e2e:fixture` builds the
-fixture-mode app and runs the demo-data smoke paths (no emulators needed). `pnpm deploy:staging` exists,
+fixture-mode app and runs the demo-data smoke paths (no emulators needed). `pnpm deploy:dev` and `pnpm deploy:prod` exist,
 but must not run before Phase 0B's App Check, rate-limit, billing, backup, and
 restore gates are approved.
 
