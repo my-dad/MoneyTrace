@@ -6,9 +6,9 @@ import type {
   ProviderOutcome,
 } from "@moneytrace/application";
 import { aiInterpretationSchema } from "@moneytrace/contracts";
-import type { CandidateTransaction } from "@moneytrace/domain";
+import { providerSlug, type CandidateTransaction } from "@moneytrace/domain";
 import { z } from "zod";
-import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v1";
+import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v2";
 
 export type DeepSeekConfig = {
   apiKey: string;
@@ -37,6 +37,21 @@ const responseSchema = z.object({
 
 const UNUSABLE = { kind: "unusable" } as const;
 
+type AiCandidate = Extract<z.infer<typeof aiInterpretationSchema>, { kind: "transaction" }>["candidate"];
+
+/** The model's reading as a candidate: its source name becomes the parsers' provider id (CR-008). */
+function toCandidate(raw: AiCandidate): CandidateTransaction {
+  const { occurredAtIso, sourceName, sourceMask, ...rest } = raw;
+  const provider = sourceName === undefined ? null : providerSlug(sourceName);
+  const mask = rest.instrumentMask ?? sourceMask;
+  return {
+    ...rest,
+    occurredAtMs: occurredAtIso === null ? null : Date.parse(occurredAtIso),
+    ...(provider === null ? {} : { provider }),
+    ...(mask === undefined ? {} : { instrumentMask: mask }),
+  } as CandidateTransaction;
+}
+
 function toInterpretation(content: string): AiInterpretation {
   let raw: unknown;
   try {
@@ -48,16 +63,15 @@ function toInterpretation(content: string): AiInterpretation {
   if (!parsed.success) return UNUSABLE;
   const output = parsed.data;
   if (output.kind === "notFinancial") return output;
-  if (output.kind === "question") return UNUSABLE;
-  const { occurredAtIso, ...rest } = output.candidate;
-  return {
-    kind: "transaction",
-    confidenceBp: output.confidenceBp,
-    candidate: {
-      ...rest,
-      occurredAtMs: occurredAtIso === null ? null : Date.parse(occurredAtIso),
-    } as CandidateTransaction,
-  };
+  if (output.kind === "question") {
+    return {
+      kind: "question",
+      text: output.text,
+      options: output.options ?? [],
+      candidate: output.candidate === undefined ? null : toCandidate(output.candidate),
+    };
+  }
+  return { kind: "transaction", confidenceBp: output.confidenceBp, candidate: toCandidate(output.candidate) };
 }
 
 function networkOutcome(error: unknown): ProviderOutcome<AiInterpretation> {

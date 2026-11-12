@@ -20,6 +20,7 @@ import { SYSTEM_CASH_ACCOUNT_ID } from "../use-cases/bootstrap-user";
 import { ConfirmCandidate } from "../use-cases/confirm-candidate";
 import { IntakeEvidence } from "../use-cases/intake-evidence";
 import { RecordOpeningBalance } from "../use-cases/record-opening-balance";
+import { AnswerQuestion } from "../use-cases/answer-question";
 import { ReverseAndReplace } from "../use-cases/reverse-and-replace";
 import { PostTransaction } from "../use-cases/post-transaction";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "./ai-gateway";
@@ -27,6 +28,7 @@ import { AdvanceSourceEvent } from "./advance-source-event";
 import { LedgerCandidateReader } from "./candidate-reader";
 
 const alice = asOwnerId("alice");
+const code = (c: string): Error => expect.objectContaining({ code: c }) as Error;
 const bob = asOwnerId("bob");
 /** All corpus samples are in March 2026, so this is after them and paste time is later. */
 const NOW = Date.parse("2026-04-01T06:00:00Z");
@@ -691,6 +693,77 @@ describe("own transfers are paired, not counted (CR-008)", () => {
     await confirm.execute({ ownerId: bob, sourceEventId: credit.id, decision: "link" });
     expect((await settle(bob, credit.id))?.status).toBe("posted");
     await expectPaired(debit.id);
+  });
+});
+
+describe("DeepSeek asks until it's clear (CR-008)", () => {
+  const NAGAD_SMS = "Tk2000 trx 8XK2 to 017XXXXXXXX successful. Nagad.";
+  const answerer = () => new AnswerQuestion({ sourceEvents: w.sourceEvents, clock: w.clock });
+  const question = (text = "Was this ৳2,000 paid from your Nagad, or received into it?") => {
+    ai.scriptValue({ kind: "question", text, options: ["Paid from it", "Received"], candidate: null });
+  };
+  const reading = () => {
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: 200_000, currency: "BDT", occurredAtMs: NOW, provider: "nagad", category: "groceries" } });
+  };
+
+  it("a question parks the message as aiQuestion, with the question and its quick answers", async () => {
+    question();
+    const { event } = await run(NAGAD_SMS);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "aiQuestion" });
+    expect(event?.clarifications).toEqual([
+      { question: "Was this ৳2,000 paid from your Nagad, or received into it?", options: ["Paid from it", "Received"], answer: null, askedAtMs: NOW, answeredAtMs: null },
+    ]);
+  });
+
+  it("an answer goes back with the history, and the next reading asks Record", async () => {
+    question();
+    const { id } = await run(NAGAD_SMS);
+    reading();
+    await answerer().execute({ ownerId: alice, sourceEventId: id, answer: "paid from it, for groceries" });
+    const event = await settle(alice, id);
+    expect(ai.lastInput?.context.clarifications).toEqual([{ question: "Was this ৳2,000 paid from your Nagad, or received into it?", answer: "paid from it, for groceries" }]);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "awaitingClarification", resolvedAccountId: "src-nagad-main", candidate: { amountMinor: 200_000 } });
+  });
+
+  it("each question round is a new DeepSeek call, never an earlier round's stored result", async () => {
+    question();
+    const { id } = await run(NAGAD_SMS);
+    reading();
+    await answerer().execute({ ownerId: alice, sourceEventId: id, answer: "paid from it" });
+    await settle(alice, id);
+    expect(ai.calls).toBe(2);
+  });
+
+  it("after 3 questions it shows the reading so far instead of asking again", async () => {
+    const partial = { kind: "purchase" as const, amountMinor: 200_000, currency: "BDT", occurredAtMs: NOW, provider: "nagad" };
+    const ask = () => {
+      ai.scriptValue({ kind: "question", text: "Which?", options: [], candidate: partial });
+    };
+    ask();
+    const { id } = await run(NAGAD_SMS);
+    for (const n of [1, 2, 3]) {
+      ask();
+      await answerer().execute({ ownerId: alice, sourceEventId: id, answer: `answer ${String(n)}` });
+      await settle(alice, id);
+    }
+    const event = await w.sourceEvents.get(alice, id);
+    expect(event?.clarifications).toHaveLength(3);
+    expect(event).toMatchObject({ status: "pending", pendingReason: "awaitingClarification", candidate: { amountMinor: 200_000 } });
+  });
+
+  it("an answer that looks like an OTP is refused and nothing is stored", async () => {
+    question();
+    const { id } = await run(NAGAD_SMS);
+    await expect(answerer().execute({ ownerId: alice, sourceEventId: id, answer: "my OTP is 482913" })).rejects.toThrow(code("sensitiveEvidence"));
+    expect((await w.sourceEvents.get(alice, id))?.clarifications[0]?.answer).toBeNull();
+  });
+
+  it("Skip shows the reading so far without asking DeepSeek again", async () => {
+    ai.scriptValue({ kind: "question", text: "Which?", options: [], candidate: { kind: "purchase", amountMinor: 200_000, currency: "BDT", occurredAtMs: NOW, provider: "nagad" } });
+    const { id } = await run(NAGAD_SMS);
+    await answerer().execute({ ownerId: alice, sourceEventId: id, skip: true });
+    expect(await settle(alice, id)).toMatchObject({ status: "pending", pendingReason: "awaitingClarification", candidate: { amountMinor: 200_000 } });
+    expect(ai.calls).toBe(1);
   });
 });
 

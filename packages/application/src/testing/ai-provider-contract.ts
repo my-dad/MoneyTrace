@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { AIProvider } from "../ports/ai-provider";
 import { liveSignal } from "./fake-provider";
 
-const context = { allowedCategories: ["groceries"], nowMs: 1_700_000_000_000 };
+const context = { allowedCategories: ["groceries"], nowMs: 1_700_000_000_000, clarifications: [] };
 
 /** `make` returns a provider that will answer this text with a usable transaction. */
 export function describeAiProviderContract(name: string, make: () => AIProvider): void {

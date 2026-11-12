@@ -1,5 +1,6 @@
 import { defaultParsers, evaluateParsers } from "@moneytrace/domain";
 import type { StageCommit } from "../../ports/source-event-repository";
+import { MAX_AI_QUESTIONS, SKIPPED_ANSWER } from "../../source-event-guards";
 import type { Stage } from "./deps";
 
 const interpreted = (eventPatch: StageCommit["eventPatch"]): StageCommit => ({
@@ -35,10 +36,23 @@ export const interpretStage: Stage = async (deps, ownerId, event) => {
         });
   }
 
-  const result = await deps.gateway.interpret(ownerId, event.id, event.retainedText, {
-    allowedCategories: [],
-    nowMs: deps.clock.nowMs(),
-  });
+  const answered = event.clarifications.filter((c) => c.answer !== null);
+  const last = event.clarifications.at(-1);
+  // The user skipped DeepSeek's question: go on with its reading so far (CR-008).
+  if (last?.answer === SKIPPED_ANSWER) {
+    return interpreted({ candidate: event.candidate, extraction: event.extraction });
+  }
+  const result = await deps.gateway.interpret(
+    ownerId,
+    event.id,
+    event.retainedText,
+    {
+      allowedCategories: [],
+      nowMs: deps.clock.nowMs(),
+      clarifications: answered.map((c) => ({ question: c.question, answer: c.answer ?? "" })),
+    },
+    answered.length,
+  );
   switch (result.kind) {
     case "retryLater":
       return "retryLater";
@@ -59,6 +73,24 @@ export const interpretStage: Stage = async (deps, ownerId, event) => {
     retriedAfterUnknown: result.retriedAfterUnknown,
   };
   const { value } = result;
+  if (value.kind === "question") {
+    const extraction = { ...base, confidenceBp: 0 };
+    // At the limit, show what it has instead of asking again: the user can still Record or Fix.
+    if (event.clarifications.length >= MAX_AI_QUESTIONS) return interpreted({ candidate: value.candidate, extraction });
+    return {
+      nextStatus: "pending",
+      pendingReason: "aiQuestion",
+      outputs: [],
+      eventPatch: {
+        candidate: value.candidate,
+        extraction,
+        clarifications: [
+          ...event.clarifications,
+          { question: value.text, options: value.options, answer: null, askedAtMs: deps.clock.nowMs(), answeredAtMs: null },
+        ],
+      },
+    };
+  }
   if (value.kind === "transaction") {
     return interpreted({
       candidate: value.candidate,

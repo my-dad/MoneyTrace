@@ -10,6 +10,7 @@ import {
   RecoverExpiredClaims,
   ResumeQuotaBlockedEvents,
   WakeSnoozedFollowUps,
+  AnswerQuestion,
   CorrectTransaction,
   ReverseAndReplace,
   PostTransaction,
@@ -59,6 +60,7 @@ export type Deps = {
   intakeEvidence: IntakeEvidence;
   confirmCandidate: ConfirmCandidate;
   retrySourceEvent: RetrySourceEvent;
+  answerQuestion: AnswerQuestion;
   cancelSourceEvent: CancelSourceEvent;
   resolveFollowUp: ResolveFollowUp;
   snoozeFollowUp: SnoozeFollowUp;
@@ -146,6 +148,7 @@ export function composeDeps(db: Firestore): Deps {
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),
+    answerQuestion: new AnswerQuestion({ sourceEvents, clock }),
     retrySourceEvent: new RetrySourceEvent({
       sourceEvents,
       retryProvider: new RetryProviderCall({ sourceEvents, providerCalls, clock }),

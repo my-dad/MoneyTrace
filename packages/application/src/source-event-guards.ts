@@ -305,3 +305,19 @@ export function decidePark(
     terminalAtMs: null,
   };
 }
+
+/** "Skip" is stored as this answer; the next read uses DeepSeek's reading so far instead of asking it again. */
+export const SKIPPED_ANSWER = "(skipped)";
+export const MAX_AI_QUESTIONS = 3;
+
+/** Only an event waiting on DeepSeek's latest, unanswered question accepts an answer. */
+export function decideAnswer(event: SourceEventRecord | null, answer: string, nowMs: number): SourceEventRecord | null {
+  if (event === null || event.status !== "pending" || event.pendingReason !== "aiQuestion" || event.claim !== null) return null;
+  const last = event.clarifications.at(-1);
+  if (last === undefined || last.answer !== null) return null;
+  return {
+    ...event,
+    clarifications: [...event.clarifications.slice(0, -1), { ...last, answer, answeredAtMs: nowMs }],
+    version: event.version + 1,
+  };
+}

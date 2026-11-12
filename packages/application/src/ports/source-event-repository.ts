@@ -62,6 +62,7 @@ export type Extraction = {
 
 /** Event fields a stage may set, written in the same transaction as its status. */
 export type SourceEventPatch = {
+  clarifications?: Clarification[];
   retainedText?: string;
   candidate?: CandidateTransaction | null;
   extraction?: Extraction | null;
@@ -177,6 +178,9 @@ export type SourceEventRepository = {
     id: SourceEventId,
     decision: UserDecision,
   ): Promise<"applied" | "stale">;
+
+  /** Stores the user's answer to DeepSeek's latest question on an `aiQuestion` event. The caller then reopens it. */
+  recordAnswer(ownerId: OwnerId, id: SourceEventId, answer: string, nowMs: number): Promise<"applied" | "stale">;
 
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]>;
 

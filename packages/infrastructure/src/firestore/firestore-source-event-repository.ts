@@ -6,6 +6,7 @@ import {
   decideFinishParked,
   decidePark,
   decideReopen,
+  decideAnswer,
   decideUserDecision,
   holdsClaim,
   newSourceEvent,
@@ -269,6 +270,10 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     nowMs: number,
   ): Promise<"finished" | "stale"> {
     return this.transition(ownerId, id, "finished", (e) => decideFinishParked(e, status, nowMs));
+  }
+
+  recordAnswer(ownerId: OwnerId, id: SourceEventId, answer: string, nowMs: number): Promise<"applied" | "stale"> {
+    return this.transition(ownerId, id, "applied", (e) => decideAnswer(e, answer, nowMs));
   }
 
   applyUserDecision(

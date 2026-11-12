@@ -8,6 +8,7 @@ import {
   cancelSourceEvent as makeCancelSourceEvent,
   confirmCandidate as makeConfirmCandidate,
   retrySourceEvent as makeRetrySourceEvent,
+  answerQuestion as makeAnswerQuestion,
   submitEvidence as makeSubmitEvidence,
 } from "./callable/source-event-commands";
 import {
@@ -50,4 +51,5 @@ export const purgeProviderResults = makePurgeProviderResults(getDeps);
 export const submitEvidence = makeSubmitEvidence(getDeps);
 export const confirmCandidate = makeConfirmCandidate(getDeps);
 export const retrySourceEvent = makeRetrySourceEvent(getDeps);
+export const answerQuestion = makeAnswerQuestion(getDeps);
 export const cancelSourceEvent = makeCancelSourceEvent(getDeps);

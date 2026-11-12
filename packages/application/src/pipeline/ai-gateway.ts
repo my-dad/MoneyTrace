@@ -21,21 +21,30 @@ export class AIGateway {
     return { model: this.provider.model, promptVersion: this.provider.promptVersion };
   }
 
+  /**
+   * `round` counts the user's answers so far. Each round is its own provider call, so a new
+   * question round never reuses an earlier round's stored result.
+   */
   interpret(
     ownerId: OwnerId,
     sourceEventId: SourceEventId,
     text: string,
     context: AiContext,
+    round = 0,
   ): Promise<ExecuteResult<AiInterpretation>> {
     const masked = maskIdentifiers(text);
+    const maskedContext: AiContext = {
+      ...context,
+      clarifications: context.clarifications.map((c) => ({ question: c.question, answer: maskIdentifiers(c.answer) })),
+    };
     return this.executor.execute<AiInterpretation>({
       ownerId,
       sourceEventId,
       stage: "interpret",
-      provider: { id: this.provider.id, retrySafety: this.provider.retrySafety },
+      provider: { id: round === 0 ? this.provider.id : `${this.provider.id}-r${String(round)}`, retrySafety: this.provider.retrySafety },
       estimateMicroUsd: this.estimateMicroUsd,
       invoke: (requestKey, signal) =>
-        this.provider.interpretEvidence({ text: masked, context }, requestKey, signal),
+        this.provider.interpretEvidence({ text: masked, context: maskedContext }, requestKey, signal),
     });
   }
 }
