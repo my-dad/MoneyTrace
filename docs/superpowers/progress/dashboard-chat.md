@@ -8,7 +8,7 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 | 1 Mockup G (dashboard and chat) | Done: approved by Mabrur 2026-11-12, all decisions as drawn |
 | 2 Read models, demo clock and data | Done |
 | 3 Dashboard view model | Done |
-| 4 Recent items | Not started |
+| 4 Recent items | Done |
 | 5 Dashboard screen | Not started |
 | 6 Chat launcher and panel | Not started |
 | 7 Sign-in page | Not started |
@@ -17,7 +17,7 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 
 ## Next task
 
-Task 4: recent items.
+Task 5: dashboard screen.
 
 ## Open decisions
 
