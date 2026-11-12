@@ -10,6 +10,7 @@ What Mabrur said on 2026-11-12:
 - Don't create or assume anything; read the SMS. DeepSeek is smart enough to tell credit from debit, wallet from bank account, transfer from card, and so on.
 - Put a chip under each transaction showing where it came from: bKash, Upay, Nagad, a bank account, a card.
 - When a bank account, card or wallet reference in a new SMS hasn't been seen before, store it for future reference.
+- When an SMS isn't in a format the fixed rules know, DeepSeek reads it, and if anything is unclear, DeepSeek asks questions until the answer is clear.
 - Card type doesn't matter (credit or debit card, Amex or not). Only credit versus debit matters.
 - **Any credit counts in Came in, except a credit that matches a debit from one of your own sources** (the same amount, around the same time). That pair is a transfer and counts in neither total (option 2, chosen over "every credit, always").
 
@@ -55,11 +56,28 @@ Refunds count in Came in, as Mabrur's rule says. They don't lower Spent.
   - Spent, Came in, unexplained cash, categories and the comparison line are unchanged.
 - **Unrecognised formats:** every pasted SMS is already kept with account numbers masked. An SMS the fixed rules couldn't read is marked "read by AI". Those are the examples for adding new fixed rules later. Nothing new is stored, and nothing leaves the user's data.
 
+### DeepSeek asks until it's clear
+
+When the fixed rules can't read a message, DeepSeek reads it. If DeepSeek can't tell something it needs (credit or debit, the amount, the source, whether it's a transfer, the category), it asks in the chat:
+
+1. **The question** appears under the pasted message as a chat message from MoneyTrace, in plain words, for example: "Was this ৳2,000 paid from your bKash, or received into it?"
+2. **The user types or taps an answer.** The answer belongs to the same pasted message; it doesn't become new evidence.
+3. **DeepSeek reads again,** with the original text plus every question and answer so far. It either asks one more question or gives a complete reading.
+4. **Once the reading is complete,** the chat shows it with its chip(s), "৳2,000 · Spent · bKash · Record it?", and records it on the user's tap. The AI never records anything by itself, which keeps the rule that AI proposes and deterministic code posts.
+
+Limits:
+
+- **At most 3 questions per message.** After that, the chat shows the reading so far with the normal Record and Fix choices, so a message can't loop forever.
+- **Budget:** each round is one DeepSeek call and counts against the AI budget. When the budget is used up, the message waits with "AI budget reached", as today.
+- **Privacy:** questions and answers are kept with the message (in the existing conversation records, 365-day retention). DeepSeek is sent only the masked SMS text and the chat answers, never account numbers.
+
 ## 5. Changes
 
 - **Contracts:**
   - DeepSeek's output schema gains the source reference it reads: `sourceName` (bank or wallet name) and optional `sourceMask` (last 3–4 digits). This lets an AI-read SMS remember its source too (today AI candidates carry no provider; review minor M9).
+  - The output can instead be a **question** (`{ "kind": "question", "text": … }`) when something needed is unclear. It is schema-validated like every AI output, and the question text is shown as written but never treated as an instruction.
   - The prompt version goes up.
+  - The interpret request carries the conversation so far (questions and the user's answers) for that one message.
 - **Pipeline:**
   - **Match stage:** when no stored source fits, create the source and its reference atomically. This is idempotent by owner + bank or wallet name + digits, so two identical SMS can never create two sources.
   - **Pairing:** the 30-minute rule above. If the other half is already posted, the posting is corrected into a transfer.
@@ -68,8 +86,10 @@ Refunds count in Came in, as Mabrur's rule says. They don't lower Spent.
     - credit → income to the source;
     - card purchase → purchase funded by the card source;
     - card repayment → transfer when paired, otherwise ask.
+- **Messages:** a new callable, `answerQuestion({ sourceEventId, text })`. It stores the answer with the message and sends it back to interpret, with a 3-question limit per message.
 - **Web:**
   - chips in Recent and the chat;
+  - DeepSeek's questions and the user's answers shown under the pasted message, with a reply box;
   - Net money and Sources on the dashboard;
   - the chat question for an uncertain transfer.
 - **Not changed:** withdrawal handling and its question, corrections, quotas, the AI boundary (AI proposes; deterministic code decides and posts), and sign-in.
@@ -80,6 +100,8 @@ Refunds count in Came in, as Mabrur's rule says. They don't lower Spent.
 - **Unknown currency:** asks, as today.
 - **Both halves of a transfer pasted at once:** they pair when the second is processed. Pairing is idempotent, so retries never double-correct.
 - **A transfer answered "No, not mine":** both stay as recorded, Spent and Came in.
+- **DeepSeek's question can't be answered** (the user doesn't know): the user taps "Skip". The message then shows the reading so far with Record and Fix, or Reject.
+- **An answer that looks like a secret** (an OTP or PIN typed by mistake) is refused before it's stored or sent, with the same check as pasted evidence.
 
 ## 7. Testing
 
@@ -92,7 +114,10 @@ Refunds count in Came in, as Mabrur's rule says. They don't lower Spent.
   - idempotent source creation (two identical SMS → one source);
   - two banks with the same ending → two sources;
   - a refund counts in Came in;
-  - a cash note uses Cash.
+  - a cash note uses Cash;
+  - DeepSeek asks a question, the answer is sent back with the history, and the next reading posts after Record;
+  - the 3-question limit falls back to Record and Fix;
+  - an answer containing an OTP is refused.
 - **Corpus:** every corpus SMS creates or reuses the right source, with no questions for formats that name their source.
 - **Emulator end-to-end:** sign in, then paste a salary SMS (Came in rises, chip shows the bank). Paste a BRAC → bKash transfer pair (both totals unchanged, `Transfer` chip). Paste a card purchase (Spent rises, chip shows the card).
 - **Commands:** `pnpm verify`, the build, `pnpm test:emulator`, `pnpm test:e2e` and `pnpm test:e2e:fixture`.
