@@ -42,5 +42,5 @@ export function resolveFirebaseConfig(env: FirebaseEnv): FirebaseOptions {
   const local = env.useEmulators === "1" || env.dataSource === "fixture";
   const missing = FIELDS.filter(([key]) => (env[key] ?? "") === "").map(([, name]) => name);
   if (!local && missing.length > 0) throw new Error(`Missing Firebase config: ${missing.join(", ")}`);
-  return Object.fromEntries(FIELDS.map(([key, , demo]) => [key, (env[key] ?? "") === "" ? demo : env[key]])) as FirebaseOptions;
+  return Object.fromEntries(FIELDS.map(([key, , demo]) => [key, (env[key] ?? "") === "" ? demo : env[key]]));
 }

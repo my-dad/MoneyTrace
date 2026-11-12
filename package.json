@@ -11,7 +11,7 @@
     "drill:seed": "tsx tools/restore-drill/drill.ts seed",
     "drill:verify": "tsx tools/restore-drill/drill.ts verify",
     "deploy:staging": "pnpm build:functions && firebase deploy --project staging --only firestore,storage,functions",
-    "test:e2e": "MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 firebase emulators:exec --project demo-moneytrace --only auth,firestore,functions \"playwright test --config=e2e/playwright.config.ts\"",
+    "test:e2e": "MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && MONEYTRACE_AI=fake NEXT_PUBLIC_USE_EMULATORS=1 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace firebase emulators:exec --project demo-moneytrace --only auth,firestore,functions \"playwright test --config=e2e/playwright.config.ts\"",
     "test": "vitest run --passWithNoTests",
     "test:e2e:fixture": "NEXT_PUBLIC_DATA_SOURCE=fixture NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-moneytrace pnpm --filter web build && playwright test --config=e2e/fixture/playwright.config.ts",
     "test:emulator": "pnpm test:emulator:core && pnpm test:emulator:functions",
