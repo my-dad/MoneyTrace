@@ -29,7 +29,8 @@ Read this first when resuming. Updated and committed after every task.
 | 8 Build C accounts and cash | Done |
 | 9 Mockup D reports | Done (approved) |
 | 10 Build D reports | Done |
-| 11–14 Mockups/builds E–F | Not started |
+| 11 Mockup E settings and onboarding | Drawn; awaiting Mabrur's approval |
+| 12–14 Build E, mockup/build F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -40,16 +41,16 @@ Read this first when resuming. Updated and committed after every task.
 | B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
 | C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
 | D Reports | Drawn: `design/screens/D-reports.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | fixture report source, screen (toggle, stepping, empty, error, unexplained line, null source, axe), smoke |
-| E Settings / Onboarding | — | — | — | — |
+| E Settings / Onboarding | Drawn: `design/screens/E-settings.html` | Awaiting Mabrur | — | — |
 | F Reminders inbox | — | — | — | — |
 
 ## Next task
 
-Task 11: draw mockup E (Settings / Onboarding) at `design/screens/E-settings.html`, then stop for Mabrur's approval.
+Mabrur reviews `design/screens/E-settings.html`. On approval: record it here, then Task 12 (build E).
 
 ## Open decisions
 
-None.
+Mockup E asks Mabrur to confirm: 5-step setup shown once for a new user; BDT fixed; read-only AI budget (US$0.05/day, US$5.00/month); reminders daily/weekly/off with digest time, quiet hours and minimum amount; notifications explain browser permission with the inbox always on and no amounts in notifications; the privacy page's lists; Reporting period in Settings reuses setup step 2.
 
 ## Noted for later (not in this plan)
 

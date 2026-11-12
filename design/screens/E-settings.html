@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E · Settings &amp; Onboarding — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:780px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .scroll { flex:1; overflow:hidden; padding:0 16px; }
+  .top { padding:20px 16px 8px; }
+  .top h2 { margin:0; font-size:24px; font-weight:800; }
+  .top .sub { margin-top:2px; }
+  .sub { font-size:12px; color:var(--mt-caption); }
+  .chips { display:flex; gap:8px; overflow:hidden; padding:8px 16px 12px; }
+  .chip { flex:none; min-height:36px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
+  .chip.on { background:var(--mt-ink); color:#fff; border-color:var(--mt-ink); }
+  .chip .n { font-size:11px; font-weight:800; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); border-radius:999px; padding:1px 6px; }
+
+  .day { font-size:12px; font-weight:700; color:var(--mt-caption); text-transform:uppercase; letter-spacing:.04em; margin:14px 4px 6px; }
+  .list { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; }
+  .item { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .item:first-child { border-top:none; }
+  .item .ic { width:36px; height:36px; border-radius:12px; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); display:grid; place-items:center; flex:none; color:var(--mt-body); }
+  .item .txt { flex:1; min-width:0; }
+  .item .t { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s { font-size:12px; color:var(--mt-caption); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .amt { text-align:right; flex:none; }
+  .item .amt b { display:block; font-size:14px; }
+  .item.dup .t, .item.dup .amt b { color:var(--mt-caption); }
+  .item.dup .amt b { text-decoration:line-through; }
+  .move { color:var(--mt-body); }
+
+  .status { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:4px; }
+  .verified { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .pending { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .needs { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .failed { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .neutral { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .tabbar { display:grid; grid-template-columns:repeat(5,1fr); background:var(--mt-surface); border-top:1px solid var(--mt-border); padding:6px 4px 18px; font-size:11px; color:var(--mt-caption); text-align:center; }
+  .tabbar span { min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .tabbar .on { color:var(--mt-ink); font-weight:800; box-shadow:inset 0 3px 0 var(--mt-accent); }
+
+  .empty { text-align:center; padding:72px 24px; }
+  .empty .e-ic { width:56px; height:56px; border-radius:18px; margin:0 auto 14px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; }
+  .empty b { display:block; font-size:16px; margin-bottom:6px; }
+  .empty p { margin:0 0 16px; font-size:13px; color:var(--mt-caption); line-height:1.5; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:999px; font-size:14px; font-weight:700; border:1px solid var(--mt-border-strong); background:var(--mt-surface); color:var(--mt-ink); }
+  .btn.primary { background:var(--mt-accent); color:#fff; border-color:var(--mt-accent); }
+  .btn.block { width:100%; box-sizing:border-box; }
+  .skel { height:56px; border-top:1px solid var(--mt-border-soft); display:flex; align-items:center; gap:12px; padding:0 14px; }
+  .skel i { display:block; height:10px; border-radius:6px; background:var(--mt-border-soft); }
+  .alert { margin:12px 0; padding:12px 14px; border-radius:14px; background:var(--mt-failed-tint); color:var(--mt-failed-text); font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+
+  /* Detail */
+  .bar { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border-soft); font-weight:700; }
+  .bar .back { width:44px; height:44px; display:grid; place-items:center; border-radius:999px; margin-left:-10px; }
+  .hero { padding:20px 16px 8px; }
+  .hero .kind { font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .hero .big { font-size:32px; font-weight:800; margin:4px 0; }
+  .card { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; margin:10px 16px; }
+  .card h4 { margin:0 0 8px; font-size:13px; color:var(--mt-caption); font-weight:600; }
+  .kv { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:7px 0; border-top:1px solid var(--mt-border-soft); }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv span:last-child { font-weight:600; text-align:right; }
+  .sms { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5; background:var(--mt-surface-soft); border:1px solid var(--mt-border-soft); border-radius:12px; padding:10px 12px; color:var(--mt-body); }
+  .note { font-size:12px; color:var(--mt-caption); line-height:1.5; margin-top:8px; }
+  .actions { display:flex; gap:10px; padding:6px 16px 16px; }
+  .info { margin:10px 16px; padding:12px 14px; border-radius:14px; border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; background:var(--mt-surface-soft); }
+
+  /* Sheet */
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:10px 16px 24px; }
+  .grab { width:40px; height:4px; border-radius:4px; background:var(--mt-border-strong); margin:0 auto 14px; }
+  .sheet h3 { margin:0 0 4px; font-size:18px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0; }
+  .seg span { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; display:grid; place-items:center; font-size:14px; font-weight:600; }
+  .seg .on { border:2px solid var(--mt-ink); }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .input { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; box-sizing:border-box; color:var(--mt-ink); }
+  .input.area { min-height:76px; }
+  .input.err { border-color:var(--mt-failed-text); }
+  .errtxt { font-size:12px; color:var(--mt-failed-text); margin-top:6px; font-weight:600; }
+  .result { margin-top:12px; padding:10px 12px; border-radius:12px; background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); font-size:13px; font-weight:700; }
+
+  /* Desktop */
+  .desktop { width:1280px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:18px; overflow:hidden; display:grid; grid-template-columns:232px 1fr 440px; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .rail { background:var(--mt-surface-soft); border-right:1px solid var(--mt-border); padding:22px 14px; display:flex; flex-direction:column; gap:4px; font-size:14px; }
+  .rail b { margin:0 6px 20px; font-size:16px; }
+  .rail span { min-height:44px; display:flex; align-items:center; padding:0 12px; border-radius:12px; color:var(--mt-body); }
+  .rail .on { background:var(--mt-surface); border:1px solid var(--mt-border); box-shadow:inset 3px 0 0 var(--mt-accent); color:var(--mt-ink); font-weight:800; }
+  .dmain { padding:24px 28px; overflow:hidden; }
+  .dside { background:var(--mt-surface); border-left:1px solid var(--mt-border); overflow:hidden; }
+  .item.sel { background:var(--mt-accent-tint); }
+</style>
+</head>
+<body>
+<style>
+  .group-h { display:flex; justify-content:space-between; align-items:baseline; margin:16px 4px 6px; }
+  .group-h .day { margin:0; }
+  .group-h b { font-size:13px; }
+  .item .ic { font-size:14px; }
+  .unx { border:1px dashed var(--mt-border-dashed); background:var(--mt-surface-soft); }
+  .unx .t { font-weight:600; }
+  .owed { font-size:11px; color:var(--mt-caption); font-weight:600; }
+  .add { display:flex; gap:10px; padding:14px 16px; }
+  .inst { display:flex; gap:10px; flex-wrap:wrap; }
+  .pill { border:1px solid var(--mt-border); background:var(--mt-surface-soft); border-radius:12px; padding:8px 12px; font-size:13px; font-weight:600; }
+  .pill span { display:block; font-size:11px; font-weight:500; color:var(--mt-caption); }
+  .diff { margin-top:12px; padding:12px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px dashed var(--mt-border-dashed); font-size:13px; line-height:1.5; }
+  .diff b { font-size:18px; display:block; margin:2px 0; }
+  .steps { display:flex; gap:6px; margin:4px 0 14px; }
+  .steps i { flex:1; height:4px; border-radius:4px; background:var(--mt-border); }
+  .steps i.on { background:var(--mt-accent); }
+  .form { padding:8px 16px 16px; display:flex; flex-direction:column; gap:14px; }
+  .hint { font-size:12px; color:var(--mt-caption); margin-top:6px; line-height:1.45; }
+  .select { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; justify-content:space-between; align-items:center; background:var(--mt-surface); }
+  .radios { display:flex; flex-direction:column; gap:8px; }
+  .radio { min-height:44px; border:1px solid var(--mt-border-strong); border-radius:12px; padding:10px 12px; font-size:14px; display:flex; gap:10px; align-items:center; }
+  .radio.on { border:2px solid var(--mt-ink); }
+  .radio i { width:16px; height:16px; border-radius:999px; border:2px solid var(--mt-border-strong); flex:none; }
+  .radio.on i { border:5px solid var(--mt-ink); }
+  .fixedbar { padding:12px 16px 20px; border-top:1px solid var(--mt-border-soft); background:var(--mt-surface); display:flex; gap:10px; }
+  .fixedbar .btn { flex:1; }
+</style>
+<style>
+  .progress { padding:14px 16px 0; }
+  .progress .steps { margin:0 0 6px; }
+  .wiz h3 { margin:6px 0 4px; font-size:22px; }
+  .wiz { padding:6px 16px; display:flex; flex-direction:column; gap:14px; }
+  .lead { font-size:14px; color:var(--mt-body); line-height:1.5; margin:0; }
+  .acct { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-top:1px solid var(--mt-border-soft); font-size:14px; }
+  .acct:first-child { border-top:none; }
+  .acct .s { font-size:12px; color:var(--mt-caption); }
+  .ob { display:grid; grid-template-columns:1fr 120px; gap:8px; align-items:center; font-size:14px; padding:8px 0; border-top:1px solid var(--mt-border-soft); }
+  .ob:first-child { border-top:none; }
+  .ob .input { min-height:40px; padding:8px 10px; text-align:right; }
+  .set { display:flex; align-items:center; gap:12px; padding:12px 14px; min-height:56px; border-top:1px solid var(--mt-border-soft); }
+  .set:first-child { border-top:none; }
+  .set .txt { flex:1; }
+  .set .t { font-size:14px; font-weight:600; }
+  .set .s { font-size:12px; color:var(--mt-caption); margin-top:2px; }
+  .set .chev { color:var(--mt-caption); }
+  .meter { height:10px; border-radius:6px; background:var(--mt-surface-soft); margin:8px 0 4px; }
+  .meter i { display:block; height:10px; border-radius:0 4px 4px 0; background:var(--mt-body); }
+  .toggle { width:44px; height:26px; border-radius:999px; background:var(--mt-border-strong); position:relative; flex:none; }
+  .toggle::after { content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:999px; background:#fff; }
+  .toggle.on { background:var(--mt-ink); }
+  .toggle.on::after { left:21px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .bul { margin:0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--mt-body); }
+  .lock { font-size:12px; color:var(--mt-caption); }
+</style>
+<div class="page">
+  <header>
+    <h1>E · Settings &amp; Onboarding</h1>
+    <p>First-time setup walks through five short steps, then Settings holds the same choices for later. Settings reached from the Home header (phone) or the rail (desktop). In demo mode nothing is saved; every save says so.</p>
+  </header>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">E1 · Setup 1 of 5 · welcome and name</p>
+      <div class="phone">
+        <div class="progress"><div class="steps"><i class="on"></i><i></i><i></i><i></i><i></i></div><span class="sub">Step 1 of 5</span></div>
+        <div class="wiz">
+          <h3>Welcome to MoneyTrace</h3>
+          <p class="lead">Paste bank SMS or tell it about cash, and it keeps an honest ledger. It never asks for passwords, PINs or one-time codes.</p>
+          <div class="field"><label>What should we call you?</label><div class="input">Rahim</div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn primary">Next</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E2 · Setup 2 of 5 · currency and reporting period</p>
+      <div class="phone">
+        <div class="progress"><div class="steps"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div><span class="sub">Step 2 of 5</span></div>
+        <div class="wiz">
+          <h3>Currency and reports</h3>
+          <div class="field"><label>Currency</label><div class="select">Bangladeshi taka (৳ BDT) <span class="lock">fixed</span></div><div class="hint">Other currencies come later.</div></div>
+          <div class="field"><label>Show reports by</label>
+            <div class="radios"><div class="radio"><i></i>Calendar month</div><div class="radio on"><i></i>Salary cycle</div></div></div>
+          <div class="field"><label>Cycle starts on day</label><div class="select">25 <span>▾</span></div><div class="hint">For example 25 Oct – 24 Nov. You can switch in Reports any time.</div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Next</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E3 · Setup 3 of 5 · accounts (the existing setup form)</p>
+      <div class="phone">
+        <div class="progress"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><span class="sub">Step 3 of 5</span></div>
+        <div class="wiz">
+          <h3>Where your money sits</h3>
+          <p class="lead">Add bank accounts, mobile wallets, cash and cards. Only the last 3–4 digits, never a full number.</p>
+          <div class="list">
+            <div class="acct"><div>DBBL Savings<div class="s">Bank · debit card ••4821</div></div></div>
+            <div class="acct"><div>Wallet<div class="s">Cash</div></div></div>
+            <div class="acct"><div>City Bank Amex ••7702<div class="s">Credit card</div></div></div>
+          </div>
+          <span class="btn block">Add another account</span>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Next</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">E4 · Setup 4 of 5 · opening balances</p>
+      <div class="phone">
+        <div class="progress"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div><span class="sub">Step 4 of 5</span></div>
+        <div class="wiz">
+          <h3>What each holds today</h3>
+          <div class="info" style="margin:0">Opening balances are <b>starting positions, not income</b>. Later imports of older history won't count them twice.</div>
+          <div class="field"><label>As of</label><div class="select">1 Oct 2026 <span>▾</span></div></div>
+          <div class="card" style="margin:0">
+            <div class="ob"><span>DBBL Savings</span><div class="input">৳ 2,000</div></div>
+            <div class="ob"><span>Wallet</span><div class="input">৳ 3,500</div></div>
+            <div class="ob"><span>City Bank Amex · you owe</span><div class="input">৳ 0</div></div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Next</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E5 · Setup 5 of 5 · reminders</p>
+      <div class="phone">
+        <div class="progress"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div><span class="sub">Step 5 of 5</span></div>
+        <div class="wiz">
+          <h3>Gentle reminders</h3>
+          <p class="lead">MoneyTrace asks about cash it can't place, like ATM withdrawals. It never assumes unexplained cash was spent.</p>
+          <div class="field"><label>How often</label><div class="radios"><div class="radio on"><i></i>Daily digest</div><div class="radio"><i></i>Weekly digest</div><div class="radio"><i></i>Off · inbox only</div></div></div>
+          <div class="field"><label>Digest time</label><div class="select">9:00 pm <span>▾</span></div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn">Back</span><span class="btn primary">Finish setup</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E6 · Settings home</p>
+      <div class="phone">
+        <div class="top"><h2>Settings</h2><div class="sub">Demo</div></div>
+        <div class="scroll" style="padding-top:8px">
+          <div class="list">
+            <div class="set"><div class="txt"><div class="t">Reporting period</div><div class="s">Salary cycle · starts on the 25th</div></div><span class="chev">›</span></div>
+            <div class="set"><div class="txt"><div class="t">AI budget</div><div class="s">US$1.12 of US$5.00 this month</div></div><span class="chev">›</span></div>
+            <div class="set"><div class="txt"><div class="t">Reminders</div><div class="s">Daily digest at 9:00 pm</div></div><span class="chev">›</span></div>
+            <div class="set"><div class="txt"><div class="t">Notifications</div><div class="s">Off · in-app inbox always on</div></div><span class="chev">›</span></div>
+            <div class="set"><div class="txt"><div class="t">Privacy</div><div class="s">What's stored, and what never is</div></div><span class="chev">›</span></div>
+            <div class="set"><div class="txt"><div class="t">Accounts</div><div class="s">Add accounts and opening balances</div></div><span class="chev">›</span></div>
+          </div>
+          <div style="padding:16px 0"><span class="btn block">Sign out</span></div>
+        </div>
+        <div class="tabbar"><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">E7 · AI budget · read-only</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>AI budget</div>
+        <div class="card"><h4>Today</h4><b style="font-size:22px">US$0.01</b> <span class="sub">of US$0.05 a day</span><div class="meter"><i style="width:20%"></i></div><div class="sub">14 requests</div></div>
+        <div class="card"><h4>This month</h4><b style="font-size:22px">US$1.12</b> <span class="sub">of US$5.00 a month</span><div class="meter"><i style="width:22%"></i></div><div class="sub">1–12 Nov · 211 requests</div></div>
+        <div class="info">When the budget runs out, <b>chat and SMS parsing keep working</b>. Known bank messages are still read without AI; anything unclear waits in Activity for your answer.</div>
+        <p class="note" style="padding:0 16px">Limits are set by the app for now. Only AI model calls count; nothing else costs money here.</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E8 · Reminders</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="form">
+          <div class="field"><label>How often</label><div class="radios"><div class="radio on"><i></i>Daily digest</div><div class="radio"><i></i>Weekly digest</div><div class="radio"><i></i>Off · inbox only</div></div></div>
+          <div class="field"><label>Digest time</label><div class="select">9:00 pm <span>▾</span></div></div>
+          <div class="field"><label>Quiet hours</label><div class="two"><div class="select">11:00 pm <span>▾</span></div><div class="select">7:00 am <span>▾</span></div></div></div>
+          <div class="field"><label>Only ask about amounts from</label><div class="input">৳ 500</div><div class="hint">Smaller unexplained amounts still show in the inbox.</div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn primary">Save reminders</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E9 · After saving in demo mode</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Reminders</div>
+        <div class="form">
+          <div class="field"><label>How often</label><div class="radios"><div class="radio on"><i></i>Daily digest</div><div class="radio"><i></i>Weekly digest</div><div class="radio"><i></i>Off · inbox only</div></div></div>
+          <div class="field"><label>Digest time</label><div class="select">9:00 pm <span>▾</span></div></div>
+          <div class="result" role="status">Not available yet — demo · nothing was saved</div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="fixedbar"><span class="btn primary">Save reminders</span></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="row">
+    <section>
+      <p class="frame-label">E10 · Notifications</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Notifications</div>
+        <div class="card"><div class="set" style="padding:0"><div class="txt"><div class="t">Push notifications</div><div class="s">Off on this device</div></div><span class="toggle"></span></div></div>
+        <div class="info">Turning this on asks your browser for permission. Reminders then reach you even when MoneyTrace is closed. Notifications never include amounts or account numbers.</div>
+        <div class="card"><div class="set" style="padding:0"><div class="txt"><div class="t">In-app inbox</div><div class="s">Always on · the reliable fallback</div></div><span class="toggle on"></span></div></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="frame-label">E11 · Privacy</p>
+      <div class="phone">
+        <div class="bar"><span class="back">‹</span>Privacy</div>
+        <div class="card"><h4>What MoneyTrace keeps</h4><ul class="bul"><li>The text of SMS and chat messages you send</li><li>Your accounts, with only the last 3–4 digits</li><li>The ledger built from them, with its history of corrections</li></ul></div>
+        <div class="card"><h4>What it never asks for</h4><ul class="bul"><li>Bank passwords or PINs</li><li>One-time codes (OTPs). Messages that look like one are refused and not saved.</li><li>Full card or account numbers</li></ul></div>
+        <div class="card"><h4>Who sees it</h4><p class="note" style="margin:0">Only you. Messages the built-in parsers can't read are sent to an AI service to be read; nothing else leaves MoneyTrace.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <p class="frame-label" style="max-width:none">E12 · Desktop · settings list left, selected setting right</p>
+    <div class="desktop" style="grid-template-columns:232px 380px 1fr">
+      <div class="rail"><b>MoneyTrace</b><span>Home</span><span>Chat</span><span>Activity</span><span>Accounts</span><span>Reports</span><span style="margin-top:auto">Reminders</span><span class="on">Settings</span></div>
+      <div class="dmain" style="border-right:1px solid var(--mt-border)">
+        <h2 style="margin:0 0 12px;font-size:26px">Settings</h2>
+        <div class="list">
+          <div class="set"><div class="txt"><div class="t">Reporting period</div><div class="s">Salary cycle · starts on the 25th</div></div><span class="chev">›</span></div>
+          <div class="set sel" style="background:var(--mt-accent-tint)"><div class="txt"><div class="t">AI budget</div><div class="s">US$1.12 of US$5.00 this month</div></div><span class="chev">›</span></div>
+          <div class="set"><div class="txt"><div class="t">Reminders</div><div class="s">Daily digest at 9:00 pm</div></div><span class="chev">›</span></div>
+          <div class="set"><div class="txt"><div class="t">Notifications</div><div class="s">Off · in-app inbox always on</div></div><span class="chev">›</span></div>
+          <div class="set"><div class="txt"><div class="t">Privacy</div><div class="s">What's stored, and what never is</div></div><span class="chev">›</span></div>
+        </div>
+        <div style="padding:16px 0"><span class="btn">Sign out</span></div>
+      </div>
+      <div class="dmain">
+        <h3 style="margin:0 0 8px">AI budget</h3>
+        <div class="two">
+          <div class="card" style="margin:0"><h4>Today</h4><b style="font-size:22px">US$0.01</b> <span class="sub">of US$0.05</span><div class="meter"><i style="width:20%"></i></div></div>
+          <div class="card" style="margin:0"><h4>This month</h4><b style="font-size:22px">US$1.12</b> <span class="sub">of US$5.00</span><div class="meter"><i style="width:22%"></i></div></div>
+        </div>
+        <div class="info" style="margin:14px 0">When the budget runs out, <b>chat and SMS parsing keep working</b>. Anything unclear waits in Activity for your answer.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>Decisions to confirm</h2>
+    <ul>
+      <li><b>Setup</b> is 5 steps with a progress bar: name, currency and period, accounts (the existing form), opening balances (“starting positions, not income”), reminders. It shows once, for a new user with no accounts.</li>
+      <li><b>Currency</b> is fixed to BDT, shown but not changeable.</li>
+      <li><b>AI budget</b> is read-only: today against US$0.05 and the month against US$5.00, with “chat and SMS parsing keep working” when it runs out.</li>
+      <li><b>Reminders</b>: daily, weekly or off (inbox only), digest time, quiet hours and a minimum amount.</li>
+      <li><b>Notifications</b> explains the browser permission; the in-app inbox is always on. Notifications never include amounts.</li>
+      <li><b>Privacy</b> lists what is kept and what is never asked for (passwords, PINs, OTPs, full numbers).</li>
+      <li><b>Reporting period</b> in Settings opens the same choice as setup step 2.</li>
+    </ul>
+  </section>
+</div>
+
+</body>
+</html>
