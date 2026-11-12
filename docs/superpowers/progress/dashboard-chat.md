@@ -9,7 +9,7 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 | 2 Read models, demo clock and data | Done |
 | 3 Dashboard view model | Done |
 | 4 Recent items | Done |
-| 5 Dashboard screen | Not started |
+| 5 Dashboard screen | Done |
 | 6 Chat launcher and panel | Not started |
 | 7 Sign-in page | Not started |
 | 8 Remove old screens | Not started |
@@ -17,11 +17,15 @@ Branch `dashboard-chat`, from `phase-1-sms-slice` (`02fd3ab`). Executor: Native.
 
 ## Next task
 
-Task 5: dashboard screen.
+Task 6: chat launcher and panel.
 
 ## Open decisions
 
 None.
+
+## Mockup differences
+
+- Recent dates include the weekday ("Thu 5 Nov"); the mockup shows "5 Nov".
 
 ## Last verification
 
