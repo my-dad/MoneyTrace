@@ -356,3 +356,16 @@ Status: Accepted by Mabrur on 2026-11-12.
 | Cost impact | None. A bank SMS whose account can't be identified waits for the user's answer; it costs no AI usage. |
 | Delivery impact | Without digits an SMS can't be matched to an account, so every pasted bank SMS asks "Which account?". Nothing remembers the answer; remembering it per bank would be a separate feature. Balances show only movement since setup, so a bank account can go below ৳0 (an ATM withdrawal with no income recorded yet shows the bank at −৳4,000), and "Available" is not the real bank balance until income has been recorded. |
 | Acceptance criteria | Setup and Add account ask only for a name and a type. No digits, bank picker or opening-balance field appears anywhere in the UI. Component tests cover both forms; `pnpm verify`, the fixture smoke test and the emulator E2E pass. |
+
+## CR-007: One dashboard with a pop-up chat (2026-11-12)
+
+Status: Accepted by Mabrur on 2026-11-12. Spec: `docs/superpowers/specs/2026-11-12-dashboard-chat-design.md` (piece 1 of 4).
+
+| Field | Record |
+|---|---|
+| Proposed change | After Google sign-in the app is one dashboard: this month's spending, income and unexplained cash, spending by category with a month-to-month comparison, money now, recent transactions, and (piece 3) tips. A button pops up the chat, where the user pastes SMS or describes spending; the chat's questions replace the reminders inbox. Section 4's separate screens (Activity/Inbox, Accounts & Cash, Reports, Settings/Onboarding) are removed from the UI; sign-out and the AI budget move to a dashboard menu. Accounts are created automatically from SMS (piece 2), keeping only the last digits the SMS shows; this narrows CR-006, under which no details are *entered*. Tips come from DeepSeek using category totals only (piece 3). |
+| Rationale | Mabrur's product description of 2026-11-12: sign in, a blank or populated dashboard, a chat that turns any pasted transaction into figures, graphs of where the money went, and tips to spend less. |
+| Kept unchanged | The ledger and every accounting invariant; deterministic parsers before AI; AI proposes and the backend validates and posts; honest status; metering and quotas; CR-002 (no real data or real DeepSeek use before 0B). |
+| Security impact | Smaller UI surface. Masked last digits read from SMS are stored on auto-created accounts (piece 2); tips send DeepSeek category totals only, never message text or account names (piece 3). |
+| Cost impact | Tips use the AI budget (piece 3). Piece 1 has none. |
+| Acceptance criteria | Piece 1: the spec's tests and commands pass, and the mockup is approved by Mabrur before building. Pieces 2–4 each get their own spec and acceptance criteria. |
