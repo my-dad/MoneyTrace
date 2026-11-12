@@ -2,19 +2,9 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
+import { readFirebaseEnv, resolveFirebaseConfig } from "./firebase-config";
 
-const env = (name: string, fallback: string): string => process.env[name] ?? fallback;
-
-const app = getApps().length > 0
-  ? getApp()
-  : initializeApp({
-      apiKey: env("NEXT_PUBLIC_FIREBASE_API_KEY", "demo-api-key"),
-      authDomain: env("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "demo-moneytrace.local"),
-      projectId: env("NEXT_PUBLIC_FIREBASE_PROJECT_ID", "demo-moneytrace"),
-      storageBucket: env("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "demo-moneytrace.local"),
-      messagingSenderId: env("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", "000000000000"),
-      appId: env("NEXT_PUBLIC_FIREBASE_APP_ID", "1:000000000000:web:demo"),
-    });
+const app = getApps().length > 0 ? getApp() : initializeApp(resolveFirebaseConfig(readFirebaseEnv()));
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

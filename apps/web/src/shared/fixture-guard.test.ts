@@ -31,4 +31,16 @@ describe("assertFixtureModeAllowed", () => {
       assertFixtureModeAllowed({ NEXT_PUBLIC_FIREBASE_PROJECT_ID: "moneytrace-staging" });
     }).not.toThrow();
   });
+
+  it("rejects an emulator build on a real project", () => {
+    expect(() => {
+      assertFixtureModeAllowed({ NEXT_PUBLIC_USE_EMULATORS: "1", NEXT_PUBLIC_FIREBASE_PROJECT_ID: "moneytrace-staging" });
+    }).toThrow("Emulator mode requires a demo- Firebase project");
+  });
+
+  it("allows an emulator build on a demo- project", () => {
+    expect(() => {
+      assertFixtureModeAllowed({ NEXT_PUBLIC_USE_EMULATORS: "1", NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-moneytrace" });
+    }).not.toThrow();
+  });
 });
