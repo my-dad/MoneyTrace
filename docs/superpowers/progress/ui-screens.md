@@ -50,7 +50,7 @@ Read this first when resuming. Updated and committed after every task.
 
 Final whole-branch review, then finishing-a-development-branch.
 
-Emulator suites need Java 21+. The system Java is 17, so run them with Android Studio's bundled Java 25: `JAVA_HOME=/home/mabrur/Downloads/android-studio/jbr PATH=$JAVA_HOME/bin:$PATH pnpm test:emulator` (the same goes for `pnpm test:e2e`).
+Emulator suites need Java 21+. OpenJDK 21 is now the system default (installed 2026-11-12), so `pnpm test:emulator` and `pnpm test:e2e` run as written.
 
 ## Open decisions
 
