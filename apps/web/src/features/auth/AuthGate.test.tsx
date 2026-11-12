@@ -37,6 +37,11 @@ class FakeAuthGateway implements AuthGateway {
     await Promise.resolve();
   }
 
+  emit(user: AuthUser | null): void {
+    this.user = user;
+    this.listener?.(user);
+  }
+
   async bootstrap(): Promise<void> {
     this.bootstrapCalls += 1;
     await this.bootstrapResult;
@@ -137,4 +142,46 @@ it("shows a failure message when sign-in is rejected", async () => {
 
   expect((await screen.findByRole("alert")).textContent).toMatch(/sign-in failed/i);
   expect(gateway.signInCalls).toBe(1);
+});
+
+function pending() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => { resolve = res; });
+  return { promise, resolve };
+}
+
+it("does not show the app when sign-out happens during a retry", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  gateway.bootstrapResult = Promise.reject(new Error("bootstrap failed"));
+  renderGate(gateway);
+  await screen.findByRole("alert");
+
+  const retry = pending();
+  gateway.bootstrapResult = retry.promise;
+  fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+  act(() => { gateway.emit(null); });
+  await act(async () => { retry.resolve(); await retry.promise; });
+
+  expect(screen.getByRole("button", { name: /sign in with google/i })).toBeTruthy();
+  expect(screen.queryByText("private app")).toBeNull();
+});
+
+it("does not mark a new user ready when an earlier user's retry finishes", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  gateway.bootstrapResult = Promise.reject(new Error("bootstrap failed"));
+  renderGate(gateway);
+  await screen.findByRole("alert");
+
+  const aliceRetry = pending();
+  gateway.bootstrapResult = aliceRetry.promise;
+  fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+  const bobBootstrap = pending();
+  gateway.bootstrapResult = bobBootstrap.promise;
+  act(() => { gateway.emit({ uid: "bob" }); });
+  await act(async () => { aliceRetry.resolve(); await aliceRetry.promise; });
+
+  expect(screen.getByText("Setting up your account")).toBeTruthy();
+  expect(screen.queryByText("private app")).toBeNull();
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
 
 type GateState =
@@ -18,6 +18,8 @@ export function useAuthUser(): AuthUser | null {
 
 export function AuthGate({ gateway, children }: { gateway: AuthGateway; children: ReactNode }) {
   const [state, setState] = useState<GateState>({ kind: "checking" });
+  // Both the first attempt and Retry go through this, so a result only lands for the user still signed in.
+  const bootstrapRef = useRef<(user: AuthUser) => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     let disposed = false;
@@ -34,6 +36,7 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
         }
       }
     };
+    bootstrapRef.current = bootstrap;
 
     const unsubscribe = gateway.onChange((user) => {
       if (disposed) return;
@@ -80,15 +83,7 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
         <button
           type="button"
           onClick={() => {
-            setState({ kind: "bootstrapping", user: state.user });
-            void gateway.bootstrap().then(
-              () => {
-                setState({ kind: "ready", user: state.user });
-              },
-              () => {
-                setState({ kind: "bootstrapFailed", user: state.user });
-              },
-            );
+            void bootstrapRef.current(state.user);
           }}
         >
           Retry
