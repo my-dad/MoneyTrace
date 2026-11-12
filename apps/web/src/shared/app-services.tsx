@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import type { CashSource } from "../features/accounts/cash-source";
+import { createFixtureCashSource } from "../features/accounts/fixture-cash-source";
 import type { AuthGateway } from "../features/auth/auth-gateway";
 import { createFirebaseAuthGateway } from "../features/auth/firebase-auth-gateway";
 import { createFixtureAuthGateway } from "../features/auth/fixture-auth-gateway";
@@ -15,6 +17,8 @@ export type AppServices = {
   auth: AuthGateway;
   readModels: ReadModelGateway;
   commands: Commands;
+  /** Account details and cash actions; fixture-only until functionality resumes. */
+  cash: CashSource | null;
   fixture: boolean;
 };
 
@@ -26,6 +30,7 @@ export function createAppServices(): AppServices {
       auth: createFixtureAuthGateway(),
       readModels: createFixtureReadModels(),
       commands: createFixtureCommands(),
+      cash: createFixtureCashSource(),
       fixture: true,
     };
   }
@@ -33,6 +38,7 @@ export function createAppServices(): AppServices {
     auth: createFirebaseAuthGateway(),
     readModels: createFirebaseReadModelGateway(),
     commands: createFirebaseCommands(),
+    cash: null,
     fixture: false,
   };
 }

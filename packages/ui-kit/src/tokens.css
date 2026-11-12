@@ -73,6 +73,15 @@ button:focus-visible,
   cursor: pointer;
 }
 
+/* Links styled as buttons (navigation actions) look and align like buttons. */
+a.mt-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
 .mt-button--primary {
   background: var(--mt-accent);
   color: var(--mt-surface);

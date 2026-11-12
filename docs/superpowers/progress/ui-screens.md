@@ -25,8 +25,9 @@ Read this first when resuming. Updated and committed after every task.
 | 4 Build A navigation shell | Done |
 | 5 Mockup B activity | Done (approved) |
 | 6 Build B activity | Done |
-| 7 Mockup C accounts and cash | Drawn; awaiting Mabrur's approval |
-| 8–14 Build C, mockups/builds D–F | Not started |
+| 7 Mockup C accounts and cash | Done (approved) |
+| 8 Build C accounts and cash | Done |
+| 9–14 Mockups/builds D–F | Not started |
 | 15 UI-complete exit | Not started |
 
 ## Screen groups
@@ -35,24 +36,26 @@ Read this first when resuming. Updated and committed after every task.
 |---|---|---|---|---|
 | A Navigation shell | Drawn: `design/screens/A-navigation.html` | Approved 2026-11-12 (all 4 decisions as drawn) | Done | NavBar, Home header, AppShell, fixture smoke |
 | B Activity / Inbox | Drawn: `design/screens/B-activity.html` | Approved 2026-11-12 | Done | view model, screen, detail, correction sheet, smoke |
-| C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Awaiting Mabrur | — | — |
+| C Accounts & Cash | Drawn: `design/screens/C-accounts.html` | Approved 2026-11-12 (all 6 decisions as drawn) | Done | view model, fixture cash source, home, detail, count flow, adjustment, allocation, smoke |
 | D Reports | — | — | — | — |
 | E Settings / Onboarding | — | — | — | — |
 | F Reminders inbox | — | — | — | — |
 
 ## Next task
 
-Mabrur reviews `design/screens/C-accounts.html`. On approval: record it here, then Task 8 (build C).
+Task 9: draw mockup D (Reports) at `design/screens/D-reports.html`, then stop for Mabrur's approval.
 
 ## Open decisions
 
-Mockup C asks Mabrur to confirm: the four groups (bank and wallets, cash, held by family, cards); unexplained cash as a dashed row inside Cash; card dues shown positive and labelled "owed"; the 3-step cash count with a required cause; give-cash-to-family worded as "not spending"; Add account keeps the existing form at /accounts/new.
+None.
 
 ## Noted for later (not in this plan)
 
 - Desktop Home has no assistant panel yet (mockup screen 03 and A5 show one). Home itself is unchanged by this plan.
 - The existing Home layout differs from mockup screen 01 (greeting, bank/cash split, card list). Home is unchanged by this plan.
+- Account detail omits mockup C4's "Verified · matches the last SMS balance" badge: no read model says whether a balance matches an SMS yet.
+- Account history has no opening-balance line yet (mockup C4 shows one); the fixture history is built from source events only.
 
 ## Last verification
 
-Task 6 (2026-11-12): `pnpm verify` → 81 files, 1324 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 2 passed. The emulator E2E suite runs at Task 15.
+Task 8 (2026-11-12): `pnpm verify` → 89 files, 1364 tests pass, no dependency violations. `pnpm --filter web build` → pass. `pnpm test:e2e:fixture` → 3 passed. The emulator E2E suite runs at Task 15.

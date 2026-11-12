@@ -12,7 +12,7 @@ export default function HomePage() {
       gateway={readModels}
       {...(user?.displayName === undefined ? {} : { displayName: user.displayName })}
       onAddAccount={() => {
-        window.location.href = "/accounts";
+        window.location.href = "/accounts/new";
       }}
     />
   );

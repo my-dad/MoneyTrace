@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AccountsScreen } from "../../features/accounts/AccountsScreen";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { AccountsHome } from "../../features/accounts/AccountsHome";
 import { useAppServices } from "../../shared/app-services";
-import type { AccountRow } from "../../shared/read-model-gateway";
 
 export default function AccountsPage() {
-  const { readModels, commands } = useAppServices();
-  const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [readFailed, setReadFailed] = useState(false);
-  useEffect(
-    () =>
-      readModels.watchAccounts(setAccounts, () => {
-        setReadFailed(true);
-      }),
-    [readModels],
+  return (
+    <Suspense>
+      <AccountsRoute />
+    </Suspense>
   );
-  return <AccountsScreen accounts={accounts} commands={commands} readFailed={readFailed} />;
+}
+
+function AccountsRoute() {
+  const { readModels, cash } = useAppServices();
+  const params = useSearchParams();
+  const router = useRouter();
+  return (
+    <AccountsHome
+      gateway={readModels}
+      source={cash}
+      selectedId={params.get("id")}
+      onSelect={(id) => { router.push(id === null ? "/accounts" : `/accounts?id=${encodeURIComponent(id)}`); }}
+    />
+  );
 }

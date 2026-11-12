@@ -41,13 +41,16 @@ export function AccountsScreen({
   accounts,
   commands,
   readFailed = false,
+  startAdding = false,
 }: {
   accounts: AccountRow[];
   commands: AccountCommands;
   readFailed?: boolean;
+  /** Open on the add-account form rather than the list. */
+  startAdding?: boolean;
 }) {
   const { busy, failed, run } = useAction();
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(startAdding);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [instrumentStep, setInstrumentStep] = useState(false);
   const [kind, setKind] = useState<FormKind>("bank");
