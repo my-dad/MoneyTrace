@@ -9,7 +9,7 @@ Read this file first when resuming.
 | # | Review | Scope | Reviewer | Status |
 |---|---|---|---|---|
 | 1 | Phase 0 Task 12, authenticated callables (gate 35) | `apps/functions/src/callable/*` at HEAD; original diff `3bade59..d548607` | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 2 Important, 8 Minor); no cross-user exploit found |
-| 2 | Web sign-in | `apps/web/src/features/auth/*`, Firebase wiring, fixture guard | Fresh reviewer (opus), read-only | Running |
+| 2 | Web sign-in | `apps/web/src/features/auth/*`, Firebase wiring, fixture guard | Fresh reviewer (opus), read-only | Reported: with fixes (1 Critical, 4 Important, 6 Minor) |
 | 3 | Restore drill tooling | `tools/restore-drill/*`, `docs/runbooks/restore-drill*.md` (`ebebf7f`) | Fresh reviewer (opus), read-only | Reported: with fixes (0 Critical, 5 Important, 8 Minor) |
 | 4 | Phase 0 whole-branch review (0A gate) | `a4b05d2..master`, graded at HEAD | Fresh reviewer (opus), read-only | Running |
 
@@ -32,6 +32,19 @@ Important:
 2. A wrong opening balance can never be corrected through any callable. This is a new capability, so it needs Mabrur's decision.
 
 Minor: 8 items (in the ledger). Notes for 0B: restrict sign-up, or add a global AI spend cap, because the quota applies per user.
+
+### Review 2: web sign-in (with fixes)
+
+Critical:
+1. `firebase.ts:6` reads config with `process.env[name]`, which Next.js never inlines, so every bundle runs on the demo config and real sign-in can never reach a real project. I confirmed this in the built chunk.
+
+Important:
+1. Retry after a failed setup marks the app ready without checking that the same user is still signed in.
+2. `NEXT_PUBLIC_USE_EMULATORS=1` is accepted with any project ID, and `test:e2e` doesn't pin the demo project.
+3. Any Google account (or the anonymous provider) is accepted by the server. MoneyTrace is single-user, so this needs an allowlist before 0B.
+4. Sign-in is popup-only, which is unreliable in installed phone apps. It needs a redirect fallback, checked on a real device before 0B.
+
+Minor: 6 items (in the ledger).
 
 ### Review 3: restore drill (with fixes)
 
