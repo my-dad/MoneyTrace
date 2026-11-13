@@ -215,3 +215,23 @@ describe("the SMS pipeline end to end", { timeout: 120_000 }, () => {
     expect(await balanceOf(b.user.uid, b.card)).toBe(-190_000);
   });
 });
+
+describe("own transfers pasted at the same moment (CR-008 pairing; found on the real stack)", () => {
+  // Both halves dated ten minutes apart today in Dhaka, in the corpus formats.
+  const dhaka = (offsetMinutes: number) => new Date(Date.now() + 6 * 3_600_000 - offsetMinutes * 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ddmmyy = (d: Date) => `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${String(d.getUTCFullYear()).slice(2)}`;
+  const hhmm = (d: Date) => `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  const out = dhaka(30);
+  const into = dhaka(20);
+  const DEBIT = `Your UCB Debit Card#7777 (CL ID:7654321) has been charged for BDT1,700.00 at EXAMPLE SUPERSHOP on ${ddmmyy(out)} ${hhmm(out)}. Avl Bal:90000.40. For query:16419`;
+  const BKASH = `You have received deposit from iBanking of Tk 1,700.00 from ECB. Fee Tk 0.00. Balance Tk 1,900.50. TrxID BK00000003 at ${ddmmyy(into).slice(0, 6)}20${ddmmyy(into).slice(6)} ${hhmm(into)}`;
+
+  it("pairs the two halves even when both are processing at once", async () => {
+    const user = signUp("race");
+    unwrap(await call("bootstrapUser", user, {}));
+    const [debit, credit] = await Promise.all([submit(user, DEBIT), submit(user, BKASH)]);
+    const [a, b] = [await waitForStatus(user.uid, debit, "posted"), await waitForStatus(user.uid, credit, "posted")];
+    expect([a.get("matchKind"), b.get("matchKind")]).toContain("transferCounterpart");
+  });
+});
