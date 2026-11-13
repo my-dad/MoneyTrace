@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSupabaseConfig, usesSupabase } from "./supabase-config";
+import { resolveSupabaseConfig } from "./supabase-config";
 
 describe("Supabase config", () => {
   it("needs the project URL and anon key", () => {
@@ -13,9 +13,4 @@ describe("Supabase config", () => {
     expect(resolveSupabaseConfig({ url: "http://127.0.0.1:54321", anonKey: "k" }).url).toBe("http://127.0.0.1:54321");
   });
 
-  it("is the backend everywhere but demo and emulator builds", () => {
-    expect(usesSupabase({})).toBe(true);
-    expect(usesSupabase({ dataSource: "fixture" })).toBe(false);
-    expect(usesSupabase({ useEmulators: "1" })).toBe(false);
-  });
 });

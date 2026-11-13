@@ -3,7 +3,7 @@ import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import type { ApiCall } from "../../shared/api-client";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
 
-type AuthClient = Pick<SupabaseClient["auth"], "onAuthStateChange" | "signInWithOAuth" | "signOut">;
+type AuthClient = Pick<SupabaseClient["auth"], "onAuthStateChange" | "signInWithOAuth" | "signInAnonymously" | "signOut">;
 
 function toAuthUser(user: User | null | undefined): AuthUser | null {
   if (user === null || user === undefined) return null;
@@ -14,9 +14,15 @@ function toAuthUser(user: User | null | undefined): AuthUser | null {
 
 /**
  * Google sign-in through Supabase Auth (CR-010). A full-page redirect works the same in a tab and in
- * an installed PWA, so there is no pop-up path to fall back from.
+ * an installed PWA, so there is no pop-up path to fall back from. `localSignIn` is the end-to-end
+ * suite's anonymous sign-in; the build refuses it unless the project is a local Supabase.
  */
-export function createSupabaseAuthGateway(auth: AuthClient, call: ApiCall, origin: () => string): AuthGateway {
+export function createSupabaseAuthGateway(
+  auth: AuthClient,
+  call: ApiCall,
+  origin: () => string,
+  options: { localSignIn?: boolean } = {},
+): AuthGateway {
   return {
     onChange(callback) {
       const { data } = auth.onAuthStateChange((_event, session: Session | null) => {
@@ -27,6 +33,11 @@ export function createSupabaseAuthGateway(auth: AuthClient, call: ApiCall, origi
       };
     },
     async signIn() {
+      if (options.localSignIn === true) {
+        const { error } = await auth.signInAnonymously();
+        if (error !== null) throw error;
+        return;
+      }
       const { error } = await auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${origin()}/` } });
       if (error !== null) throw error;
     },
