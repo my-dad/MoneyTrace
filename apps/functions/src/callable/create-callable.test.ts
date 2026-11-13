@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryRateLimiter } from "@moneytrace/application/testing";
 import { CALLABLE_OPTIONS, CALLABLE_RATE_LIMITS, runCallable, type CallableDeps } from "./create-callable";
 import { accessPolicyFromEnv } from "./access";
+import { CallError } from "./command";
 
 type Logged = { level: string; event: string; fields: Record<string, unknown> };
 
@@ -95,12 +96,12 @@ describe("runCallable error mapping", () => {
     },
   );
 
-  it("passes an already-exists HttpsError from a handler through", async () => {
+  it("passes an already-exists refusal from a handler through as HttpsError", async () => {
     const { deps } = harness();
     const r = await codeOf(
       runCallable(
         contract,
-        () => Promise.reject(new HttpsError("already-exists", "idempotencyConflict")),
+        () => Promise.reject(new CallError("already-exists", "idempotencyConflict")),
         deps,
         authed,
       ),

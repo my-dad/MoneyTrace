@@ -1,10 +1,8 @@
 import { COMMANDS } from "@moneytrace/contracts";
 import { asSourceEventId } from "@moneytrace/domain";
-import type { Deps } from "../composition";
-import { createCallable } from "./create-callable";
+import { command } from "./command";
 
-export const submitEvidence = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.submitEvidence, getDeps, (ctx, data) =>
+export const submitEvidence = command(COMMANDS.submitEvidence, (ctx, data) =>
     ctx.deps.intakeEvidence.execute({
       ownerId: ctx.ownerId,
       idempotencyKey: data.idempotencyKey,
@@ -12,8 +10,7 @@ export const submitEvidence = (getDeps: () => Deps) =>
     }),
   );
 
-export const confirmCandidate = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.confirmCandidate, getDeps, (ctx, data) =>
+export const confirmCandidate = command(COMMANDS.confirmCandidate, (ctx, data) =>
     ctx.deps.confirmCandidate.execute({
       ownerId: ctx.ownerId,
       sourceEventId: asSourceEventId(data.sourceEventId),
@@ -28,24 +25,21 @@ export const confirmCandidate = (getDeps: () => Deps) =>
     }),
   );
 
-export const retrySourceEvent = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.retrySourceEvent, getDeps, (ctx, data) =>
+export const retrySourceEvent = command(COMMANDS.retrySourceEvent, (ctx, data) =>
     ctx.deps.retrySourceEvent.execute({
       ownerId: ctx.ownerId,
       sourceEventId: asSourceEventId(data.sourceEventId),
     }),
   );
 
-export const cancelSourceEvent = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.cancelSourceEvent, getDeps, (ctx, data) =>
+export const cancelSourceEvent = command(COMMANDS.cancelSourceEvent, (ctx, data) =>
     ctx.deps.cancelSourceEvent.execute({
       ownerId: ctx.ownerId,
       sourceEventId: asSourceEventId(data.sourceEventId),
     }),
   );
 
-export const answerQuestion = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.answerQuestion, getDeps, (ctx, data) =>
+export const answerQuestion = command(COMMANDS.answerQuestion, (ctx, data) =>
     ctx.deps.answerQuestion.execute({
       ownerId: ctx.ownerId,
       sourceEventId: asSourceEventId(data.sourceEventId),

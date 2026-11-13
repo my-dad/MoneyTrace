@@ -56,7 +56,7 @@ import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
 import type { DocStore } from "@moneytrace/infrastructure";
 import { selectAiProvider } from "./ai-selection";
 import { accessPolicyFromEnv, type AccessPolicy } from "./callable/access";
-import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/create-callable";
+import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/command";
 
 export type CallGate = { access: AccessPolicy; limiter: RateLimiter; limits: RateLimits; nowMs: () => number };
 
@@ -86,10 +86,15 @@ export type Deps = {
   wakeSnoozedFollowUps: WakeSnoozedFollowUps;
   resumeQuotaBlockedEvents: ResumeQuotaBlockedEvents;
   purgeProviderResults: PurgeProviderResults;
+  /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
+  runnableEvents: FirestoreSourceEventRepository["listRunnable"];
 };
 
 /** The only place adapters are wired to ports. */
-export function composeDeps(db: DocStore): Deps {
+export function composeDeps(
+  db: DocStore,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Deps {
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
   const hasher = new NodeHasher();
@@ -112,9 +117,9 @@ export function composeDeps(db: DocStore): Deps {
   return {
     logger,
     callGate: {
-      access: accessPolicyFromEnv(process.env),
+      access: accessPolicyFromEnv(env),
       limiter: new FirestoreRateLimiter(db),
-      limits: process.env["FUNCTIONS_EMULATOR"] === "true" ? EMULATOR_RATE_LIMITS : CALLABLE_RATE_LIMITS,
+      limits: env["FUNCTIONS_EMULATOR"] === "true" ? EMULATOR_RATE_LIMITS : CALLABLE_RATE_LIMITS,
       nowMs: () => clock.nowMs(),
     },
     // Built on first use: only the pipeline trigger has the AI key, not every callable.
@@ -135,7 +140,7 @@ export function composeDeps(db: DocStore): Deps {
             logger,
             timeoutSignal: systemTimeoutSignal,
           }),
-          selectAiProvider(process.env),
+          selectAiProvider(env),
           DEFAULT_AI_ESTIMATE_MICRO_USD,
         ),
         post,
@@ -162,6 +167,7 @@ export function composeDeps(db: DocStore): Deps {
       estimateMicroUsd: DEFAULT_AI_ESTIMATE_MICRO_USD,
     }),
     purgeProviderResults: new PurgeProviderResults({ providerCalls, logger }),
+    runnableEvents: (limit) => sourceEvents.listRunnable(limit),
     resolveFollowUp: new ResolveFollowUp({ followUps, reader, accounts, post, clock }),
     snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
     recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),

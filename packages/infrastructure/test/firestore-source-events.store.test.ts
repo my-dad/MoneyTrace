@@ -154,3 +154,37 @@ describe("firestore source event repository", () => {
     expect(logger.events[0]?.fields["sourceEventId"]).toBe("evt-bad");
   });
 });
+
+describe("listing events waiting for a pipeline stage (CR-010: replaces the Firestore trigger)", () => {
+  it("lists unclaimed events in a stage's input status, oldest first, across owners", async () => {
+    const { repo } = await makeHarness();
+    const add = (owner: string, id: string, atMs: number) =>
+      repo.create(asOwnerId(owner), {
+        sourceEventId: asSourceEventId(id),
+        sourceType: "sms",
+        sourceHash: `h-${id}`,
+        idempotencyKey: `k-${id}`,
+        receivedAtMs: atMs,
+      });
+    await add("bob", "late", 300);
+    await add("alice", "early", 100);
+    await add("alice", "claimed", 200);
+    await add("alice", "done", 50);
+    const c = await repo.claim(asOwnerId("alice"), asSourceEventId("claimed"), "normalize", "w", clock.nowMs());
+    if (c.status !== "claimed") throw new Error("setup claim failed");
+    const d = await repo.claim(asOwnerId("alice"), asSourceEventId("done"), "normalize", "w", clock.nowMs());
+    if (d.status !== "claimed") throw new Error("setup claim failed");
+    await repo.commitStage(asOwnerId("alice"), d.claim, commitWith(null, "normalized"));
+    const d2 = await repo.claim(asOwnerId("alice"), asSourceEventId("done"), "interpret", "w", clock.nowMs());
+    if (d2.status !== "claimed") throw new Error("setup claim failed");
+    await repo.commitStage(asOwnerId("alice"), d2.claim, { ...commitWith(null, "interpreted") });
+
+    const rows = await repo.listRunnable(10);
+    expect(rows.map((r) => [r.ownerId, r.sourceEventId])).toEqual([
+      ["alice", "done"],
+      ["alice", "early"],
+      ["bob", "late"],
+    ]);
+    expect(await repo.listRunnable(1)).toHaveLength(1);
+  });
+});

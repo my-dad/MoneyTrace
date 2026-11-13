@@ -1,9 +1,7 @@
 import { COMMANDS } from "@moneytrace/contracts";
-import type { Deps } from "../composition";
-import { createCallable } from "./create-callable";
+import { command } from "./command";
 
-export const resolveFollowUp = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.resolveFollowUp, getDeps, (ctx, data) =>
+export const resolveFollowUp = command(COMMANDS.resolveFollowUp, (ctx, data) =>
     ctx.deps.resolveFollowUp.execute({
       ownerId: ctx.ownerId,
       followUpId: data.followUpId,
@@ -11,8 +9,7 @@ export const resolveFollowUp = (getDeps: () => Deps) =>
     }),
   );
 
-export const snoozeFollowUp = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.snoozeFollowUp, getDeps, (ctx, data) =>
+export const snoozeFollowUp = command(COMMANDS.snoozeFollowUp, (ctx, data) =>
     ctx.deps.snoozeFollowUp.execute({
       ownerId: ctx.ownerId,
       followUpId: data.followUpId,
@@ -20,13 +17,11 @@ export const snoozeFollowUp = (getDeps: () => Deps) =>
     }),
   );
 
-export const recordCustodyTransfer = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.recordCustodyTransfer, getDeps, (ctx, data) =>
+export const recordCustodyTransfer = command(COMMANDS.recordCustodyTransfer, (ctx, data) =>
     ctx.deps.recordCustodyTransfer.execute({ ownerId: ctx.ownerId, ...data }),
   );
 
-export const correctTransaction = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.correctTransaction, getDeps, (ctx, data) =>
+export const correctTransaction = command(COMMANDS.correctTransaction, (ctx, data) =>
     ctx.deps.correctTransaction.execute({
       ownerId: ctx.ownerId,
       idempotencyKey: data.idempotencyKey,
@@ -46,8 +41,7 @@ export const correctTransaction = (getDeps: () => Deps) =>
     }),
   );
 
-export const updateSettings = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.updateSettings, getDeps, (ctx, data) =>
+export const updateSettings = command(COMMANDS.updateSettings, (ctx, data) =>
     ctx.deps.updateSettings.execute({
       ownerId: ctx.ownerId,
       ...(data.timezone === undefined ? {} : { timezone: data.timezone }),

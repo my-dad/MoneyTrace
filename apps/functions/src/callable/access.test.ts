@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { accessPolicyFromEnv, isAllowed } from "./access";
+import { accessPolicyFromEnv, callerFromFirebase, isAllowed as allowedFor, type AccessPolicy, type VerifiedToken } from "./access";
+
+const isAllowed = (policy: AccessPolicy, token: VerifiedToken) => allowedFor(policy, callerFromFirebase("u", token));
 
 const google = (email: string, verified = true) => ({ email, email_verified: verified, firebase: { sign_in_provider: "google.com" } });
 const deployed = accessPolicyFromEnv({ ALLOWED_EMAILS: " Owner@Example.com , second@example.com " });

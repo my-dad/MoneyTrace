@@ -31,6 +31,7 @@ import {
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import {
   DomainError,
+  STAGE_INPUT_STATUS,
   asOwnerId,
   asSourceEventId,
   type OwnerId,
@@ -241,6 +242,33 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
       });
     }
     return rows;
+  }
+
+  /**
+   * Unclaimed events whose status a pipeline stage consumes, oldest first, across owners. The
+   * Supabase backend has no document trigger, so a sweep drives these (CR-010). Not on the port:
+   * only the composition root uses it.
+   */
+  async listRunnable(limit: number): Promise<{ ownerId: OwnerId; sourceEventId: SourceEventId; receivedAtMs: number }[]> {
+    const rows: { ownerId: OwnerId; sourceEventId: SourceEventId; receivedAtMs: number }[] = [];
+    for (const status of new Set(Object.values(STAGE_INPUT_STATUS))) {
+      const snap = await this.db
+        .collectionGroup("sourceEvents")
+        .where("status", "==", status)
+        .orderBy("receivedAtMs")
+        .limit(limit)
+        .get();
+      for (const doc of snap.docs) {
+        const owner = doc.ref.parent.parent;
+        if (owner?.parent.id !== "users" || doc.get("claim") != null) continue;
+        rows.push({
+          ownerId: asOwnerId(owner.id),
+          sourceEventId: asSourceEventId(doc.id),
+          receivedAtMs: doc.get("receivedAtMs") as number,
+        });
+      }
+    }
+    return rows.sort((a, b) => a.receivedAtMs - b.receivedAtMs).slice(0, limit);
   }
 
   reopen(

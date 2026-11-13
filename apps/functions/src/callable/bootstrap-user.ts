@@ -1,8 +1,6 @@
 import { COMMANDS } from "@moneytrace/contracts";
-import type { Deps } from "../composition";
-import { createCallable } from "./create-callable";
+import { command } from "./command";
 
-export const bootstrapUser = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.bootstrapUser, getDeps, (ctx) =>
+export const bootstrapUser = command(COMMANDS.bootstrapUser, (ctx) =>
     ctx.deps.bootstrapUser.execute({ ownerId: ctx.ownerId }),
   );

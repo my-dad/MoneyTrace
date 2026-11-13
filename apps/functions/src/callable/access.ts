@@ -23,12 +23,27 @@ export function accessPolicyFromEnv(env: Readonly<Record<string, string | undefi
   return { kind: "allowlist", emails: new Set(emails) };
 }
 
-export function isAllowed(policy: AccessPolicy, token: VerifiedToken): boolean {
+/** A signed-in caller as any transport proves it (Firebase ID token, Supabase JWT). */
+export type Caller = {
+  uid: string;
+  email?: string | undefined;
+  emailVerified: boolean;
+  provider: "google" | "other";
+};
+
+export const callerFromFirebase = (uid: string, token: VerifiedToken = {}): Caller => ({
+  uid,
+  email: token.email,
+  emailVerified: token.email_verified === true,
+  provider: token.firebase?.sign_in_provider === "google.com" ? "google" : "other",
+});
+
+export function isAllowed(policy: AccessPolicy, caller: Caller): boolean {
   if (policy.kind === "emulator") return true;
   return (
-    token.firebase?.sign_in_provider === "google.com" &&
-    token.email_verified === true &&
-    token.email !== undefined &&
-    policy.emails.has(token.email.toLowerCase())
+    caller.provider === "google" &&
+    caller.emailVerified &&
+    caller.email !== undefined &&
+    policy.emails.has(caller.email.toLowerCase())
   );
 }

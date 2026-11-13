@@ -1,11 +1,8 @@
 import { COMMANDS } from "@moneytrace/contracts";
 import { asAccountId, Money } from "@moneytrace/domain";
-import { HttpsError } from "firebase-functions/v2/https";
-import type { Deps } from "../composition";
-import { createCallable } from "./create-callable";
+import { CallError, command } from "./command";
 
-export const recordOpeningBalance = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.recordOpeningBalance, getDeps, async (ctx, data) => {
+export const recordOpeningBalance = command(COMMANDS.recordOpeningBalance, async (ctx, data) => {
     const result = await ctx.deps.recordOpeningBalance.execute({
       ownerId: ctx.ownerId,
       accountId: asAccountId(data.accountId),
@@ -14,7 +11,7 @@ export const recordOpeningBalance = (getDeps: () => Deps) =>
       actor: ctx.ownerId,
     });
     if (result.status === "idempotencyConflict") {
-      throw new HttpsError("already-exists", "idempotencyConflict");
+      throw new CallError("already-exists", "idempotencyConflict");
     }
     return {
       transactionId: result.transactionId,
