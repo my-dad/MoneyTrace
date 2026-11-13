@@ -177,7 +177,7 @@ describe("PgDocStore transactions", () => {
     expect(n).toBe(1);
   });
 
-  it("a serialization conflict retries, then gives up with ABORTED", async () => {
+  it("a serialization conflict retries (at least 12 times), then gives up with ABORTED", async () => {
     let calls = 0;
     const conflict = Object.assign(new Error("could not serialize"), { code: "40001" });
     const flaky: SqlClient = {
@@ -191,5 +191,7 @@ describe("PgDocStore transactions", () => {
     await expect(
       new Store(flaky).runTransaction(() => Promise.resolve("ok"), { maxAttempts: 2 }),
     ).rejects.toEqual(code(ABORTED));
-  });
+    // Asked for 2, given the Postgres minimum of 12.
+    expect(calls).toBe(-100 + 12);
+  }, 20_000);
 });

@@ -24,7 +24,15 @@ import {
 const SEGMENT = /^[^/]+$/;
 const FIELD = /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
 const OPS: ReadonlySet<string> = new Set(["==", "<", "<=", ">", ">="]);
-const DEFAULT_ATTEMPTS = 5;
+/**
+ * Firestore makes contending transactions wait on locks; SERIALIZABLE Postgres aborts all but one
+ * per round instead. So a contended transaction here gets at least this many attempts, spaced by
+ * exponential backoff with full jitter, whatever the caller asked for (more attempts only ever
+ * turn an ABORTED into a success).
+ */
+const MIN_ATTEMPTS = 12;
+const BACKOFF_BASE_MS = 10;
+const BACKOFF_CAP_MS = 500;
 
 function segments(path: string, kind: "document" | "collection"): string[] {
   const segs = path.split("/");
@@ -314,7 +322,7 @@ export class PgDocStore implements DocStore {
     fn: (tx: DocTransaction) => Promise<T>,
     options?: { maxAttempts?: number },
   ): Promise<T> {
-    const attempts = options?.maxAttempts ?? DEFAULT_ATTEMPTS;
+    const attempts = Math.max(options?.maxAttempts ?? MIN_ATTEMPTS, MIN_ATTEMPTS);
     for (let attempt = 1; ; attempt++) {
       try {
         return await this.client.serializable(async (runner) => {
@@ -328,7 +336,7 @@ export class PgDocStore implements DocStore {
         if (state === undefined || !RETRYABLE_SQLSTATES.has(state)) throw error;
         if (attempt >= attempts)
           throw new DocStoreError(ABORTED, "transaction contended past its last attempt");
-        await sleep(Math.floor(Math.random() * 20 * attempt) + 5);
+        await sleep(Math.floor(Math.random() * Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** attempt)));
       }
     }
   }
