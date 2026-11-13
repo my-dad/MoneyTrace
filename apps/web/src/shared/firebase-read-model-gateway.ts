@@ -8,17 +8,17 @@ import {
   where,
   type FirestoreError,
 } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { firebase } from "./firebase";
 import type { LedgerEntryRow, ReadModelGateway, Watch } from "./read-model-gateway";
 
-const ownerCollection = (uid: string, name: string) => collection(db, `users/${uid}/${name}`);
+const ownerCollection = (uid: string, name: string) => collection(firebase().db, `users/${uid}/${name}`);
 
 function errorOf(error: FirestoreError): Error {
   return new Error(error.message);
 }
 
 function requireUid(): string {
-  const uid = auth.currentUser?.uid;
+  const uid = firebase().auth.currentUser?.uid;
   if (uid === undefined) throw new Error("a signed-in user is required");
   return uid;
 }

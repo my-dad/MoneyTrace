@@ -6,7 +6,7 @@ import type { ReadModelGateway } from "./read-model-gateway";
 const PROJECT = "demo-moneytrace";
 
 process.env.NEXT_PUBLIC_USE_EMULATORS = "1";
-const { auth, db } = await import("./firebase");
+const { auth, db } = (await import("./firebase")).firebase();
 const { createFirebaseReadModelGateway } = await import("./firebase-read-model-gateway");
 
 type Field = { stringValue: string } | { integerValue: string };
