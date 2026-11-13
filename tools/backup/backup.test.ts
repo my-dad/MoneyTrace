@@ -1,4 +1,8 @@
 import { asAccountId, asOwnerId, Money } from "@moneytrace/domain";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { composeDeps } from "../../apps/functions/src/composition";
 import { pgliteStore } from "../../packages/infrastructure/test/support/pglite";
@@ -38,10 +42,6 @@ describe("encrypted backups and the restore drill (CR-010)", () => {
   });
 
   it("the CLI decrypts a backup to a file for a real restore, never overwriting one", async () => {
-    const { mkdtempSync, readFileSync, writeFileSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const { spawnSync } = await import("node:child_process");
     const dir = mkdtempSync(join(tmpdir(), "backup-"));
     const { identity, recipient } = await keygen();
     writeFileSync(join(dir, "key"), `${identity}\n`);
