@@ -50,8 +50,11 @@ function readField(data: DocData | undefined, field: string): unknown {
   return value;
 }
 
-const parseData = (raw: unknown): DocData =>
-  (typeof raw === "string" ? JSON.parse(raw) : raw) as DocData;
+/** Drivers return jsonb parsed. Anything else is a storage bug and must fail loudly. */
+const parseData = (raw: unknown): DocData => {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("stored document is not a JSON object");
+  return raw as DocData;
+};
 
 class Snapshot implements DocSnapshot {
   readonly ref: DocRef;
@@ -154,7 +157,8 @@ class PgQuery implements Query {
     const where = [this.source.kind === "parent" ? "parent = $1" : "collection_id = $1"];
     for (const f of this.filters) {
       params.push(JSON.stringify(f.value));
-      const p = `$${String(params.length)}::jsonb`;
+      // Sent as text and cast here: a driver that sees a jsonb parameter JSON-encodes it again.
+      const p = `$${String(params.length)}::text::jsonb`;
       const col = `data #> ${fieldPath(f.field)}`;
       const op = f.op === "==" ? "=" : f.op;
       where.push(`(jsonb_typeof(${col}) = jsonb_typeof(${p}) and ${col} ${op} ${p})`);
@@ -350,7 +354,7 @@ export class PgDocStore implements DocStore {
     const m = rowMeta(w.ref.path);
     const params = [w.ref.path, m.parent, m.collectionId, m.ownerId, JSON.stringify(w.data)];
     const insert =
-      "insert into docs (path, parent, collection_id, owner_id, data) values ($1, $2, $3, $4, $5::jsonb)";
+      "insert into docs (path, parent, collection_id, owner_id, data) values ($1, $2, $3, $4, $5::text::jsonb)";
     if (w.kind === "set") {
       await runner.query(
         `${insert} on conflict (path) do update set data = excluded.data, updated_at = now()`,
