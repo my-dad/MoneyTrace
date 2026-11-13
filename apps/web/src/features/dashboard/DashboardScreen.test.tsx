@@ -11,6 +11,7 @@ const createFixtureEvents = () => [...FIXTURE_SOURCE_EVENTS];
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
 import type { ReadModelGateway } from "../../shared/read-model-gateway";
 import { DashboardScreen } from "./DashboardScreen";
+import { ChatOpenerContext } from "../chat/ChatLauncher";
 
 afterEach(cleanup);
 
@@ -164,5 +165,23 @@ describe("DashboardScreen", () => {
     expect(screen.getByRole("note", { name: "Cash not yet explained" }).textContent).toContain("৳5,000");
     expect(figure("Net money")).toContain("৳1,25,630");
     expect(screen.queryByRole("group", { name: "Spent" })).toBeNull();
+  });
+
+  it("the unexplained-cash box offers Count my cash, which opens the chat on the count", () => {
+    const openChat = vi.fn();
+    render(
+      <ChatOpenerContext.Provider value={{ openChat }}>
+        <DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />
+      </ChatOpenerContext.Provider>,
+    );
+    const box = screen.getByRole("note", { name: "Cash not yet explained" });
+    fireEvent.click(within(box).getByRole("button", { name: "Count my cash" }));
+    expect(openChat).toHaveBeenCalledWith("cashCount");
+  });
+
+  it("without a chat to open, the box has no Count button", () => {
+    open();
+    const box = screen.getByRole("note", { name: "Cash not yet explained" });
+    expect(within(box).queryByRole("button")).toBeNull();
   });
 });

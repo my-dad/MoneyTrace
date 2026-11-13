@@ -343,3 +343,55 @@
 .answerForm input { flex:1; min-width:0; min-height:44px; border:1.5px solid var(--mt-border-strong); border-radius:999px; padding:0 14px; font:inherit; font-size:16px; }
 .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
 .chip { display:inline-flex; align-items:center; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; background:var(--mt-surface-soft); color:var(--mt-body); border:1px solid var(--mt-border); }
+
+/* Cash count (mockup I1–I3). */
+.quick {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.countRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+
+.countRow > :first-child {
+  flex: 1;
+}
+
+.sum {
+  margin: 8px 0 0;
+  border-top: 1px solid var(--mt-border-soft);
+}
+
+.sum > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--mt-border-soft);
+  font-size: 13px;
+}
+
+.sum > div:first-child {
+  border-top: none;
+}
+
+.sum dt {
+  color: var(--mt-caption);
+}
+
+.sum dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.sum > div:last-child dd {
+  font-weight: 800;
+}
+
+.adjust {
+  margin-top: 8px;
+}

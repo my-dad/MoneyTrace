@@ -4,6 +4,7 @@ import { formatBdt } from "@moneytrace/contracts";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
 import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
@@ -30,6 +31,7 @@ export function DashboardScreen({
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
+  const chat = useChatOpener();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [balances, setBalances] = useState<BalanceRow[] | null>(null);
   const [events, setEvents] = useState<SourceEventRow[] | null>(null);
@@ -113,6 +115,17 @@ export function DashboardScreen({
             <div role="note" aria-label={DASHBOARD_COPY.unexplained} className={styles.unexplained}>
               <span>{DASHBOARD_COPY.unexplained}<small>{DASHBOARD_COPY.unexplainedDetail}</small></span>
               <b>{formatBdt(view.unexplainedCashMinor)}</b>
+              {chat !== null && (
+                <button
+                  type="button"
+                  className={styles.countLink}
+                  onClick={() => {
+                    chat.openChat("cashCount");
+                  }}
+                >
+                  {DASHBOARD_COPY.countCash}
+                </button>
+              )}
             </div>
           )}
           {view.hasActivity && view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
