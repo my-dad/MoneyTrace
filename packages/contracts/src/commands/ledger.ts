@@ -49,26 +49,41 @@ export const upsertCashAllocationRequest = strictObject({
 });
 export const upsertCashAllocationResponse = strictObject({ allocationId: documentId });
 
+/** A cash count (PRD gate 32). The server compares it with the Cash accounts and picks the time. */
 export const recordReconciliationRequest = strictObject({
-  accountId: documentId,
+  idempotencyKey: documentId,
   countedMinor: nonNegativeMinorAmount,
   currency: currencyCode,
-  countedAtMs: epochMs,
 });
 export const recordReconciliationResponse = strictObject({
   reconciliationId: documentId,
+  status: postingStatus,
+  countedMinor: nonNegativeMinorAmount,
+  expectedMinor: z.number().int(),
+  cashMinor: z.number().int(),
+  unexplainedMinor: z.number().int(),
   differenceMinor: z.number().int(),
+  /** Present when the count differs: the question that stays open in the chat. */
+  followUpId: documentId.optional(),
 });
 
+/** Adjusts Cash to a stored count; the server derives direction and amount from the count. */
 export const recordAdjustmentRequest = strictObject({
-  idempotencyKey: documentId,
-  accountId: documentId,
-  direction: z.enum(["increase", "decrease"]),
-  amountMinor: positiveMinorAmount,
-  currency: currencyCode,
+  reconciliationId: documentId,
   cause: shortText,
 });
 export const recordAdjustmentResponse = strictObject({
   transactionId: documentId,
+  status: postingStatus,
+  countedMinor: nonNegativeMinorAmount,
+  adjustmentMinor: positiveMinorAmount,
+});
+
+/** "Not a transfer": counts a wrongly paired transfer's two SMS separately again (CR-008 §9). */
+export const splitTransferRequest = strictObject({ sourceEventId: documentId });
+export const splitTransferResponse = strictObject({
+  spentTransactionId: documentId,
+  cameInTransactionId: documentId,
+  amountMinor: positiveMinorAmount,
   status: postingStatus,
 });

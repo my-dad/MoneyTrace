@@ -6,6 +6,7 @@ export type FollowUpRecord = {
   trigger: "withdrawalDestination" | "unreviewedCashActivity" | "reconciliationDifference";
   targetTransactionId?: string;
   targetAccountId?: string;
+  targetReconciliationId?: string;
   question: string;
   dueAtMs: number;
   snoozedUntilMs: number | null;

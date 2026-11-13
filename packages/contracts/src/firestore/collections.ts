@@ -367,6 +367,8 @@ const followUps = z
     ]),
     targetTransactionId: documentId.optional(),
     targetAccountId: documentId.optional(),
+    /** The cash count a `reconciliationDifference` question is about. */
+    targetReconciliationId: documentId.optional(),
     question: text,
     dueAtMs: epochMs,
     snoozedUntilMs: epochMs.nullable(),

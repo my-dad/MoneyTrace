@@ -237,6 +237,16 @@ describe("owner collection schemas", () => {
       }).success,
     ).toBe(false);
   });
+  it("a follow-up can point at the cash count it asks about", () => {
+    expect(
+      OWNER_COLLECTIONS.followUps.safeParse({
+        ...valid.followUps,
+        trigger: "reconciliationDifference",
+        targetAccountId: "cash-main",
+        targetReconciliationId: "recon-k1",
+      }).success,
+    ).toBe(true);
+  });
   it("rejects confidence above 10000", () => {
     expect(
       OWNER_COLLECTIONS.decisionRecords.safeParse({ ...valid.decisionRecords, confidenceBp: 10001 })

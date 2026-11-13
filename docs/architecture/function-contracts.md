@@ -249,27 +249,39 @@ Use case: SetOcrConsent
 
 ### recordReconciliation
 
-Phase: 3
+Phase: 1
 
-Request: `{ accountId, countedMinor, currency, countedAtMs }`. A difference is never auto-categorized as spending.
+Request: `{ idempotencyKey, countedMinor, currency }`. A cash count (gate 32): compared with every active Cash account, `cash-unassigned` included and family cash left out. It never changes a balance, and a difference is never counted as spending. A non-zero difference opens a `reconciliationDifference` follow-up; a new count supersedes older open ones.
 
-Response: `{ reconciliationId, differenceMinor }`
+Response: `{ reconciliationId, status, countedMinor, expectedMinor, cashMinor, unexplainedMinor, differenceMinor, followUpId? }`
 
-Errors: unauthenticated, invalid-argument, not-found
+Errors: unauthenticated, invalid-argument
 
-Use case: RecordReconciliation
+Use case: RecordCashCount
 
 ### recordAdjustment
 
-Phase: 3
+Phase: 1
 
-Request: `{ idempotencyKey, accountId, direction: increase|decrease, amountMinor, currency, cause }`
+Request: `{ reconciliationId, cause }`. Adjusts `cash-main` to an open count; direction and amount come from the stored count. Posts an `adjustment` with the cause and the owner's sign-off, never an expense.
 
-Response: `{ transactionId, status: recorded|alreadyRecorded }`
+Response: `{ transactionId, status: recorded|alreadyRecorded, countedMinor, adjustmentMinor }`
 
-Errors: unauthenticated, invalid-argument, not-found, already-exists (idempotencyConflict)
+Errors: unauthenticated, invalid-argument, not-found, failed-precondition (the count is not open)
 
-Use case: RecordAdjustment
+Use case: RecordCashAdjustment
+
+### splitTransfer
+
+Phase: 1
+
+Request: `{ sourceEventId }`. "Not a transfer" (CR-008 §9): reverses the paired transfer and, in the same ledger write, records the first SMS as it was and the second as its own Spent or Came in.
+
+Response: `{ spentTransactionId, cameInTransactionId, amountMinor, status: recorded|alreadyRecorded }`
+
+Errors: unauthenticated, not-found, failed-precondition (not a paired transfer, or already corrected)
+
+Use case: SplitTransfer
 
 ### requestExport
 

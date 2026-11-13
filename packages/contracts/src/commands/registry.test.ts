@@ -54,20 +54,9 @@ const EXAMPLES: Record<CommandName, unknown> = {
   createUploadSession: { mimeType: "image/jpeg", sizeBytes: 1024 },
   finalizeUpload: { uploadId: "u1", idempotencyKey: "k4" },
   setOcrConsent: { consentVersion: 1, granted: true },
-  recordReconciliation: {
-    accountId: "acc1",
-    countedMinor: 900,
-    currency: "BDT",
-    countedAtMs: 1700000000000,
-  },
-  recordAdjustment: {
-    idempotencyKey: "k5",
-    accountId: "acc1",
-    direction: "decrease",
-    amountMinor: 100,
-    currency: "BDT",
-    cause: "lost note",
-  },
+  recordReconciliation: { idempotencyKey: "k5", countedMinor: 900, currency: "BDT" },
+  recordAdjustment: { reconciliationId: "recon-k5", cause: "lost note" },
+  splitTransfer: { sourceEventId: "se1" },
   requestExport: {},
   requestAccountDeletion: { confirmation: "DELETE MY ACCOUNT" },
 };
@@ -98,8 +87,18 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   createUploadSession: { uploadId: "u", uploadPath: "p", expiresAtMs: 1 },
   finalizeUpload: { sourceEventId: "s", duplicate: false },
   setOcrConsent: { granted: true },
-  recordReconciliation: { reconciliationId: "r", differenceMinor: -5 },
-  recordAdjustment: { transactionId: "t", status: "recorded" },
+  recordReconciliation: {
+    reconciliationId: "r",
+    status: "recorded",
+    countedMinor: 95,
+    expectedMinor: 100,
+    cashMinor: 60,
+    unexplainedMinor: 40,
+    differenceMinor: -5,
+    followUpId: "fu-r",
+  },
+  recordAdjustment: { transactionId: "t", status: "recorded", countedMinor: 95, adjustmentMinor: 5 },
+  splitTransfer: { spentTransactionId: "a", cameInTransactionId: "b", amountMinor: 170000, status: "recorded" },
   requestExport: { requestId: "r" },
   requestAccountDeletion: { requestId: "r" },
 };
@@ -122,7 +121,7 @@ const names = Object.keys(COMMANDS);
 describe("COMMANDS", () => {
   it("has an example for every command and none extra", () => {
     expect(Object.keys(EXAMPLES).sort()).toEqual([...names].sort());
-    expect(names.length).toBe(23);
+    expect(names.length).toBe(24);
   });
   it.each(names)("%s accepts its valid example", (name) => {
     const c = COMMANDS[name as CommandName];
@@ -158,7 +157,6 @@ describe("COMMANDS", () => {
       ["recordCustodyTransfer", "amountMinor"],
       ["upsertCashAllocation", "amountMinor"],
       ["recordReconciliation", "countedMinor"],
-      ["recordAdjustment", "amountMinor"],
     ];
     for (const [name, field] of moneyFields) {
       for (const bad of [12.5, "100", NaN, 2 ** 53, 0]) {
@@ -169,6 +167,19 @@ describe("COMMANDS", () => {
         ).toBe(field === "countedMinor" && bad === 0);
       }
     }
+  });
+  it("cash count and adjustment requests carry only what the user decides", () => {
+    const count = COMMANDS.recordReconciliation.request;
+    expect(count.safeParse({ idempotencyKey: "k", countedMinor: 0, currency: "BDT" }).success).toBe(true);
+    expect(count.safeParse({ idempotencyKey: "k", countedMinor: -1, currency: "BDT" }).success).toBe(false);
+    expect(
+      count.safeParse({ idempotencyKey: "k", countedMinor: 1, currency: "BDT", accountId: "a" }).success,
+    ).toBe(false);
+    const adjust = COMMANDS.recordAdjustment.request;
+    expect(adjust.safeParse({ reconciliationId: "r", cause: "" }).success).toBe(false);
+    expect(adjust.safeParse({ reconciliationId: "r", cause: "x", direction: "decrease" }).success).toBe(false);
+    expect(adjust.safeParse({ reconciliationId: "r", cause: "x", amountMinor: 5 }).success).toBe(false);
+    expect(COMMANDS.splitTransfer.response.safeParse({ spentTransactionId: "a", cameInTransactionId: "b", amountMinor: 0, status: "recorded" }).success).toBe(false);
   });
   it("rejects unsupported currency and oversize text", () => {
     expect(
