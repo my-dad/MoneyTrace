@@ -3,6 +3,7 @@
 //   node tools/backup/backup.mjs keygen <private-key-file>            → prints the public key
 //   node tools/backup/backup.mjs encrypt <public-key> <in> <out.age>
 //   node tools/backup/backup.mjs drill <docs.sql.age> <private-key-file> <manifest.json.age>
+//   node tools/backup/backup.mjs decrypt <in.age> <private-key-file> <out>   → for a real restore
 import { readFileSync, writeFileSync } from "node:fs";
 import { Decrypter, Encrypter, generateIdentity, identityToRecipient } from "age-encryption";
 
@@ -55,6 +56,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(recipient);
   } else if (cmd === "encrypt") {
     writeFileSync(args[2], await encrypt(args[0].trim(), readFileSync(args[1])));
+  } else if (cmd === "decrypt") {
+    const key = readFileSync(args[1], "utf8").trim();
+    writeFileSync(args[2], await decrypt(key, readFileSync(args[0])), { mode: 0o600, flag: "wx" });
   } else if (cmd === "drill") {
     const key = readFileSync(args[1], "utf8").trim();
     const sql = await decrypt(key, readFileSync(args[0]));
@@ -63,7 +67,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(report.ok ? "restore drill: PASS" : "restore drill: FAIL");
     process.exit(report.ok ? 0 : 1);
   } else {
-    console.error("usage: keygen <file> | encrypt <public-key> <in> <out> | drill <docs.sql.age> <key-file> <manifest.json.age>");
+    console.error("usage: keygen <file> | encrypt <public-key> <in> <out> | drill <docs.sql.age> <key-file> <manifest.json.age> | decrypt <in.age> <key-file> <out>");
     process.exit(2);
   }
 }

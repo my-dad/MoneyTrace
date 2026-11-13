@@ -6,9 +6,8 @@ import type { Deps } from "../composition";
 import { isAllowed, type Caller } from "./access";
 
 /**
- * The call gate and the command handlers, free of any transport (CR-010): Firebase `onCall` and the
- * Supabase `/api` function both run commands through `runCommand`, so they gate, validate and map
- * errors identically. Wire codes are the callable ones (docs/architecture/function-contracts.md).
+ * The call gate and the command handlers, free of any transport (CR-010): the Supabase `/api`
+ * function runs every command through `runCommand`, which gates, validates and maps errors. Wire codes are the callable ones (docs/architecture/function-contracts.md).
  */
 export type WireCode =
   | "unauthenticated"
@@ -92,7 +91,7 @@ export async function runCommand<Req extends z.ZodType, Res extends z.ZodType>(
 ): Promise<z.output<Res>> {
   const correlationId = deps.ids.newId();
   const caller = request.caller;
-  // A sign-in that names no user is nobody (the Firebase emulator accepts junk tokens without one).
+  // A sign-in that names no user is nobody (a junk token can verify without one).
   if (caller === undefined || typeof caller.uid !== "string" || caller.uid === "") {
     throw new CallError("unauthenticated", "unauthenticated");
   }

@@ -5,7 +5,7 @@ const TESTS = "\\.test\\.tsx?$";
  * resolution fails, as the bare module name.
  */
 const pkg = (names) => `(^|/)node_modules/(${names})/|^(${names})(/|$)`;
-const SERVER = pkg("firebase-admin|firebase-functions|firebase-tools|@google-cloud/[^/]+");
+const SERVER = pkg("postgres|@electric-sql/[^/]+");
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -58,7 +58,7 @@ module.exports = {
     },
     {
       name: "ui-kit-only-react",
-      comment: "ui-kit is presentational: React only, no Firebase, no contracts, no business logic.",
+      comment: "ui-kit is presentational: React only, no backend SDK, no contracts, no business logic.",
       severity: "error",
       from: { path: "(^|/)packages/ui-kit/src/", pathNot: TESTS },
       to: { pathNot: ["(^|/)packages/ui-kit/", pkg("react|react-dom")] },

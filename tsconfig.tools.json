@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "types": ["node"] },
-  "include": ["tooling", "firebase", "tools", "vitest.config.ts", "vitest.emulator.config.ts"],
+  "include": ["tooling", "tools", "vitest.config.ts"],
   "exclude": ["tooling/boundaries/fixtures"]
 }

@@ -23,7 +23,7 @@ const OPENING_AT = Date.parse("2026-01-01T00:00:00Z");
 
 /** A user with a BRAC bank account and credit card, set up through the real callables. */
 async function setUp(label: string) {
-  const user = await signUp(label);
+  const user = signUp(label);
   unwrap(await call("bootstrapUser", user, {}));
   const account = async (kind: string, name: string) =>
     String(unwrap(await call("createAccount", user, { kind, name, currency: "BDT" }))["accountId"]);
@@ -83,7 +83,7 @@ const submit = async (user: User, text: string) =>
 
 describe("the SMS pipeline end to end", { timeout: 120_000 }, () => {
   beforeAll(async () => {
-    await call("bootstrapUser", await signUp("warm"), {});
+    await call("bootstrapUser", signUp("warm"), {});
   }, 60_000);
 
   it("gate 25: paste a withdrawal SMS, then answer the question", async () => {

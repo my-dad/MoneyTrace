@@ -37,6 +37,22 @@ describe("encrypted backups and the restore drill (CR-010)", () => {
     await expect(decrypt(other.identity, sealed)).rejects.toThrow();
   });
 
+  it("the CLI decrypts a backup to a file for a real restore, never overwriting one", async () => {
+    const { mkdtempSync, readFileSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { spawnSync } = await import("node:child_process");
+    const dir = mkdtempSync(join(tmpdir(), "backup-"));
+    const { identity, recipient } = await keygen();
+    writeFileSync(join(dir, "key"), `${identity}\n`);
+    writeFileSync(join(dir, "docs.sql.age"), await encrypt(recipient, new TextEncoder().encode(dump)));
+    const cli = (out: string) =>
+      spawnSync("node", [join(import.meta.dirname, "backup.mjs"), "decrypt", join(dir, "docs.sql.age"), join(dir, "key"), join(dir, out)], { encoding: "utf8" });
+    expect(cli("docs.sql").status).toBe(0);
+    expect(readFileSync(join(dir, "docs.sql"), "utf8")).toBe(dump);
+    expect(cli("docs.sql").status).not.toBe(0);
+  });
+
   it("a faithful restore matches the manifest and every transaction balances", async () => {
     const report = await run(dump, manifest);
     expect(report.problems).toEqual([]);

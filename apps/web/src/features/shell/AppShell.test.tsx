@@ -27,7 +27,7 @@ describe("AppShell", () => {
     expect(await screen.findByText("content")).toBeTruthy();
   });
 
-  it("shows no marker in Firebase mode", async () => {
+  it("shows no marker on real data", async () => {
     render(<AppShell services={services(false)}><p>content</p></AppShell>);
     expect(await screen.findByText("content")).toBeTruthy();
     expect(screen.queryByRole("note")).toBeNull();

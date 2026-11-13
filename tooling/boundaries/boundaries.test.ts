@@ -17,12 +17,12 @@ function cruise(file: string) {
 const violations: [string, string][] = [
   ["packages/domain/src/uses-zod.ts", "domain-no-dependencies"],
   ["packages/domain/src/uses-node.ts", "domain-no-dependencies"],
-  ["packages/application/src/uses-firebase.ts", "application-only-domain-contracts"],
+  ["packages/application/src/uses-postgres.ts", "application-only-domain-contracts"],
   ["packages/application/src/uses-infra.ts", "application-only-domain-contracts"],
-  ["packages/application/src/testing/uses-firebase.ts", "application-testing-only-test-libs"],
+  ["packages/application/src/testing/uses-postgres.ts", "application-testing-only-test-libs"],
   ["packages/contracts/src/uses-domain.ts", "contracts-only-zod"],
-  ["apps/web/src/uses-admin.ts", "web-no-server-code"],
-  ["packages/ui-kit/src/uses-firebase.tsx", "ui-kit-only-react"],
+  ["apps/web/src/uses-postgres.ts", "web-no-server-code"],
+  ["packages/ui-kit/src/uses-supabase.tsx", "ui-kit-only-react"],
   ["packages/ui-kit/src/uses-contracts.ts", "ui-kit-only-react"],
 ];
 

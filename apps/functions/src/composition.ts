@@ -95,7 +95,7 @@ export type Deps = {
   aiPlans: { planOf(ownerId: OwnerId): Promise<AiPlan>; markOwner(ownerId: OwnerId): Promise<void> };
   /** Lower-cased OWNER_EMAIL, or undefined when unset (then everyone is a member). */
   ownerEmail: string | undefined;
-  /** Erases an owner's data and login, verified (CR-009). Undefined on Firebase. */
+  /** Erases an owner's data and login, verified (CR-009). */
   accountDeletion: { erase(ownerId: OwnerId): Promise<string> } | undefined;
   /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
   runnableEvents: FirestoreSourceEventRepository["listRunnable"];
