@@ -43,4 +43,5 @@ blocked on Mabrur: runbook §1–2 (Supabase project, Google OAuth client, Cloud
 
 ## Phase 8 (started early at Mabrur's request, 2026-11-13) — branch `remove-firebase` on top of PR #4
 Order: 8.1 port Firebase-only tests to Supabase equivalents (command gate, callable-auth, cross-user gate 35, pipeline gates, rules → RLS); 8.2 browser e2e on local Supabase in CI; 8.3 delete Firebase code/config/deps + CI; 8.4 docs. Mabrur's runbook §1–2 still pending in parallel.
-next: 8.1 port tests (start: cross-user gate 35)
+- 8.1 functions suites ported to the real /api on PGlite (`test/support/local-api.ts`, callable-shaped replies): callable-auth (18), cross-user gate 35 (2), pipeline gates 25/26/34 (8) — 28/28 as on Firebase. Gate 35 now proves Bob deleting his OWN account leaves Alice untouched. Fix found by it (test-first via cross-user RED): deletion erases in rounds (up to 6, backoff) so in-flight SMS processing can't fail it; + api test "succeeds right after pasting an SMS".
+next: 8.1 rules.emulator → RLS coverage check; web Firebase-only tests

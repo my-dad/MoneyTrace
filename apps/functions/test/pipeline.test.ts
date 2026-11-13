@@ -1,13 +1,9 @@
-import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
 import { beforeAll, describe, expect, it } from "vitest";
 import corpus from "../../../fixtures/sms/corpus.json";
+import { localBackend, type Reply, type User } from "./support/local-api";
 
-const PROJECT_ID = "demo-moneytrace";
-const FUNCTIONS = `http://127.0.0.1:5001/${PROJECT_ID}/asia-south2`;
-const AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake";
-process.env["METADATA_SERVER_DETECTION"] = "none";
-const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
+/** The SMS pipeline end to end through the real `/api` on Postgres in-process (CR-010; was the Firebase emulator). */
+const { db, call, signUp } = await localBackend();
 
 const smsOf = (needle: string): string => {
   const e = corpus.find((c) => c.text.includes(needle));
@@ -17,32 +13,6 @@ const smsOf = (needle: string): string => {
 const WITHDRAWAL_SMS = smsOf("EXAMPLE ATM DHAKA");
 const CARD_PURCHASE_SMS = smsOf("EXAMPLE PHARMA");
 const CARD_PAYMENT_SMS = smsOf("BRAC Bank Credit Card");
-
-type User = { uid: string; token: string };
-type Reply = { result?: Record<string, unknown>; error?: { status: string; message: string } };
-
-async function signUp(label: string): Promise<User> {
-  const res = await fetch(AUTH, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email: `${label}-${crypto.randomUUID()}@example.test`,
-      password: "correct-horse-battery",
-      returnSecureToken: true,
-    }),
-  });
-  const body = (await res.json()) as { idToken: string; localId: string };
-  return { uid: body.localId, token: body.idToken };
-}
-
-async function call(name: string, user: User, data: unknown): Promise<Reply> {
-  const res = await fetch(`${FUNCTIONS}/${name}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${user.token}` },
-    body: JSON.stringify({ data }),
-  });
-  return (await res.json()) as Reply;
-}
 
 function unwrap(r: Reply): Record<string, unknown> {
   if (r.result === undefined) throw new Error(`call failed: ${JSON.stringify(r)}`);

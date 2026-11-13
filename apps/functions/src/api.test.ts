@@ -162,6 +162,16 @@ describe("delete my account (CR-009)", () => {
     expect(await ownRows("bob")).toEqual(bobBefore);
   });
 
+  it("succeeds right after pasting an SMS, while its processing is still running", async () => {
+    const a = api();
+    await setUp(a, "alice");
+    await a.ok("alice", "submitEvidence", { idempotencyKey: "k1", text: sms("EXAMPLE ATM DHAKA") });
+    // No settle: the pipeline is still writing when the deletion starts.
+    expect((await a.call("alice", "requestAccountDeletion", { confirmation: "DELETE MY ACCOUNT" })).status).toBe(200);
+    await a.settle();
+    expect(await ownRows("alice")).toEqual([]);
+  });
+
   it("is safe to run again", async () => {
     const a = api();
     await a.ok("alice", "bootstrapUser");
