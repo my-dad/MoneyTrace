@@ -40,3 +40,7 @@ One line per subtask. The last line is always `next:`, `blocked on Mabrur:` or `
 - CI run 43405978149: all 4 jobs green (verify, emulator, e2e, Supabase real-Postgres + Deno smoke).
 - T0.1 CR-010 accepted by Mabrur (2026-11-13); PRD status updated.
 blocked on Mabrur: runbook §1–2 (Supabase project, Google OAuth client, Cloudflare Pages, backup key + GitHub secrets, DeepSeek terms + key, supabase secrets + vault). Then together: `pnpm deploy:supabase`, go-live checks (runbook §4), restore drill, abuse check (T6.5), merge PR #4.
+
+## Phase 8 (started early at Mabrur's request, 2026-11-13) — branch `remove-firebase` on top of PR #4
+Order: 8.1 port Firebase-only tests to Supabase equivalents (command gate, callable-auth, cross-user gate 35, pipeline gates, rules → RLS); 8.2 browser e2e on local Supabase in CI; 8.3 delete Firebase code/config/deps + CI; 8.4 docs. Mabrur's runbook §1–2 still pending in parallel.
+next: 8.1 port tests (start: cross-user gate 35)
