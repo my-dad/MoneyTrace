@@ -1,0 +1,61 @@
+# CR-010 / release gate D5: nightly encrypted backup of the Supabase database. The repository is
+# public, so everything is age-encrypted before upload; only Mabrur's offline key can read it.
+# Restore drill (on Mabrur's machine): download the artifact, then
+#   node tools/backup/backup.mjs drill docs.sql.age <private-key-file> manifest.json.age
+name: Nightly backup
+
+on:
+  schedule:
+    - cron: "41 20 * * *" # 02:41 in Dhaka
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt, keep 14 days
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+      - run: npm install -g corepack@0.34.6 && corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Postgres 17 client (matches Supabase)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+      - name: Dump data and counts
+        env:
+          # The Session pooler connection string (IPv4); GitHub runners can't reach the IPv6-only direct host.
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          PG=/usr/lib/postgresql/17/bin
+          "$PG/pg_dump" "$DB_URL" --data-only --inserts --no-owner --no-privileges --table=public.docs -f docs.sql
+          "$PG/pg_dump" "$DB_URL" --data-only --inserts --no-owner --no-privileges --table=auth.users --table=auth.identities -f auth.sql
+          "$PG/psql" "$DB_URL" -At -c "select coalesce(json_object_agg(collection_id, n), '{}') from (select collection_id, count(*)::int as n from public.docs group by 1) t" > manifest.json
+      - name: Encrypt and remove the plain files
+        env:
+          KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          for f in docs.sql auth.sql manifest.json; do node tools/backup/backup.mjs encrypt "$KEY" "$f" "$f.age"; done
+          shred -u docs.sql auth.sql manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: "*.age"
+          retention-days: 14
+          if-no-files-found: error

@@ -28,12 +28,15 @@
     "smoke:supabase": "pnpm build:supabase && node apps/functions/test/deno-smoke.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
     "@firebase/rules-unit-testing": "6.0.0",
     "@moneytrace/contracts": "workspace:*",
     "@moneytrace/domain": "workspace:*",
     "@moneytrace/infrastructure": "workspace:*",
+    "@playwright/test": "1.51.1",
     "@types/node": "22.20.5",
     "@vitejs/plugin-react": "6.2.1",
+    "age-encryption": "0.3.1",
     "dependency-cruiser": "18.7.2",
     "esbuild": "0.28.2",
     "eslint": "10.14.0",
@@ -48,7 +51,6 @@
     "typescript-eslint": "8.72.1",
     "vite": "8.3.6",
     "vitest": "5.1.0",
-    "@playwright/test": "1.51.1",
     "zod": "4.6.7"
   }
 }
