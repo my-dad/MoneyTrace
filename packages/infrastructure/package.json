@@ -11,9 +11,13 @@
     "@moneytrace/contracts": "workspace:*",
     "@moneytrace/domain": "workspace:*",
     "firebase-admin": "14.5.0",
+    "postgres": "3.4.9",
     "zod": "4.6.7"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10"
   }
 }
