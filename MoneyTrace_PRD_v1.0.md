@@ -306,7 +306,7 @@ Status: Accepted by Mabrur (Spark decision recorded in commit `f24b098`; split r
 | Security impact | Nothing is reachable from the internet until App Check, rate limits, least-privilege access and an abuse checklist are in place. App Check moves earlier, from phase 4 to 0B. Until 0B passes, no real financial data may enter the system, including through the real AI API. |
 | Cost impact | No Firebase bill before 0B. Backups and the first restore drill are postponed, so no real data may exist until they pass. |
 | Delivery impact | Phase 1 may start after 0A and runs on emulators. The Delhi region remains unproven for triggers and schedules until the 0B smoke test, and the Firestore location is permanent, so no dev or prod database is created before it passes. Phase 4 cannot begin its user pilot before 0B passes. |
-| Acceptance criteria | The 0A and 0B exit gates in section 16. The full 0B control list is in `docs/runbooks/firebase-environments.md`. |
+| Acceptance criteria | The 0A and 0B exit gates in section 16. The full 0B control list is in `docs/release/release-checklist.md` (it was `docs/runbooks/firebase-environments.md` until CR-010). |
 
 ## CR-003: Start Phase 1 before the 0A reviews finish (2026-11-07)
 

@@ -1,6 +1,6 @@
 # ADR 0003: Bundle Cloud Functions with esbuild
 
-Status: accepted
+Status: superseded by PRD CR-010 (2026-11-13). `/api` is bundled by `apps/functions/build-supabase.mjs` for Supabase Edge Functions; Cloud Functions are gone.
 
 ## Context
 

@@ -4,7 +4,7 @@ Schemas live in `packages/contracts/src/commands/` and `packages/contracts/src/t
 
 ## Wire mapping
 
-Every handler maps failures to Firebase callable codes exactly like this:
+Every handler maps failures to these wire codes (`/api` also sets the matching HTTP status: 400, 401, 403, 404, 409, 429 or 500):
 
 - No verified Auth token: `unauthenticated`.
 - Request schema failure: `invalid-argument`.

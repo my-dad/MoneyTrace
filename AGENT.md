@@ -9,13 +9,20 @@ Source of product truth: `MoneyTrace_PRD_v1.0.md` (locked MVP baseline). If this
 Phase 1's SMS vertical slice is implemented, whole-branch reviewed and merged to
 `master` (2026-11-12; review record in
 [`docs/superpowers/progress/phase-1-review.md`](docs/superpowers/progress/phase-1-review.md)).
-It includes the authenticated chat, deterministic pipeline, emulator coverage, and
-PWA shell. PRD CR-003's outstanding reviews are complete. Production
-deployment remains blocked by the Phase 0B gates. The Phase 0 plan is
+It includes the authenticated chat, deterministic pipeline, and PWA shell. PRD
+CR-003's outstanding reviews are complete. Production deployment remains blocked by
+the Phase 0B gates, re-read for Supabase by CR-010. The Phase 0 plan is
 [`docs/superpowers/plans/2026-11-06-phase-0-foundations.md`](docs/superpowers/plans/2026-11-06-phase-0-foundations.md);
 the architecture source is
 [`docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md`](docs/superpowers/specs/2026-11-06-moneytrace-architecture-design.md).
-Cloud CI and real Firebase environments are intentionally deferred.
+
+**CR-010 (accepted 2026-11-13): no Firebase.** Mabrur refused the Blaze plan, so the backend is
+Supabase (Google sign-in, Postgres, one Edge Function `/api`, `pg_cron`) and the web app is on
+Cloudflare Pages, all on free plans. Firestore-shaped documents live in one Postgres table behind
+`DocStore`; the adapters kept their logic. Plan and progress:
+[`docs/superpowers/plans/2026-11-13-supabase-migration.md`](docs/superpowers/plans/2026-11-13-supabase-migration.md),
+[`docs/superpowers/progress/supabase-migration.md`](docs/superpowers/progress/supabase-migration.md).
+Going live: [`docs/release/supabase-runbook.md`](docs/release/supabase-runbook.md).
 
 The web app is a Google sign-in page and one dashboard with a pop-up chat (PRD
 CR-007, piece 1 of 4; see
@@ -27,8 +34,8 @@ credits as Came in except paired own-account transfers, and lets DeepSeek ask up
 questions about an SMS it can't read clearly. Release gate 32 (count my cash, with an
 audited Adjust) and the "Not a transfer" undo are built (see
 [`docs/superpowers/progress/cash-count-undo.md`](docs/superpowers/progress/cash-count-undo.md)).
-Next: CR-009 (open sign-up for friends and family: global AI cap, data notice, account
-deletion), piece 3 (tips from DeepSeek) and piece 4 (going live).
+CR-009 (open sign-up for friends and family: global AI cap, data notice, account
+deletion) is built. Next: going live on Supabase (piece 4), then piece 3 (tips from DeepSeek).
 
 ## What it is
 
@@ -37,13 +44,14 @@ Single-user, mobile-first PWA for evidence-driven personal/household finance tra
 ## Locked tech stack
 
 - Frontend: Next.js + TypeScript (PWA, mobile-first)
-- Backend: Firebase Authentication, Cloud Functions (TypeScript), Cloud Firestore
+- Backend (CR-010): Supabase Auth (Google), Postgres (documents as JSON behind `DocStore`, row-level security), one Edge Function `/api` (TypeScript on Deno), `pg_cron` for scheduled jobs
+- Hosting (CR-010): Cloudflare Pages, static export
 - AI: DeepSeek API behind an `AIProvider` interface. No custom model training.
 - OCR: deferred by PRD CR-001. When resumed: replaceable `OCRProvider` adapter (benchmark Tesseract.js vs managed OCR on real Bangladesh receipts)
-- Uploads: deferred by PRD CR-001. When resumed: private, short-lived Cloud Storage
+- Uploads: deferred by PRD CR-001. When resumed: private, short-lived storage (Supabase Storage after a change request)
 - Reminders: scheduled backend jobs + FCM/web push; in-app inbox is the reliable fallback
 - Currency: BDT first; **integer minor units only**
-- Secrets: Secret Manager; no client-side API secrets
+- Secrets: Supabase function secrets and Vault, set by Mabrur; no client-side API secrets
 
 Do not swap or add major technologies without recording a change request (see Change control).
 
@@ -75,8 +83,8 @@ Do not swap or add major technologies without recording a change request (see Ch
 - Reminder wording must not imply unaccounted cash was necessarily spent.
 
 ### Security & privacy
-- All ledger writes and third-party API calls go through Cloud Functions. Clients never write the ledger.
-- Ownership check on every request; strict Firestore/Storage rules; App Check is supplemental, not authorization.
+- All ledger writes and third-party API calls go through `/api`. Clients never write the ledger (row-level security grants them reads only).
+- Ownership check on every request; strict row-level security, tested per collection for cross-user access.
 - Never request or store bank passwords, PINs, or OTPs. Minimize/redact card and account identifiers.
 - Receipt originals: restrict size/MIME, store privately, delete after durable structured persistence, verify deletion, retry failures, auto-expire abandoned files.
 - Structured logs only: no raw financial documents, no secrets, no PII dumps. Use correlated request IDs.
@@ -106,12 +114,12 @@ P1 work must never undermine ledger correctness.
 
 ## Delivery phases
 
-0A Local foundations (auth, rules, ledger invariants, cost metering, on emulators) → 1 SMS vertical slice → 3 Reconciliation & reporting → 4 Hardening/pilot. 2 Receipt pipeline is deferred (CR-001). 0B Deployment gate (real projects, Blaze, App Check, rate limits, backups, CI; CR-002) must pass before any deployment, real financial data, or the pilot. Each phase has an exit gate (PRD §16). Do not jump ahead of the current phase's gate.
+0A Local foundations (auth, rules, ledger invariants, cost metering, on emulators) → 1 SMS vertical slice → 3 Reconciliation & reporting → 4 Hardening/pilot. 2 Receipt pipeline is deferred (CR-001). 0B Deployment gate (real projects, rate limits, encrypted backups and a restore drill, CI; CR-002, re-read for Supabase by CR-010) must pass before any deployment, real financial data, or the pilot. Each phase has an exit gate (PRD §16). Do not jump ahead of the current phase's gate.
 
 ## Testing expectations
 
 - Ledger invariants need regression tests before features build on them (PRD §14 release gates 25–36 are the acceptance suite; 27, 29 and 30 are deferred by CR-001): ATM withdrawal, card purchase + partial repayment, SMS+receipt dedup into one expense, distinct equal-value purchases not collapsed, unreadable receipt, deletion verification, follow-up scheduling, cash discrepancy, edit via reversal, AI budget exhausted, cross-user isolation, import cutover.
-- Use Firebase emulators for rules and function tests; test security rules explicitly for cross-user access.
+- Adapter, `/api` and row-level-security suites run on Postgres: in-process PGlite in `pnpm test`, a real Postgres in CI. Test cross-user access explicitly, through `/api` and through RLS.
 - Maintain fixtures: bank SMS samples, Bangla/English receipts (thermal, photos, screenshots, PDFs).
 - Do not claim a task is done without running the relevant tests and reporting actual output.
 
@@ -131,30 +139,30 @@ corepack enable
 pnpm install --frozen-lockfile
 pnpm verify
 pnpm --filter web build
-pnpm test:emulator
-pnpm build:functions
-pnpm test:e2e
 pnpm test:e2e:fixture
+pnpm test:e2e            # needs Docker: local Supabase
+pnpm smoke:supabase
 ```
 
 `pnpm verify` runs lint, all workspace typechecks, dependency-boundary checks,
-and the unit test suite. `pnpm test:emulator` builds Functions and runs the
-emulator suite against the local demo project. `pnpm test:e2e` builds the web
-app and runs emulator-gated Playwright smoke paths. `pnpm test:e2e:fixture` builds the
-fixture-mode app and runs the demo-data smoke paths (no emulators needed). `pnpm deploy:dev` and `pnpm deploy:prod` exist,
-but must not run before Phase 0B's App Check, rate-limit, billing, backup, and
-restore gates are approved.
+and the unit test suite (Postgres suites included, on PGlite). `pnpm test:e2e:fixture`
+builds the demo app and runs its browser paths (no backend). `pnpm test:e2e` starts a
+local Supabase with our migrations, serves `/api` with a fake AI, builds the web app
+with local (anonymous) sign-in and runs the browser suite. `pnpm smoke:supabase`
+bundles `/api` and loads it under Deno. `pnpm deploy:supabase` is Mabrur's, run per
+the runbook only after the 0B gate.
 
 ## Repository layout
 
 ```text
-apps/functions/       Cloud Functions source and esbuild entry point
+apps/functions/        Call gate, commands, jobs, `/api` handler and its bundle script
 apps/web/              Next.js web app and auth gate
 packages/domain/       Accounting rules and value objects
 packages/application/  Use cases and ports
 packages/contracts/    Zod schemas for persisted and callable data
-packages/infrastructure/ Firestore adapters and repositories
-firebase/             Firestore indexes and security rules
+packages/infrastructure/ Postgres document store, adapters and repositories
+supabase/              Migrations (table, read policy, jobs, realtime) and the `/api` entry
+tools/                 Backups and restore drill, deploy checks, local static server
 tooling/               Boundary checks and test tooling
 docs/                  Architecture, ADRs, glossary, and plans
 ```

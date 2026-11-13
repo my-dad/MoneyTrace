@@ -1,6 +1,6 @@
 # ADR 0004: Use asia-south2 for Firebase resources
 
-Status: accepted, pending staging smoke test
+Status: superseded by PRD CR-010 (2026-11-13). The Supabase project runs in South Asia (Mumbai); there are no Firebase resources.
 
 Note (2026-11-13): there is no separate staging project any more. The "staging" smoke test below runs on the dev project (`moneytrace-staging`, alias `dev`).
 
