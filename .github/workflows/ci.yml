@@ -83,3 +83,9 @@ jobs:
       - name: /api log on failure
         if: failure()
         run: cat supabase-functions.log || true
+      - name: Local database state on failure
+        if: failure()
+        run: >-
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -x -c
+          "select collection_id, path, updated_at, data from docs
+          where collection_id in ('sourceEvents','ledgerEntries','accounts','paymentInstruments') order by updated_at" || true
