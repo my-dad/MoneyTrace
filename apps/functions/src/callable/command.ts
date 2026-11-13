@@ -91,7 +91,10 @@ export async function runCommand<Req extends z.ZodType, Res extends z.ZodType>(
 ): Promise<z.output<Res>> {
   const correlationId = deps.ids.newId();
   const caller = request.caller;
-  if (caller === undefined) throw new CallError("unauthenticated", "unauthenticated");
+  // A sign-in that names no user is nobody (the Firebase emulator accepts junk tokens without one).
+  if (caller === undefined || typeof caller.uid !== "string" || caller.uid === "") {
+    throw new CallError("unauthenticated", "unauthenticated");
+  }
 
   const { callGate } = deps;
   if (!isAllowed(callGate.access, caller)) {

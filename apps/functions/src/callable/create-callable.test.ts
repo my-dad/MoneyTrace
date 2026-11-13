@@ -51,6 +51,22 @@ describe("runCallable error mapping", () => {
   });
 
   it.each([
+    ["no user id", { uid: undefined }],
+    ["an empty user id", { uid: "" }],
+  ])("treats a sign-in with %s as unauthenticated", async (_n, auth) => {
+    const { deps } = harness();
+    let ran = false;
+    const r = await codeOf(
+      runCallable(contract, () => ((ran = true), Promise.resolve({ accountId: "a" })), deps, {
+        auth: auth as unknown as { uid: string },
+        data: goodData,
+      }),
+    );
+    expect(r.code).toBe("unauthenticated");
+    expect(ran).toBe(false);
+  });
+
+  it.each([
     ["an unknown field such as ownerId", { ...goodData, ownerId: "bob" }],
     ["a missing field", { kind: "bank", currency: "BDT" }],
     ["a non-object body", null],
