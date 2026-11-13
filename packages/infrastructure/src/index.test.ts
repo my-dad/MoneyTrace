@@ -30,7 +30,6 @@ describe("@moneytrace/infrastructure", () => {
       "RETRYABLE_SQLSTATES",
       "SystemClock",
       "UNIQUE_VIOLATION",
-      "fromFirestore",
       "ownerPath",
       "postgresJsClient",
       "sqlState",

@@ -6,10 +6,11 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 SUPABASE="pnpm dlx supabase@2.122.0"
 
+# `start` loads /api too, so its bundle must exist first.
+pnpm build:supabase
 $SUPABASE start -x studio,imgproxy,logflare,vector
 eval "$($SUPABASE status -o env | grep -E '^(API_URL|ANON_KEY)=')"
 
-pnpm build:supabase
 $SUPABASE functions serve api --env-file supabase/e2e.env --no-verify-jwt > supabase-functions.log 2>&1 &
 SERVE_PID=$!
 trap 'kill $SERVE_PID 2>/dev/null || true' EXIT

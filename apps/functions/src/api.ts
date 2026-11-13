@@ -8,7 +8,7 @@ import { JOBS, drivePipeline } from "./jobs";
 /**
  * The Supabase backend's one endpoint (CR-010), on web-standard Request/Response so it runs in an
  * Edge Function (Deno) and in Node tests alike. `POST {command, data}` with the user's bearer token
- * runs a command through the same gate as Firebase; `POST {job}` with `x-cron-secret` runs a
+ * runs a command through the call gate; `POST {job}` with `x-cron-secret` runs a
  * scheduled job.
  */
 export type ApiConfig = {
@@ -34,7 +34,7 @@ const HTTP_STATUS: Record<WireCode, number> = {
 };
 
 const MAX_BODY_CHARS = 64_000;
-/** Commands after which a source event may have a stage to run, as Firebase's trigger would see. */
+/** Commands after which a source event may have a stage to run. */
 const DRIVES_PIPELINE: ReadonlySet<CommandName> = new Set(["submitEvidence", "retrySourceEvent", "confirmCandidate", "answerQuestion"]);
 
 const own = <T extends object>(o: T, key: string): key is Extract<keyof T, string> => Object.prototype.hasOwnProperty.call(o, key);

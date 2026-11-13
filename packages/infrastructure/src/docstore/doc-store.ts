@@ -1,8 +1,8 @@
 /**
  * The slice of a Firestore-shaped document database the adapters use (PRD CR-010). Postgres
- * implements it (`PgDocStore`); the shapes match `firebase-admin/firestore`, so the adapters keep
- * their logic and their contract tests. Data is plain JSON: strings, numbers, booleans, null, arrays,
- * maps. Errors carry Firestore's gRPC codes: `create` on an existing document fails with
+ * implements it (`PgDocStore`); the shapes are Firestore's, which the adapters were first written
+ * against, so they kept their logic and contract tests when Firebase was removed. Data is plain
+ * JSON: strings, numbers, booleans, null, arrays, maps. Errors carry Firestore's gRPC codes: `create` on an existing document fails with
  * `ALREADY_EXISTS` (6); a transaction still contended after its last attempt fails with `ABORTED` (10).
  */
 export type DocData = Record<string, unknown>;

@@ -7,7 +7,7 @@ import { correctTransaction, recordCustodyTransfer, resolveFollowUp, snoozeFollo
 import { recordOpeningBalance } from "./record-opening-balance";
 import { answerQuestion, cancelSourceEvent, confirmCandidate, retrySourceEvent, submitEvidence } from "./source-event-commands";
 
-/** Every command a client can call, by its contract name. Firebase and `/api` both serve this map. */
+/** Every command a client can call, by its contract name. `/api` serves this map. */
 export const COMMAND_HANDLERS = {
   bootstrapUser,
   createAccount,

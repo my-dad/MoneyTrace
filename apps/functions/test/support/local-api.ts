@@ -62,7 +62,7 @@ export async function localBackend(env: Record<string, string> = { FUNCTIONS_EMU
     callRaw: (body: unknown, headers: Record<string, string>) => send(body, headers),
     runJob: (job: string) => send({ job }, { "x-cron-secret": "local-cron-secret-0123456789" }),
     /** Every document of one owner, with its data, so any change at all is visible. */
-    async snapshotTree(uid: string): Promise<Record<string, unknown>> {
+    snapshotTree: async (uid: string): Promise<Record<string, unknown>> => {
       const { rows } = await client.query("select path, data from docs where owner_id = $1 order by path", [uid]);
       return Object.fromEntries(rows.map((r) => [r.path, r.data]));
     },

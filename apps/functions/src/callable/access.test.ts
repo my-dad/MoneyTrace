@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { accessPolicyFromEnv, callerFromFirebase, isAllowed as allowedFor, type AccessPolicy, type VerifiedToken } from "./access";
+import { accessPolicyFromEnv, isAllowed, type Caller } from "./access";
 
-const isAllowed = (policy: AccessPolicy, token: VerifiedToken) => allowedFor(policy, callerFromFirebase("u", token));
-const google = (email: string, verified = true) => ({ email, email_verified: verified, firebase: { sign_in_provider: "google.com" } });
+const google = (email: string, verified = true): Caller => ({ uid: "u", email, emailVerified: verified, provider: "google" });
 const deployed = accessPolicyFromEnv({});
 
 describe("access policy (CR-009: open sign-up)", () => {
@@ -20,14 +19,15 @@ describe("access policy (CR-009: open sign-up)", () => {
   });
 
   it("refuses a Google sign-in without an email", () => {
-    expect(isAllowed(deployed, { email_verified: true, firebase: { sign_in_provider: "google.com" } })).toBe(false);
+    expect(isAllowed(deployed, { uid: "u", emailVerified: true, provider: "google" })).toBe(false);
+    expect(isAllowed(deployed, google(""))).toBe(false);
   });
 
-  it.each(["anonymous", "password", "custom", undefined])("refuses sign-in provider %s", (provider) => {
-    expect(isAllowed(deployed, { email: "owner@example.com", email_verified: true, firebase: { sign_in_provider: provider } })).toBe(false);
+  it("refuses any other sign-in (anonymous, password)", () => {
+    expect(isAllowed(deployed, { ...google("owner@example.com"), provider: "other" })).toBe(false);
   });
 
-  it("the emulator is open, so tests can sign in many users", () => {
-    expect(isAllowed(accessPolicyFromEnv({ FUNCTIONS_EMULATOR: "true" }), {})).toBe(true);
+  it("local test stacks are open, so tests can sign in many users", () => {
+    expect(isAllowed(accessPolicyFromEnv({ FUNCTIONS_EMULATOR: "true" }), { uid: "u", emailVerified: false, provider: "other" })).toBe(true);
   });
 });

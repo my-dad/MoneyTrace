@@ -1,28 +1,45 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import nextConfig from "../next.config";
 
-type Hosting = {
-  redirects: { source: string; destination: string; type: number }[];
-  headers: { source: string; headers: { key: string; value: string }[] }[];
-};
-const hosting = (JSON.parse(readFileSync(join(import.meta.dirname, "../../../firebase.json"), "utf8")) as { hosting: Hosting }).hosting;
+const OLD_ROUTES = ["/chat", "/activity", "/accounts", "/accounts/new", "/reports", "/reminders", "/settings", "/onboarding"];
 const pub = (name: string) => readFileSync(join(import.meta.dirname, "../public", name), "utf8");
 const lines = (text: string) => text.split("\n").filter((l) => l.trim() !== "" && !l.startsWith("#"));
+/** The `Name: value` lines under one `_headers` path block. */
+const headersFor = (path: string) => {
+  const block = pub("_headers")
+    .split(/\n(?=\/)/)
+    .find((s) => s.trimStart().startsWith(`${path}\n`));
+  return Object.fromEntries(
+    (block ?? "")
+      .split("\n")
+      .slice(1)
+      .filter((l) => l.includes(":"))
+      .map((l) => [l.slice(0, l.indexOf(":")).trim(), l.slice(l.indexOf(":") + 1).trim()]),
+  );
+};
 
-describe("Cloudflare Pages config matches Firebase Hosting (CR-010)", () => {
-  it("redirects every old screen to the dashboard", () => {
-    const rules = lines(pub("_redirects")).map((l) => l.trim().split(/\s+/));
-    expect(rules).toEqual(hosting.redirects.map((r) => [r.source, r.destination, String(r.type)]));
+describe("web hosting on Cloudflare Pages (CR-010; release blocker B1)", () => {
+  it("builds a static export", () => {
+    expect(nextConfig.output).toBe("export");
   });
 
-  it("sends the same security and cache headers", () => {
-    const text = pub("_headers");
-    for (const block of hosting.headers) {
-      const path = block.source === "**" ? "/*" : block.source.replace("/**", "/*");
-      const section = text.split(/\n(?=\/)/).find((s) => s.trimStart().startsWith(`${path}\n`));
-      expect(section, path).toBeDefined();
-      for (const h of block.headers) expect(section, `${path} ${h.key}`).toContain(`  ${h.key}: ${h.value}`);
-    }
+  it("redirects every old screen to the dashboard (PRD CR-007)", () => {
+    const rules = lines(pub("_redirects")).map((l) => l.trim().split(/\s+/));
+    expect(rules.map((r) => r[0]).sort()).toEqual([...OLD_ROUTES].sort());
+    expect(rules.every((r) => r[1] === "/" && r[2] === "302")).toBe(true);
+  });
+
+  it("never caches the service worker, so updates reach the phone", () => {
+    expect(headersFor("/sw.js")["Cache-Control"]).toBe("no-cache");
+  });
+
+  it("sends basic security headers on every page", () => {
+    expect(headersFor("/*")).toMatchObject({
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    });
   });
 });

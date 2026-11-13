@@ -27,9 +27,9 @@ const validAccount = { kind: "bank", name: "City", currency: "BDT" };
 let alice: User;
 let bob: User;
 
-beforeAll(async () => {
-  alice = await signUp("alice");
-  bob = await signUp("bob");
+beforeAll(() => {
+  alice = signUp("alice");
+  bob = signUp("bob");
 }, 60_000);
 
 beforeEach(async () => {
@@ -39,7 +39,7 @@ beforeEach(async () => {
 /** The first call to each function cold-starts it in the emulator, which can exceed the 5s default. */
 describe("authenticated callables", { timeout: 60_000 }, () => {
   it("another user's follow-up or transaction is not found", async () => {
-    const other = await signUp("fu-other");
+    const other = signUp("fu-other");
     const followUp = await call("resolveFollowUp", other, {
       followUpId: "nope",
       resolution: { kind: "notSureYet" },
@@ -65,7 +65,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("a cash count opens a question without changing Cash, and Adjust moves Cash to the count", async () => {
-    const user = await signUp("count");
+    const user = signUp("count");
     unwrap(await call("bootstrapUser", user, {}));
     unwrap(
       await call("recordOpeningBalance", user, {
@@ -99,7 +99,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("an OTP is refused with its code and nothing is stored", async () => {
-    const user = await signUp("otp");
+    const user = signUp("otp");
     const r = await call("submitEvidence", user, {
       idempotencyKey: "k",
       text: "Your OTP is 482913",
@@ -111,7 +111,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("another user's event is not found, and is left alone", async () => {
-    const [owner, other] = [await signUp("ev-owner"), await signUp("ev-other")];
+    const [owner, other] = [signUp("ev-owner"), signUp("ev-other")];
     const { sourceEventId } = unwrap(
       await call("submitEvidence", owner, { idempotencyKey: "k", text: "spent 500 on tea" }),
     );
@@ -126,14 +126,14 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("bootstrap creates the system cash wallet", async () => {
-    const user = await signUp("wallet");
+    const user = signUp("wallet");
     unwrap(await call("bootstrapUser", user, {}));
     const wallet = await db.doc(`users/${user.uid}/accounts/cash-unassigned`).get();
     expect(wallet.get("kind")).toBe("cash");
   });
 
   it("creates a payment instrument, and treats another user's account as not found", async () => {
-    const [owner, other] = [await signUp("owner"), await signUp("other")];
+    const [owner, other] = [signUp("owner"), signUp("other")];
     const { accountId } = unwrap(
       await call("createAccount", owner, { kind: "bank", name: "City", currency: "BDT" }),
     );

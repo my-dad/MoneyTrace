@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import corpus from "../../../fixtures/sms/corpus.json";
 import { COMMAND_HANDLERS } from "../src/callable/registry";
-import { localBackend, type Reply, type User } from "./support/local-api";
+import { localBackend, type Reply } from "./support/local-api";
 
 /**
  * Gate 35 evidence: another user, holding Alice's real ids, cannot read or change her data
@@ -36,7 +36,7 @@ async function waitForStatus(uid: string, id: string, status: string) {
 
 /** A user with a bank (with an instrument and opening balance), a wallet and a family holder. */
 async function setUp(label: string) {
-  const user = await signUp(label);
+  const user = signUp(label);
   unwrap(await call("bootstrapUser", user, {}));
   const account = async (kind: string, name: string) =>
     String(unwrap(await call("createAccount", user, { kind, name, currency: "BDT" }))["accountId"]);
@@ -101,7 +101,7 @@ const MUST_REFUSE: Case[] = [
 ];
 
 /** The callables index.ts exports: the ones built from ./callable/ modules. */
-/** Every client command the backends serve (the registry both Firebase and `/api` read). */
+/** Every client command the backends serve (the registry `/api` reads). */
 function exportedCallables(): string[] {
   return Object.keys(COMMAND_HANDLERS).sort();
 }
@@ -115,7 +115,8 @@ describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {
     const eventId = String(unwrap(await call("submitEvidence", a.user, { idempotencyKey: key(), text: WITHDRAWAL_SMS }))["sourceEventId"]);
     await waitForStatus(a.user.uid, eventId, "posted");
     const event = await db.doc(`users/${a.user.uid}/sourceEvents/${eventId}`).get();
-    const withdrawalTx = String(event.get("transactionId") ?? `txn-${eventId}`);
+    const txField: unknown = event.get("transactionId");
+    const withdrawalTx = typeof txField === "string" ? txField : `txn-${eventId}`;
     const aliceFollowUps = await db.collection(`users/${a.user.uid}/followUps`).get();
     const followUpId = aliceFollowUps.docs[0]?.id ?? "";
     // A cash count that differs, so Alice has an open count Bob can try to adjust.
