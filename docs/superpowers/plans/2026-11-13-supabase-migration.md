@@ -30,7 +30,7 @@ Supabase equivalent, never deleted. Domain, application and contracts code is no
   - [x] Cost impact (Supabase free plan, Cloudflare free plan, DeepSeek prepaid ≤ $10/mo)
   - [x] Acceptance criteria (this checklist's Phase 7 go-live rule)
   - [ ] Update `AGENT.md` locked stack, release checklist section C/D
-  - [ ] Mabrur accepts CR-010
+  - [x] Mabrur accepts CR-010
 - [ ] **T0.2 Accounts** `[Mabrur]`
   - [ ] Supabase project, region Mumbai (ap-south-1); share only the project URL
   - [ ] Google Cloud OAuth client (no billing); paste its ID and secret into Supabase Auth → Google

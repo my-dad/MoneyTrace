@@ -398,7 +398,7 @@ Status: Accepted by Mabrur on 2026-11-13 (built after the cash count, in its own
 
 ## CR-010: Move from Firebase to Supabase and Cloudflare Pages, with no billing account (2026-11-13)
 
-Status: Proposed by Claude on 2026-11-13; awaiting Mabrur's acceptance. Plan: `docs/superpowers/plans/2026-11-13-supabase-migration.md`.
+Status: Accepted by Mabrur on 2026-11-13. Plan: `docs/superpowers/plans/2026-11-13-supabase-migration.md`.
 
 | Field | Record |
 |---|---|
