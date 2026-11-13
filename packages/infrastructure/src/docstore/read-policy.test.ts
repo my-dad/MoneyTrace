@@ -37,6 +37,7 @@ beforeAll(async () => {
     ]);
   };
   for (const uid of [ALICE, BOB]) {
+    for (const collection of Object.keys(OWNER_DATA_REGISTRY)) await put(`users/${uid}/${collection}/r1`, uid);
     await put(`users/${uid}`, uid);
     await put(`users/${uid}/accounts/cash`, uid);
     await put(`users/${uid}/idempotencyRecords/k1`, uid);
@@ -56,7 +57,14 @@ async function as(uid: string | null, sql: string): Promise<string[]> {
 
 describe("docs read policy (replaces firestore.rules)", () => {
   it("a user reads their own profile and client-readable collections only", async () => {
-    expect(await as(ALICE, "select path from docs")).toEqual([`users/${ALICE}`, `users/${ALICE}/accounts/cash`]);
+    const readable = Object.entries(OWNER_DATA_REGISTRY).filter(([, v]) => v.clientRead).map(([k]) => `users/${ALICE}/${k}/r1`);
+    expect(await as(ALICE, "select path from docs")).toEqual([`users/${ALICE}`, `users/${ALICE}/accounts/cash`, ...readable].sort());
+  });
+
+  it.each(Object.entries(OWNER_DATA_REGISTRY))("%s: the owner sees it exactly when clientRead, another user never", async (collection, entry) => {
+    const own = await as(ALICE, `select path from docs where collection_id = '${collection}' and path like 'users/%/${collection}/r1'`);
+    expect(own).toEqual(entry.clientRead ? [`users/${ALICE}/${collection}/r1`] : []);
+    expect(own.some((p) => p.includes(BOB))).toBe(false);
   });
 
   it("never another user's rows, server-only collections, nested paths or top-level collections", async () => {
