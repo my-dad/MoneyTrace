@@ -47,7 +47,8 @@ const WIRE_STATUS: Partial<Record<DomainErrorCode, "not-found" | "already-exists
   idempotencyConflict: "already-exists",
 };
 
-export type CallableContext = { ownerId: OwnerId; correlationId: string; deps: Deps };
+/** `email` is the verified caller's, when their sign-in has one. */
+export type CallableContext = { ownerId: OwnerId; email: string | undefined; correlationId: string; deps: Deps };
 
 export type Contract<Req extends z.ZodType, Res extends z.ZodType> = { request: Req; response: Res };
 
@@ -113,7 +114,8 @@ export async function runCommand<Req extends z.ZodType, Res extends z.ZodType>(
   }
 
   try {
-    const result = await cmd.handler({ ownerId: asOwnerId(caller.uid), correlationId, deps }, parsed.data);
+    const email = caller.emailVerified ? caller.email : undefined;
+    const result = await cmd.handler({ ownerId: asOwnerId(caller.uid), email, correlationId, deps }, parsed.data);
     return cmd.contract.response.parse(result);
   } catch (e) {
     if (e instanceof CallError) {

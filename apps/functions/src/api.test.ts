@@ -5,6 +5,7 @@ import type { PgDocStore } from "@moneytrace/infrastructure";
 import { createApiHandler, supabaseCallerVerifier } from "./api";
 import type { Caller } from "./callable/access";
 import { composeDeps } from "./composition";
+import { asOwnerId } from "@moneytrace/domain";
 
 const ORIGIN = "https://moneytrace.example";
 const CRON = "cron-secret-123456";
@@ -91,6 +92,24 @@ describe("/api gate", () => {
       code: "not-found",
       message: "resourceNotFound",
     });
+  });
+});
+
+describe("AI plans (CR-009)", () => {
+  it("the OWNER_EMAIL account becomes the owner at first sign-in; everyone else is a member", async () => {
+    const env = { ...OPEN_ENV, OWNER_EMAIL: " Mabrur@Example.com " };
+    const a = api(env);
+    await a.ok("mabrur", "bootstrapUser");
+    await a.ok("friend", "bootstrapUser");
+    const deps = composeDeps(store, env);
+    expect(await deps.aiPlans.planOf(asOwnerId("mabrur"))).toBe("owner");
+    expect(await deps.aiPlans.planOf(asOwnerId("friend"))).toBe("member");
+  });
+
+  it("without OWNER_EMAIL nobody is the owner", async () => {
+    const a = api();
+    await a.ok("mabrur", "bootstrapUser");
+    expect(await composeDeps(store, OPEN_ENV).aiPlans.planOf(asOwnerId("mabrur"))).toBe("member");
   });
 });
 

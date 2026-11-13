@@ -5,7 +5,9 @@ import {
   DEFAULT_AI_ESTIMATE_MICRO_USD,
   DEFAULT_QUOTA_LIMITS,
   LedgerCandidateReader,
+  PlannedQuotaLedger,
   ProviderCallExecutor,
+  type AiPlan,
   PurgeProviderResults,
   RecoverExpiredClaims,
   ResumeQuotaBlockedEvents,
@@ -53,6 +55,7 @@ import {
   SystemClock,
 } from "@moneytrace/infrastructure";
 import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
+import type { OwnerId } from "@moneytrace/domain";
 import type { DocStore } from "@moneytrace/infrastructure";
 import { selectAiProvider } from "./ai-selection";
 import { accessPolicyFromEnv, type AccessPolicy } from "./callable/access";
@@ -86,6 +89,10 @@ export type Deps = {
   wakeSnoozedFollowUps: WakeSnoozedFollowUps;
   resumeQuotaBlockedEvents: ResumeQuotaBlockedEvents;
   purgeProviderResults: PurgeProviderResults;
+  /** Each user's AI plan (CR-009): the owner is recognised by OWNER_EMAIL at first sign-in. */
+  aiPlans: { planOf(ownerId: OwnerId): Promise<AiPlan>; markOwner(ownerId: OwnerId): Promise<void> };
+  /** Lower-cased OWNER_EMAIL, or undefined when unset (then everyone is a member). */
+  ownerEmail: string | undefined;
   /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
   runnableEvents: FirestoreSourceEventRepository["listRunnable"];
 };
@@ -111,11 +118,34 @@ export function composeDeps(
   const reconciliations = new FirestoreReconciliationRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
   let advance: AdvanceSourceEvent | undefined;
-  const quota = new FirestoreQuotaLedger(db, clock, ids);
+  const plans = new Map<string, AiPlan>();
+  const aiPlans: Deps["aiPlans"] = {
+    async planOf(ownerId) {
+      let plan = plans.get(ownerId);
+      if (plan === undefined) {
+        const snap = await db.doc(`aiPlans/${String(ownerId)}`).get();
+        plan = snap.get("plan") === "owner" ? "owner" : "member";
+        plans.set(ownerId, plan);
+      }
+      return plan;
+    },
+    async markOwner(ownerId) {
+      await db.doc(`aiPlans/${String(ownerId)}`).set({ plan: "owner" });
+      plans.set(ownerId, "owner");
+    },
+  };
+  const ownerEmail = (env["OWNER_EMAIL"] ?? "").trim().toLowerCase();
+  const quota = new PlannedQuotaLedger({
+    inner: new FirestoreQuotaLedger(db, clock, ids),
+    planOf: (ownerId) => aiPlans.planOf(ownerId),
+    globalMonthlyMicroUsd: Number(env["GLOBAL_AI_CAP_MICRO_USD"] ?? "") || 10_000_000,
+  });
   const usage = new FirestoreAiUsageRecorder(db);
   const instruments = new FirestorePaymentInstrumentRepository(db);
   return {
     logger,
+    aiPlans,
+    ownerEmail: ownerEmail === "" ? undefined : ownerEmail,
     callGate: {
       access: accessPolicyFromEnv(env),
       limiter: new FirestoreRateLimiter(db),
