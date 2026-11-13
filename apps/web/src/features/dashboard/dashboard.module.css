@@ -11,6 +11,17 @@
 .menuItem { margin:0; padding:12px; min-height:44px; font:inherit; font-size:14px; text-align:left; border:0; border-radius:12px; background:transparent; color:var(--mt-ink); }
 button.menuItem { cursor:pointer; border-top:1px solid var(--mt-border-soft); border-radius:0 0 12px 12px; }
 .menuItem small { display:block; font-size:12px; color:var(--mt-caption); margin-top:2px; }
+.danger { color:var(--mt-failed-text); }
+.deleteBox { display:flex; flex-direction:column; gap:8px; padding:12px; border-top:1px solid var(--mt-border-soft); font-size:13px; color:var(--mt-body); }
+.deleteBox p { margin:0; }
+.deleteBox label { font-weight:700; color:var(--mt-ink); }
+.deleteBox input { min-height:44px; padding:0 10px; border:1px solid var(--mt-border-strong); border-radius:10px; font:inherit; color:var(--mt-ink); background:var(--mt-surface); }
+.deleteActions { display:flex; gap:8px; justify-content:flex-end; }
+.deleteActions button { min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); font:inherit; font-weight:700; cursor:pointer; color:var(--mt-ink); }
+.deleteActions button.danger { background:var(--mt-failed-tint); color:var(--mt-failed-text); border-color:var(--mt-failed-text); }
+.deleteActions button:disabled { background:var(--mt-disabled); color:var(--mt-disabled-text); border-color:var(--mt-disabled); cursor:default; }
+.deleteBox p[role="alert"] { color:var(--mt-failed-text); font-weight:700; }
+.deleteBox input:focus-visible, .deleteActions button:focus-visible { outline:3px solid var(--mt-focus); }
 .menu p[role="status"] { margin:4px 12px 8px; font-size:12px; color:var(--mt-caption); }
 .menuButton:focus-visible, button.menuItem:focus-visible, .nav:focus-visible { outline:3px solid var(--mt-focus); }
 

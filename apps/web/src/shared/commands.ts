@@ -18,6 +18,7 @@ export const PHASE_ONE_COMMANDS = [
   "recordReconciliation",
   "recordAdjustment",
   "splitTransfer",
+  "requestAccountDeletion",
 ] as const satisfies readonly CommandName[];
 
 type PhaseOneCommand = (typeof PHASE_ONE_COMMANDS)[number];
