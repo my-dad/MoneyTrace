@@ -90,6 +90,12 @@ export function describeSourceEventContract(
       return r.claim;
     };
 
+    it("markTransferSplit leaves an event that is not a paired transfer alone", async () => {
+      expect(await repo.markTransferSplit(alice, id, "txn-evt-1", T0)).toBe("stale");
+      expect(await repo.markTransferSplit(bob, id, "txn-evt-1", T0)).toBe("stale");
+      expect((await repo.get(alice, id))?.matchedTransactionId).toBeNull();
+    });
+
     it("claims when the status matches and no claim is live", async () => {
       const before = await repo.get(alice, id);
       const claim = await claimNormalize();

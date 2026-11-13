@@ -182,6 +182,13 @@ export type SourceEventRepository = {
   /** Stores the user's answer to DeepSeek's latest question on an `aiQuestion` event. The caller then reopens it. */
   recordAnswer(ownerId: OwnerId, id: SourceEventId, answer: string, nowMs: number): Promise<"applied" | "stale">;
 
+  /**
+   * "Not a transfer": a posted event that was the other half of `transferId` stops being one
+   * (`matchKind` "none", no destination) and keeps pointing at the reversed transfer. An event
+   * already split from it is `applied` again unchanged; anything else is `stale`.
+   */
+  markTransferSplit(ownerId: OwnerId, id: SourceEventId, transferId: string, nowMs: number): Promise<"applied" | "stale">;
+
   listExpiredClaims(nowMs: number, limit: number): Promise<ExpiredClaim[]>;
 
   /** Parked events with that reason across owners, oldest first. */

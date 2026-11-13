@@ -31,7 +31,7 @@ const refOf = (e: EntryRecord): AccountRef => ({
 });
 
 /** The same transaction with a different amount, rebuilt from what the ledger holds. */
-function withAmount(
+export function rebuildIntent(
   tx: TransactionRecord,
   entries: readonly EntryRecord[],
   amount: Money,
@@ -99,7 +99,7 @@ export class CorrectTransaction {
     const intent =
       replacement === undefined
         ? null
-        : withAmount(
+        : rebuildIntent(
             tx,
             await reader.getEntries(ownerId, id),
             Money.ofMinor(replacement.amountMinor, replacement.currency),

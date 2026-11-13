@@ -333,3 +333,17 @@ export function decideAnswer(event: SourceEventRecord | null, answer: string, no
     version: event.version + 1,
   };
 }
+
+/**
+ * "Not a transfer": the event stops being the other half of `transferId` (now reversed) and keeps
+ * pointing at it so a replay can find its partner. A repeat on an already split event is a no-op.
+ */
+export function decideTransferSplit(
+  event: SourceEventRecord | null,
+  transferId: string,
+): SourceEventRecord | null {
+  if (event === null || event.status !== "posted" || event.matchedTransactionId !== transferId) return null;
+  if (event.matchKind === "none") return event;
+  if (event.matchKind !== "transferCounterpart") return null;
+  return { ...event, matchKind: "none", resolvedDestinationAccountId: null, version: event.version + 1 };
+}
