@@ -134,6 +134,8 @@ export const CHAT_COPY = {
   splitKeep: "Keep as transfer",
   splitDone: (amount: string) => `Recorded · Counted separately: Spent ${amount} and Came in ${amount}.`,
   splitFailed: "Couldn't confirm the change. Try again — it won't be made twice.",
+  splitRefused: "This was already changed, so it can't be split here. Nothing new was recorded.",
+  adjustRefused: "This count was replaced by a newer one or already adjusted. Count again to check.",
 } as const;
 
 export const DASHBOARD_COPY = {

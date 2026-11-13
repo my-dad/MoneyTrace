@@ -808,6 +808,18 @@ describe("count my cash (gate 32)", () => {
     expect(screen.queryByText(/Cash now matches/)).toBeNull();
   });
 
+  it("a count that can no longer be adjusted says so instead of asking to try again", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordAdjustment.mockRejectedValueOnce(Object.assign(new Error("invalidTransition"), { code: "functions/failed-precondition" }));
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Adjust to my count…" }));
+    fireEvent.change(screen.getByLabelText("Why is it different? (required)"), { target: { value: "maybe lost" } });
+    fireEvent.click(button("Adjust"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This count was replaced by a newer one or already adjusted. Count again to check.",
+    );
+  });
+
   it("leave it open closes the choices and calls nothing", async () => {
     const { commands } = setup({ startWith: "cashCount" });
     check("2300");
@@ -942,6 +954,16 @@ describe("not a transfer (CR-008 §9)", () => {
     fireEvent.click(button("Yes, count separately"));
     expect((await screen.findByRole("alert")).textContent).toBe("Couldn't confirm the change. Try again — it won't be made twice.");
     expect(screen.queryByText(/Counted separately/)).toBeNull();
+  });
+
+  it("a transfer that was already changed says so instead of asking to try again", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    commands.splitTransfer.mockRejectedValueOnce(Object.assign(new Error("invalidTransition"), { code: "functions/failed-precondition" }));
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This was already changed, so it can't be split here. Nothing new was recorded.",
+    );
   });
 
   it("a message that isn't a paired transfer has no button", () => {

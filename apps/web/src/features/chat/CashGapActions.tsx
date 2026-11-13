@@ -28,7 +28,7 @@ export function CashGapActions({
   const [mode, setMode] = useState<"choices" | "adjusting" | "leftOpen">("choices");
   const [reason, setReason] = useState("");
   const [done, setDone] = useState<{ countedMinor: number; adjustmentMinor: number } | null>(null);
-  const { busy, failed, unavailable, run } = useAction();
+  const { busy, failed, unavailable, refused, run } = useAction();
 
   if (done !== null) {
     return (
@@ -97,7 +97,7 @@ export function CashGapActions({
         </div>
         {failed && (
           <p role="alert" className={styles.error}>
-            {unavailable ? COPY.demoUnavailable : CHAT_COPY.adjustFailed}
+            {unavailable ? COPY.demoUnavailable : refused ? CHAT_COPY.adjustRefused : CHAT_COPY.adjustFailed}
           </p>
         )}
       </form>

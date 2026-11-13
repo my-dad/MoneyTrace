@@ -22,7 +22,7 @@ export function SplitTransferPanel({
 }) {
   const [open, setOpen] = useState(false);
   const [doneMinor, setDoneMinor] = useState<number | null>(null);
-  const { busy, failed, unavailable, run } = useAction();
+  const { busy, failed, unavailable, refused, run } = useAction();
   const kind = event.candidate?.kind;
   const amountMinor = event.candidate?.amountMinor ?? 0;
   const name = (id: string | null) => accounts.find((a) => a.id === id)?.name ?? "";
@@ -93,7 +93,7 @@ export function SplitTransferPanel({
       </div>
       {failed && (
         <p role="alert" className={styles.error}>
-          {unavailable ? COPY.demoUnavailable : CHAT_COPY.splitFailed}
+          {unavailable ? COPY.demoUnavailable : refused ? CHAT_COPY.splitRefused : CHAT_COPY.splitFailed}
         </p>
       )}
     </section>
