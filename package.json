@@ -17,7 +17,7 @@
     "serve:web": "node tools/serve-web/serve-web.mjs",
     "build:supabase": "node apps/functions/build-supabase.mjs",
     "smoke:supabase": "pnpm build:supabase && node apps/functions/test/deno-smoke.mjs",
-    "deploy:supabase": "node tools/deploy/supabase-secrets.mjs && pnpm build:supabase && pnpm dlx supabase@2.122.0 db push && pnpm dlx supabase@2.122.0 functions deploy api --use-api --no-verify-jwt"
+    "deploy:supabase": "node tools/deploy/supabase-secrets.mjs && pnpm build:supabase && pnpm dlx supabase@2.122.0 db push --linked && pnpm dlx supabase@2.122.0 functions deploy api --use-api --no-verify-jwt"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.11",
