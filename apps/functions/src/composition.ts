@@ -33,6 +33,7 @@ import {
   SplitTransfer,
   type IdGenerator,
   type Logger,
+  type PipelineLease,
   type RateLimiter,
 } from "@moneytrace/application";
 import {
@@ -43,6 +44,7 @@ import {
   FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
   FirestoreQuotaLedger,
+  FirestorePipelineLease,
   FirestoreRateLimiter,
   systemTimeoutSignal,
   FirestoreLedgerWriter,
@@ -99,6 +101,8 @@ export type Deps = {
   accountDeletion: { erase(ownerId: OwnerId): Promise<string> } | undefined;
   /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
   runnableEvents: FirestoreSourceEventRepository["listRunnable"];
+  /** One owner's events advance one at a time, so own transfers pair (CR-008). */
+  pipelineLease: { lease: PipelineLease; nowMs: () => number };
 };
 
 /** The only place adapters are wired to ports. */
@@ -231,6 +235,7 @@ export function composeDeps(
     }),
     purgeProviderResults: new PurgeProviderResults({ providerCalls, logger }),
     runnableEvents: (limit) => sourceEvents.listRunnable(limit),
+    pipelineLease: { lease: new FirestorePipelineLease(db), nowMs: () => clock.nowMs() },
     resolveFollowUp: new ResolveFollowUp({ followUps, reader, accounts, post, clock }),
     snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
     recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),

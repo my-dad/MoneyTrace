@@ -18,6 +18,7 @@ export * from "./pipeline/run-stage";
 export * from "./ports/provider-call-repository";
 export * from "./ports/quota-ledger";
 export * from "./ports/rate-limiter";
+export * from "./ports/pipeline-lease";
 export * from "./ports/ai-usage-recorder";
 export * from "./provider-call-guards";
 export * from "./quota-rules";

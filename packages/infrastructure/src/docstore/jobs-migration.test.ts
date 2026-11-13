@@ -35,3 +35,22 @@ describe("scheduled jobs migration (replaces Cloud Scheduler)", () => {
     expect(SQL).toMatch(/revoke all on function public\.run_api_job\(text\) from public, anon, authenticated/);
   });
 });
+
+describe("pipeline lease cleanup (own-transfer pairing, CR-008)", () => {
+  const LEASES = readFileSync(fileURLToPath(new URL("../../../../supabase/migrations/20261113000400_pipeline_leases.sql", import.meta.url)), "utf8");
+
+  it("runs every few minutes and deletes only leases past their expiry", async () => {
+    const m = /cron\.schedule\('expirePipelineLeases', '([^']+)', \$\$([\s\S]+?)\$\$\)/.exec(LEASES);
+    expect(m?.[1]).toBe("*/5 * * * *");
+    const { pgliteStore } = await import("../../test/support/pglite");
+    const { store, client } = await pgliteStore();
+    const now = Date.now();
+    await store.doc("pipelineLeases/old").set({ holder: "a", expiresAtMs: now - 1_000 });
+    await store.doc("pipelineLeases/live").set({ holder: "b", expiresAtMs: now + 60_000 });
+    await store.doc("rateLimits/other").set({ count: 1, expiresAtMs: now - 1_000 });
+    await client.query(m?.[2] ?? "select 1", []);
+    expect((await store.doc("pipelineLeases/old").get()).exists).toBe(false);
+    expect((await store.doc("pipelineLeases/live").get()).exists).toBe(true);
+    expect((await store.doc("rateLimits/other").get()).exists).toBe(true);
+  });
+});
