@@ -382,3 +382,16 @@ Status: Accepted by Mabrur on 2026-11-12. Spec: `docs/superpowers/specs/2026-11-
 | Security impact | Masked last digits read from SMS are stored with each source (none are typed). DeepSeek's output adds a source name and optional last digits. |
 | Cost impact | None beyond existing AI use. |
 | Acceptance criteria | The spec's tests and commands pass, and Mabrur approves the mockup before building. |
+
+## CR-009: Open sign-up for friends and family, each with their own private data (2026-11-13)
+
+Status: Accepted by Mabrur on 2026-11-13 (built after the cash count, in its own plan).
+
+| Field | Record |
+|---|---|
+| Proposed change | Any verified Google account can sign in, so the single-user allowlist (`ALLOWED_EMAILS`) is removed. Each person gets their own separate MoneyTrace: their own ledger, sources, chat and budget. Nobody can see anyone else's data; the per-owner isolation and cross-user rules tests stay as they are. Anonymous, unverified and non-Google sign-ins are still refused. Shared household access (several people on one ledger, PRD FR-19 "family login") stays deferred. §1's "single-user" now means one person per data set, not one person per deployment. |
+| Rationale | Mabrur, 2026-11-13: "my friends and family will use this pwa app. so i cannot restrict login." Open sign-up chosen over a guest list or approval by Mabrur. |
+| Kept unchanged | Every accounting invariant; AI proposes and the backend posts; per-user and per-IP rate limits; App Check; at most 3 function instances; Google-only sign-in; CR-002 (no real data before 0B). |
+| Security impact | Anyone with the link can create an account, so abuse protection moves from "who may sign in" to limits. Mabrur becomes the custodian of other people's financial data, so (1) the sign-in page states plainly that pasted SMS text is processed by DeepSeek and stored in Firebase, and (2) in-app account deletion (`requestAccountDeletion`, previously P1/Phase 4) becomes a release blocker: it deletes all the user's data and their Auth account, with verification. |
+| Cost impact | Every account is billed to Mabrur. Per-user AI defaults drop from USD 5/month to **USD 1/month and USD 0.20/day**. A new **global AI cap across all users, USD 10/month** (configurable), blocks new AI calls for everyone once it is reached; deterministic SMS parsing, the ledger and the dashboard keep working, and ambiguous SMS wait in the visible queue. Firestore and Functions costs grow with users; the Blaze budget alerts on the 0B checklist cover them. |
+| Acceptance criteria | Tests prove: any verified Google account is let in; anonymous, unverified and non-Google sign-ins are refused; two users' data stay isolated (the existing suite); a user's AI calls stop at USD 1/month; all AI calls stop at the global cap while deterministic posting still works; account deletion removes every owner document and the Auth user, and is verified. The sign-in page shows the data notice. The release checklist and runbook drop the `ALLOWED_EMAILS` step. |
