@@ -946,6 +946,23 @@ export function describeLedgerContract(
       expect(await accounts.getMany(bob, [record1.id])).toEqual([]);
     });
 
+    it("lists every account of its owner and none of another's", async () => {
+      const carol = asOwnerId("carol");
+      const row = (id: string, kind: "bank" | "cash" | "familyCash") => ({
+        id: asAccountId(id),
+        kind,
+        name: id,
+        currency: "BDT" as const,
+        status: "active" as const,
+        createdAtMs: 1,
+      });
+      await accounts.create(carol, row("c-cash", "cash"));
+      await accounts.create(carol, row("c-mom", "familyCash"));
+      await accounts.create(bob, row("b-bank", "bank"));
+      expect((await accounts.list(carol)).map((a) => a.id).sort()).toEqual(["c-cash", "c-mom"]);
+      expect(await accounts.list(carol)).toContainEqual(row("c-mom", "familyCash"));
+    });
+
     it("lists entries in an inclusive date range, per owner", async () => {
       await writer.commit(alice, commitOf("k-range", "tx-range", 700));
       const at = 1_700_000_000_000;

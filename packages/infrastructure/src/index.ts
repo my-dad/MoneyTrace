@@ -17,3 +17,4 @@ export * from "./firestore/firestore-follow-up-repository";
 export * from "./ai/deepseek-provider";
 export * from "./ai/fake-ai-provider";
 export * from "./firestore/firestore-payment-instrument-repository";
+export * from "./firestore/firestore-reconciliation-repository";

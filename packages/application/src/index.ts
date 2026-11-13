@@ -41,6 +41,8 @@ export * from "./pipeline/candidate-to-intent";
 export * from "./pipeline/advance-source-event";
 export * from "./pipeline/resume-quota-blocked-events";
 export * from "./ports/follow-up-repository";
+export * from "./ports/reconciliation-repository";
+export * from "./use-cases/record-cash-count";
 export * from "./follow-up-guards";
 export * from "./use-cases/resolve-follow-up";
 export * from "./use-cases/snooze-follow-up";

@@ -326,6 +326,10 @@ export class InMemoryAccountRepository implements AccountRepository {
     });
   }
 
+  list(ownerId: OwnerId): Promise<AccountRecord[]> {
+    return atomically(() => [...(this.owners.get(ownerId)?.values() ?? [])].map((r) => ({ ...r })));
+  }
+
   getMany(ownerId: OwnerId, ids: readonly AccountId[]): Promise<AccountRecord[]> {
     return atomically(() => {
       const accounts = this.owners.get(ownerId);
