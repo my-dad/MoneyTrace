@@ -116,6 +116,8 @@ const OWN_DATA_ONLY: Case[] = [
 ];
 
 const MUST_REFUSE: Case[] = [
+  // Firebase has no account deletion (it ships on Supabase, CR-010); its /api tests prove Bob only ever erases Bob.
+  { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
   { name: "createPaymentInstrument", data: (a) => ({ accountId: a.bank, provider: "brac", maskedIdentifier: "1234", type: "bankAccount" }) },
   { name: "recordOpeningBalance", data: (a) => ({ accountId: a.wallet, amountMinor: 5_000, currency: "BDT", effectiveAtMs: OPENING_AT }) },
   { name: "resolveFollowUp", data: (a) => ({ followUpId: a.followUpId, resolution: { kind: "notSureYet" } }) },

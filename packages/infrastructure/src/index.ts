@@ -23,3 +23,4 @@ export * from "./docstore/sql-client";
 export * from "./docstore/pg-doc-store";
 export * from "./docstore/from-firestore";
 export * from "./docstore/postgres-js-client";
+export * from "./docstore/owner-eraser";

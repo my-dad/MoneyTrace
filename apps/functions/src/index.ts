@@ -41,3 +41,4 @@ export const cancelSourceEvent = createCallable(C.cancelSourceEvent, getDeps);
 export const recordReconciliation = createCallable(C.recordReconciliation, getDeps);
 export const recordAdjustment = createCallable(C.recordAdjustment, getDeps);
 export const splitTransfer = createCallable(C.splitTransfer, getDeps);
+export const requestAccountDeletion = createCallable(C.requestAccountDeletion, getDeps);

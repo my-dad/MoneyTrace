@@ -25,6 +25,7 @@ describe("@moneytrace/infrastructure", () => {
       "JsonLogger",
       "NodeHasher",
       "PgDocStore",
+      "PgOwnerEraser",
       "RATE_LIMIT_COLLECTION",
       "RETRYABLE_SQLSTATES",
       "SystemClock",

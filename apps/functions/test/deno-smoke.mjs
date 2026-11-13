@@ -24,7 +24,7 @@ const sql = postgres({ host: "127.0.0.1", port: ${port}, database: "postgres", u
 const pending: Promise<unknown>[] = [];
 const handle = startApi({
   sql,
-  env: { SUPABASE_URL: "http://127.0.0.1:1", SUPABASE_ANON_KEY: "anon", CRON_SECRET: "smoke-secret-0123456789", ALLOWED_ORIGINS: "https://app.example", DEEPSEEK_API_KEY: "unused" },
+  env: { SUPABASE_URL: "http://127.0.0.1:1", SUPABASE_ANON_KEY: "anon", SUPABASE_SERVICE_ROLE_KEY: "service", CRON_SECRET: "smoke-secret-0123456789", ALLOWED_ORIGINS: "https://app.example", DEEPSEEK_API_KEY: "unused" },
   waitUntil: (p) => pending.push(p),
 });
 const post = (body: unknown, headers: Record<string, string> = {}) =>

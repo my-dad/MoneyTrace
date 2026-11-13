@@ -52,6 +52,8 @@ import {
   FirestoreUserProfileRepository,
   JsonLogger,
   NodeHasher,
+  PgDocStore,
+  PgOwnerEraser,
   SystemClock,
 } from "@moneytrace/infrastructure";
 import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
@@ -93,14 +95,20 @@ export type Deps = {
   aiPlans: { planOf(ownerId: OwnerId): Promise<AiPlan>; markOwner(ownerId: OwnerId): Promise<void> };
   /** Lower-cased OWNER_EMAIL, or undefined when unset (then everyone is a member). */
   ownerEmail: string | undefined;
+  /** Erases an owner's data and login, verified (CR-009). Undefined on Firebase. */
+  accountDeletion: { erase(ownerId: OwnerId): Promise<string> } | undefined;
   /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
   runnableEvents: FirestoreSourceEventRepository["listRunnable"];
 };
 
 /** The only place adapters are wired to ports. */
+/** What only the hosting platform can do. */
+export type Platform = { deleteAuthUser?: (uid: string) => Promise<void> };
+
 export function composeDeps(
   db: DocStore,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  platform: Platform = {},
 ): Deps {
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
@@ -142,9 +150,28 @@ export function composeDeps(
   });
   const usage = new FirestoreAiUsageRecorder(db);
   const instruments = new FirestorePaymentInstrumentRepository(db);
+  const deleteAuthUser = platform.deleteAuthUser;
+  const accountDeletion: Deps["accountDeletion"] =
+    db instanceof PgDocStore && deleteAuthUser !== undefined
+      ? {
+          async erase(ownerId) {
+            const eraser = new PgOwnerEraser(db.client);
+            await eraser.erase(ownerId);
+            await deleteAuthUser(ownerId);
+            // Again after the login is gone: a pipeline run already in flight may have written.
+            await eraser.erase(ownerId);
+            if ((await eraser.remaining(ownerId)) !== 0) throw new Error("account deletion not verified");
+            const ownerIdHash = hasher.sha256(ownerId);
+            await db.doc(`deletionLog/${ownerIdHash}`).set({ ownerIdHash, deletedAtMs: clock.nowMs() });
+            plans.delete(ownerId);
+            return `del-${ownerIdHash.slice(0, 32)}`;
+          },
+        }
+      : undefined;
   return {
     logger,
     aiPlans,
+    accountDeletion,
     ownerEmail: ownerEmail === "" ? undefined : ownerEmail,
     callGate: {
       access: accessPolicyFromEnv(env),

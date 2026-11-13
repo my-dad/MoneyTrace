@@ -6,7 +6,25 @@ import { composeDeps, type Deps } from "./composition";
 export type SupabaseEnv = Readonly<Record<string, string | undefined>>;
 
 /** The variables the deployed function refuses to start without (secrets are set by Mabrur). */
-export const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "CRON_SECRET", "ALLOWED_ORIGINS", "DEEPSEEK_API_KEY"] as const;
+export const REQUIRED_ENV = [
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "CRON_SECRET",
+  "ALLOWED_ORIGINS",
+  "DEEPSEEK_API_KEY",
+] as const;
+
+/** Deletes a login through Supabase Auth's admin API; one that is already gone counts as done. */
+export function supabaseAuthUserDeleter(url: string, serviceRoleKey: string, fetchImpl: typeof fetch): (uid: string) => Promise<void> {
+  return async (uid) => {
+    const res = await fetchImpl(`${url}/auth/v1/admin/users/${encodeURIComponent(uid)}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey },
+    });
+    if (!res.ok && res.status !== 404) throw new Error(`auth user deletion failed: ${String(res.status)}`);
+  };
+}
 
 /**
  * Builds the `/api` handler for the Supabase Edge Function (CR-010). The function file passes in
@@ -23,7 +41,10 @@ export function startApi(opts: {
   const store = new PgDocStore(postgresJsClient(opts.sql));
   let deps: Deps | undefined;
   return createApiHandler({
-    getDeps: () => (deps ??= composeDeps(store, env)),
+    getDeps: () =>
+      (deps ??= composeDeps(store, env, {
+        deleteAuthUser: supabaseAuthUserDeleter(env["SUPABASE_URL"] as string, env["SUPABASE_SERVICE_ROLE_KEY"] as string, fetch),
+      })),
     verifyCaller: supabaseCallerVerifier(env["SUPABASE_URL"] as string, env["SUPABASE_ANON_KEY"] as string, fetch),
     cronSecret: env["CRON_SECRET"],
     allowedOrigins: (env["ALLOWED_ORIGINS"] as string).split(",").map((o) => o.trim()).filter((o) => o !== ""),

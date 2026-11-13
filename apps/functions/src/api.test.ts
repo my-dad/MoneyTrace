@@ -20,8 +20,14 @@ beforeEach(() => reset());
 
 const google = (uid: string, email = `${uid}@example.com`): Caller => ({ uid, email, emailVerified: true, provider: "google" });
 
+const deletedAuthUsers: string[] = [];
 function api(env: Record<string, string> = OPEN_ENV) {
-  const deps = composeDeps(store, env);
+  const deps = composeDeps(store, env, {
+    deleteAuthUser: (uid) => {
+      deletedAuthUsers.push(uid);
+      return Promise.resolve();
+    },
+  });
   const background: Promise<unknown>[] = [];
   const handle = createApiHandler({
     getDeps: () => deps,
@@ -121,6 +127,63 @@ describe("AI plans (CR-009)", () => {
     const a = api();
     await a.ok("mabrur", "bootstrapUser");
     expect(await composeDeps(store, OPEN_ENV).aiPlans.planOf(asOwnerId("mabrur"))).toBe("member");
+  });
+});
+
+describe("delete my account (CR-009)", () => {
+  const ownRows = async (uid: string) => (await store.client.query("select path, data from docs where owner_id = $1", [uid])).rows.map((r) => r.path);
+
+  it("needs the typed confirmation", async () => {
+    const a = api();
+    await a.ok("alice", "bootstrapUser");
+    expect((await a.call("alice", "requestAccountDeletion", { confirmation: "delete my account" })).status).toBe(400);
+    expect((await ownRows("alice")).length).toBeGreaterThan(0);
+  });
+
+  it("erases every row of the user, verifies it, deletes the login and logs only a hash", async () => {
+    deletedAuthUsers.length = 0;
+    const a = api({ ...OPEN_ENV, OWNER_EMAIL: "alice@example.com" });
+    await setUp(a, "alice");
+    await a.ok("alice", "submitEvidence", { idempotencyKey: "k1", text: sms("EXAMPLE ATM DHAKA") });
+    await a.settle();
+    await setUp(a, "bob");
+    const bobBefore = await ownRows("bob");
+    expect((await ownRows("alice")).length).toBeGreaterThan(10);
+
+    const r = await a.ok("alice", "requestAccountDeletion", { confirmation: "DELETE MY ACCOUNT" });
+    expect(typeof r["requestId"]).toBe("string");
+    expect(await ownRows("alice")).toEqual([]);
+    expect((await store.doc("aiPlans/alice").get()).exists).toBe(false);
+    expect(deletedAuthUsers).toEqual(["alice"]);
+    const log = await store.collection("deletionLog").get();
+    expect(log.docs.map((d) => d.data())).toEqual([{ ownerIdHash: expect.stringMatching(/^[0-9a-f]{64}$/) as string, deletedAtMs: expect.any(Number) as number }]);
+    expect(JSON.stringify(log.docs.map((d) => d.data()))).not.toContain("alice");
+    // Nobody else is touched.
+    expect(await ownRows("bob")).toEqual(bobBefore);
+  });
+
+  it("is safe to run again", async () => {
+    const a = api();
+    await a.ok("alice", "bootstrapUser");
+    await a.ok("alice", "requestAccountDeletion", { confirmation: "DELETE MY ACCOUNT" });
+    expect((await a.call("alice", "requestAccountDeletion", { confirmation: "DELETE MY ACCOUNT" })).status).toBe(200);
+    expect(await ownRows("alice")).toEqual([]);
+  });
+
+  it("refuses when the login can't be deleted, and says so", async () => {
+    const deps = composeDeps(store, OPEN_ENV, { deleteAuthUser: () => Promise.reject(new Error("auth admin down")) });
+    const handle = createApiHandler({
+      getDeps: () => deps,
+      verifyCaller: () => Promise.resolve(google("alice")),
+      cronSecret: CRON,
+      allowedOrigins: [],
+      background: () => undefined,
+      nowMs: () => Date.now(),
+    });
+    const send = (command: string, data: unknown) =>
+      handle(new Request("https://x/api", { method: "POST", headers: { authorization: "Bearer t" }, body: JSON.stringify({ command, data }) }));
+    await send("bootstrapUser", {});
+    expect((await send("requestAccountDeletion", { confirmation: "DELETE MY ACCOUNT" })).status).toBe(500);
   });
 });
 
