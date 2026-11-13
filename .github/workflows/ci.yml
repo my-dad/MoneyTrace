@@ -63,8 +63,13 @@ jobs:
         run: pnpm exec vitest run --no-file-parallelism packages/infrastructure/test
         env:
           MONEYTRACE_TEST_PG_URL: postgres://postgres:postgres@localhost:5432/postgres
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.5.6
       - name: /api bundle under Deno with npm:postgres
         run: pnpm smoke:supabase
+        env:
+          DENO: deno
 
   emulator:
     name: Emulator suites (rules, adapters, functions)

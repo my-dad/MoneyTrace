@@ -42,7 +42,9 @@ console.log("SMOKE " + JSON.stringify(results));
 `);
 // Async: the Postgres socket lives in this process, so blocking on the child would starve it.
 const r = await new Promise((resolve) => {
-  const child = spawn("pnpm", ["dlx", "deno@2.5.6", "run", "--quiet", "--allow-net", "--allow-env", "--allow-read", "--allow-sys", script]);
+  // CI installs Deno itself (DENO=deno); locally pnpm fetches the same version.
+  const [cmd, ...pre] = process.env.DENO ? [process.env.DENO] : ["pnpm", "dlx", "deno@2.5.6"];
+  const child = spawn(cmd, [...pre, "run", "--quiet", "--allow-net", "--allow-env", "--allow-read", "--allow-sys", script]);
   let stdout = "";
   let stderr = "";
   child.stdout.on("data", (d) => (stdout += d));
