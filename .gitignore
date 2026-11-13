@@ -53,3 +53,5 @@ apps/web/out/
 
 # Built by pnpm build:supabase
 supabase/functions/api/bundle.mjs
+supabase-functions.log
+supabase/.temp/
