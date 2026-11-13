@@ -39,6 +39,8 @@ export function SplitTransferPanel({
       </p>
     );
   }
+  // Already split, and not by this panel: nothing more to offer.
+  if (event.matchKind !== "transferCounterpart") return null;
   if (!open) {
     return (
       <div className={styles.actions}>

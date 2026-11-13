@@ -12,6 +12,10 @@ import { useAction } from "../../shared/use-action";
 
 type EvidenceItem = Extract<ChatItem, { kind: "evidence" }>;
 
+/** Split by "Not a transfer": no longer paired, still pointing at the reversed transfer. */
+const wasSplit = (event: EvidenceItem["event"]): boolean =>
+  event.matchKind === "none" && event.matchedTransactionId?.endsWith(":repl") === true;
+
 const timeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Dhaka",
   hour: "numeric",
@@ -115,7 +119,8 @@ export function EvidenceBubble({
             {chips.map((chip, index) => <span key={`${chip}-${String(index)}`} className={styles.chip}>{chip}</span>)}
           </span>
         )}
-        {item.outcome === "recorded" && event.matchKind === "transferCounterpart" && (
+        {/* A split message stays mounted, so its done line survives the server's update. */}
+        {item.outcome === "recorded" && (event.matchKind === "transferCounterpart" || wasSplit(event)) && (
           <SplitTransferPanel event={event} accounts={accounts} splitTransfer={commands.splitTransfer} />
         )}
         {(unknown || quota) && (

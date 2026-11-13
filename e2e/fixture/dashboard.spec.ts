@@ -40,3 +40,13 @@ test("the menu shows AI spend", async ({ page }) => {
   await page.getByRole("button", { name: "Menu" }).click();
   await expect(page.getByText("$1.43 of $5.00 this month")).toBeVisible();
 });
+
+test("Count my cash opens the chat on the count, and the demo saves nothing", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("note", { name: "Cash not yet explained" }).getByRole("button", { name: "Count my cash" }).click();
+  const chat = page.getByRole("dialog", { name: "Chat" });
+  await expect(chat.getByText("How much cash do you have right now?")).toBeVisible();
+  await chat.getByLabel("Cash you have, in taka").fill("2,300");
+  await chat.getByRole("button", { name: "Check" }).click();
+  await expect(chat.getByRole("alert")).toHaveText("Not available yet — demo · nothing was saved");
+});

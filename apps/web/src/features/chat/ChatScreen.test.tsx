@@ -921,6 +921,20 @@ describe("not a transfer (CR-008 §9)", () => {
     expect(screen.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeTruthy();
   });
 
+  it("the done line stays when the server's update arrives, and a split message offers nothing more", async () => {
+    const { gateway } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    await screen.findByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.");
+    act(() => {
+      gateway.setSourceEvents([pairedCredit({ matchKind: "none", resolvedDestinationAccountId: null })]);
+    });
+    expect(screen.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeTruthy();
+    cleanup();
+    setup({ events: [pairedCredit({ matchKind: "none", resolvedDestinationAccountId: null })], accounts: PAIR_ACCOUNTS });
+    expect(screen.queryByRole("button", { name: "Not a transfer?" })).toBeNull();
+  });
+
   it("a failed split claims nothing", async () => {
     const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
     commands.splitTransfer.mockRejectedValueOnce(new Error("offline"));
