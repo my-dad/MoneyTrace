@@ -1,0 +1,8 @@
+# CR-010. Only what differs from Supabase's defaults.
+project_id = "moneytrace"
+
+[functions.api]
+# /api checks the caller itself (Supabase Auth for users, CRON_SECRET for jobs), so the gateway
+# must let cron calls through without a user token.
+verify_jwt = false
+entrypoint = "./functions/api/index.ts"

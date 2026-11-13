@@ -50,3 +50,6 @@ jdk-21/
 sms-pattern.md
 test-results/
 apps/web/out/
+
+# Built by pnpm build:supabase
+supabase/functions/api/bundle.mjs

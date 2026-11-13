@@ -10,10 +10,15 @@
     "@moneytrace/infrastructure": "workspace:*",
     "firebase-admin": "14.5.0",
     "firebase-functions": "7.4.0",
+    "postgres": "3.4.9",
     "zod": "4.6.7"
   },
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "@electric-sql/pglite-socket": "0.2.14"
   }
 }

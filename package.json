@@ -23,7 +23,9 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test",
     "serve:web": "firebase emulators:start --only hosting --project demo-moneytrace",
     "deploy:prod": "pnpm build:functions && pnpm --filter web build && firebase deploy --project prod --only firestore,storage,functions,hosting",
-    "deploy:dev": "pnpm build:functions && pnpm --filter web build && firebase deploy --project dev --only firestore,storage,functions,hosting"
+    "deploy:dev": "pnpm build:functions && pnpm --filter web build && firebase deploy --project dev --only firestore,storage,functions,hosting",
+    "build:supabase": "node apps/functions/build-supabase.mjs",
+    "smoke:supabase": "pnpm build:supabase && node apps/functions/test/deno-smoke.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",

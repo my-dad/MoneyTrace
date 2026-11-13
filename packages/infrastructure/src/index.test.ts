@@ -31,6 +31,7 @@ describe("@moneytrace/infrastructure", () => {
       "UNIQUE_VIOLATION",
       "fromFirestore",
       "ownerPath",
+      "postgresJsClient",
       "sqlState",
       "systemTimeoutSignal",
       "userPath",

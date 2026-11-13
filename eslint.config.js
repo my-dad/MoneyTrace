@@ -9,6 +9,8 @@ export default tseslint.config(
       "apps/web/out/**",
       "tooling/boundaries/fixtures/**",
       ".dependency-cruiser.cjs",
+      // Deno code (CR-010): the Edge Function file and its generated bundle.
+      "supabase/functions/**",
     ],
   },
   ...tseslint.configs.strictTypeChecked,
