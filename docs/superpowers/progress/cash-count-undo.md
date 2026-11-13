@@ -17,11 +17,11 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 
 ## Next task
 
-Whole-branch review, then Mabrur chooses how to integrate `cash-count-undo`.
+Review done (0 Critical; 2 fixed). Mabrur rules on negative Cash after Adjust, then chooses how to integrate `cash-count-undo`.
 
 ## Last verification
 
-2026-11-13: `pnpm verify` 90 files / 1,497 tests; web build (CI's emulator config) passes; `pnpm test:emulator` 463 + 28; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 5 passed. A bare `pnpm --filter web build` stops on the missing App Check key by design (release blockers); CI builds with the emulator config.
+2026-11-13, after review fixes: `pnpm verify` 1,502 tests; web build (CI's emulator config) passes; `pnpm test:emulator` 463 + 28; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 5 passed. A bare `pnpm --filter web build` stops on the missing App Check key by design (release blockers); CI builds with the emulator config.
 
 ## Decisions
 
