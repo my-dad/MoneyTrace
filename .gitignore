@@ -38,8 +38,6 @@ next-env.d.ts
 # monorepo
 dist/
 .next/
-.firebase/
-firebase-debug.log
 firestore-debug.log
 *service-account*.json
 drill-expected.json
@@ -53,3 +51,5 @@ apps/web/out/
 
 # Built by pnpm build:supabase
 supabase/functions/api/bundle.mjs
+supabase-functions.log
+supabase/.temp/

@@ -6,3 +6,13 @@ project_id = "moneytrace"
 # must let cron calls through without a user token.
 verify_jwt = false
 entrypoint = "./functions/api/index.ts"
+
+[auth]
+# Local stack only (`supabase start`, the end-to-end suite). The hosted project keeps its own
+# settings in the dashboard; this file is never pushed to it (`pnpm deploy:supabase` pushes only
+# migrations and /api).
+site_url = "http://127.0.0.1:5005"
+additional_redirect_urls = ["http://127.0.0.1:5005/"]
+# The browser suite signs in anonymously (NEXT_PUBLIC_LOCAL_SIGN_IN=1). Even if this ever reached a
+# real project, /api refuses anyone but a verified Google account unless FUNCTIONS_EMULATOR=true.
+enable_anonymous_sign_ins = true

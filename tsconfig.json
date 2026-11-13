@@ -1,1 +1,1 @@
-{ "extends": "./tsconfig.tools.json", "include": ["tooling", "firebase", "tools", "*.config.ts"] }
+{ "extends": "./tsconfig.tools.json", "include": ["tooling", "tools", "*.config.ts"] }

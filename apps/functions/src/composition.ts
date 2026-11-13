@@ -95,7 +95,7 @@ export type Deps = {
   aiPlans: { planOf(ownerId: OwnerId): Promise<AiPlan>; markOwner(ownerId: OwnerId): Promise<void> };
   /** Lower-cased OWNER_EMAIL, or undefined when unset (then everyone is a member). */
   ownerEmail: string | undefined;
-  /** Erases an owner's data and login, verified (CR-009). Undefined on Firebase. */
+  /** Erases an owner's data and login, verified (CR-009). */
   accountDeletion: { erase(ownerId: OwnerId): Promise<string> } | undefined;
   /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
   runnableEvents: FirestoreSourceEventRepository["listRunnable"];
@@ -158,9 +158,15 @@ export function composeDeps(
             const eraser = new PgOwnerEraser(db.client);
             await eraser.erase(ownerId);
             await deleteAuthUser(ownerId);
-            // Again after the login is gone: a pipeline run already in flight may have written.
-            await eraser.erase(ownerId);
-            if ((await eraser.remaining(ownerId)) !== 0) throw new Error("account deletion not verified");
+            // Work already in flight (an SMS still being read) may write after the first pass, so
+            // erase in rounds until nothing is left. The login is gone, so nothing new can start.
+            let left = 1;
+            for (let round = 0; round < 6 && left > 0; round++) {
+              if (round > 0) await new Promise((r) => setTimeout(r, 150 * 2 ** round));
+              await eraser.erase(ownerId);
+              left = await eraser.remaining(ownerId);
+            }
+            if (left !== 0) throw new Error("account deletion not verified");
             const ownerIdHash = hasher.sha256(ownerId);
             await db.doc(`deletionLog/${ownerIdHash}`).set({ ownerIdHash, deletedAtMs: clock.nowMs() });
             plans.delete(ownerId);

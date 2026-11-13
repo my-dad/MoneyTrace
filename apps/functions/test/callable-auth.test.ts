@@ -1,51 +1,8 @@
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { localBackend, type Reply, type User } from "./support/local-api";
 
-const PROJECT_ID = "demo-moneytrace";
-const FUNCTIONS = `http://127.0.0.1:5001/${PROJECT_ID}/asia-south2`;
-const AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake";
-
-const fsHost = process.env["FIRESTORE_EMULATOR_HOST"];
-if (fsHost === undefined) throw new Error("run through `firebase emulators:exec`");
-const firestoreHost: string = fsHost;
-process.env["METADATA_SERVER_DETECTION"] = "none";
-
-const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
-
-type User = { uid: string; token: string };
-type Reply = {
-  status: number;
-  result?: Record<string, unknown>;
-  error?: { status: string; message: string };
-};
-
-async function signUp(label: string): Promise<User> {
-  const res = await fetch(AUTH, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email: `${label}-${crypto.randomUUID()}@example.test`,
-      password: "correct-horse-battery",
-      returnSecureToken: true,
-    }),
-  });
-  const body = (await res.json()) as { idToken: string; localId: string };
-  return { uid: body.localId, token: body.idToken };
-}
-
-async function call(name: string, user: User | null, data: unknown): Promise<Reply> {
-  const res = await fetch(`${FUNCTIONS}/${name}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(user === null ? {} : { authorization: `Bearer ${user.token}` }),
-    },
-    body: JSON.stringify({ data }),
-  });
-  const body = (await res.json()) as Omit<Reply, "status">;
-  return { status: res.status, ...body };
-}
+/** The command gate through the real `/api` on Postgres in-process (CR-010; was the Firebase emulator). */
+const { db, client, call, signUp } = await localBackend();
 
 function unwrap(r: Reply): Record<string, unknown> {
   if (r.result === undefined) throw new Error(`call failed: ${JSON.stringify(r)}`);
@@ -70,23 +27,19 @@ const validAccount = { kind: "bank", name: "City", currency: "BDT" };
 let alice: User;
 let bob: User;
 
-beforeAll(async () => {
-  alice = await signUp("alice");
-  bob = await signUp("bob");
+beforeAll(() => {
+  alice = signUp("alice");
+  bob = signUp("bob");
 }, 60_000);
 
 beforeEach(async () => {
-  const res = await fetch(
-    `http://${firestoreHost}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-  if (!res.ok) throw new Error(`could not clear the emulator: ${String(res.status)}`);
+  await client.query("truncate docs", []);
 });
 
 /** The first call to each function cold-starts it in the emulator, which can exceed the 5s default. */
 describe("authenticated callables", { timeout: 60_000 }, () => {
   it("another user's follow-up or transaction is not found", async () => {
-    const other = await signUp("fu-other");
+    const other = signUp("fu-other");
     const followUp = await call("resolveFollowUp", other, {
       followUpId: "nope",
       resolution: { kind: "notSureYet" },
@@ -112,7 +65,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("a cash count opens a question without changing Cash, and Adjust moves Cash to the count", async () => {
-    const user = await signUp("count");
+    const user = signUp("count");
     unwrap(await call("bootstrapUser", user, {}));
     unwrap(
       await call("recordOpeningBalance", user, {
@@ -146,7 +99,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("an OTP is refused with its code and nothing is stored", async () => {
-    const user = await signUp("otp");
+    const user = signUp("otp");
     const r = await call("submitEvidence", user, {
       idempotencyKey: "k",
       text: "Your OTP is 482913",
@@ -158,7 +111,7 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("another user's event is not found, and is left alone", async () => {
-    const [owner, other] = [await signUp("ev-owner"), await signUp("ev-other")];
+    const [owner, other] = [signUp("ev-owner"), signUp("ev-other")];
     const { sourceEventId } = unwrap(
       await call("submitEvidence", owner, { idempotencyKey: "k", text: "spent 500 on tea" }),
     );
@@ -173,14 +126,14 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
   });
 
   it("bootstrap creates the system cash wallet", async () => {
-    const user = await signUp("wallet");
+    const user = signUp("wallet");
     unwrap(await call("bootstrapUser", user, {}));
     const wallet = await db.doc(`users/${user.uid}/accounts/cash-unassigned`).get();
     expect(wallet.get("kind")).toBe("cash");
   });
 
   it("creates a payment instrument, and treats another user's account as not found", async () => {
-    const [owner, other] = [await signUp("owner"), await signUp("other")];
+    const [owner, other] = [signUp("owner"), signUp("other")];
     const { accountId } = unwrap(
       await call("createAccount", owner, { kind: "bank", name: "City", currency: "BDT" }),
     );
@@ -294,7 +247,8 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
     expect(profile?.["baseCurrency"]).toBe("BDT");
     expect(profile?.["reportingCycle"]).toEqual({ kind: "calendarMonth" });
 
-    await ref.update({ reportingCycle: { kind: "salaryCycle", startDay: 25 } });
+    // A merge, as Firestore's `update` was: the store writes whole documents.
+    await ref.set({ ...profile, reportingCycle: { kind: "salaryCycle", startDay: 25 } });
     expect(unwrap(await call("bootstrapUser", alice, {}))).toEqual({ created: false });
     expect((await ref.get()).get("reportingCycle")).toEqual({ kind: "salaryCycle", startDay: 25 });
     expect((await db.doc(`users/${bob.uid}`).get()).exists).toBe(false);

@@ -1,49 +1,18 @@
-import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
 import { beforeAll, describe, expect, it } from "vitest";
 import corpus from "../../../fixtures/sms/corpus.json";
 import { COMMAND_HANDLERS } from "../src/callable/registry";
+import { localBackend, type Reply } from "./support/local-api";
 
 /**
  * Gate 35 evidence: another user, holding Alice's real ids, cannot read or change her data
- * through any callable. Alice's whole document tree is compared before and after.
+ * through any command. Alice's whole document tree is compared before and after. Runs the real
+ * `/api` on Postgres in-process (CR-010; was the Firebase emulator).
  */
 
-const PROJECT_ID = "demo-moneytrace";
-const FUNCTIONS = `http://127.0.0.1:5001/${PROJECT_ID}/asia-south2`;
-const AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake";
-process.env["METADATA_SERVER_DETECTION"] = "none";
-
-const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
-
-type User = { uid: string; token: string };
-type Reply = { result?: Record<string, unknown>; error?: { status: string; message: string } };
+const { db, call, signUp, snapshotTree } = await localBackend();
 
 const WITHDRAWAL_SMS = corpus.find((c) => c.text.includes("EXAMPLE ATM DHAKA"))?.text ?? "";
 const OPENING_AT = Date.parse("2026-01-01T00:00:00Z");
-
-async function signUp(label: string): Promise<User> {
-  const res = await fetch(AUTH, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email: `${label}-${crypto.randomUUID()}@example.test`,
-      password: "correct-horse-battery",
-      returnSecureToken: true,
-    }),
-  });
-  const body = (await res.json()) as { idToken: string; localId: string };
-  return { uid: body.localId, token: body.idToken };
-}
-
-async function call(name: string, user: User, data: unknown): Promise<Reply> {
-  const res = await fetch(`${FUNCTIONS}/${name}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${user.token}` },
-    body: JSON.stringify({ data }),
-  });
-  return (await res.json()) as Reply;
-}
 
 function unwrap(r: Reply): Record<string, unknown> {
   if (r.result === undefined) throw new Error(`call failed: ${JSON.stringify(r)}`);
@@ -67,7 +36,7 @@ async function waitForStatus(uid: string, id: string, status: string) {
 
 /** A user with a bank (with an instrument and opening balance), a wallet and a family holder. */
 async function setUp(label: string) {
-  const user = await signUp(label);
+  const user = signUp(label);
   unwrap(await call("bootstrapUser", user, {}));
   const account = async (kind: string, name: string) =>
     String(unwrap(await call("createAccount", user, { kind, name, currency: "BDT" }))["accountId"]);
@@ -81,17 +50,6 @@ async function setUp(label: string) {
     await call("recordOpeningBalance", user, { accountId: bank, amountMinor: 10_000_000, currency: "BDT", effectiveAtMs: OPENING_AT }),
   );
   return { user, bank, wallet, family, openingTx: String(opening["transactionId"]) };
-}
-
-/** Every document under users/{uid}, with its data, so any change at all is visible. */
-async function snapshotTree(uid: string): Promise<Record<string, unknown>> {
-  const out: Record<string, unknown> = {};
-  const root = db.doc(`users/${uid}`);
-  out[root.path] = (await root.get()).data() ?? null;
-  for (const collection of await root.listCollections()) {
-    for (const doc of (await collection.get()).docs) out[doc.ref.path] = doc.data();
-  }
-  return out;
 }
 
 type Alice = Awaited<ReturnType<typeof setUp>> & {
@@ -113,11 +71,11 @@ const OWN_DATA_ONLY: Case[] = [
   { name: "updateSettings", data: () => ({ timezone: "Asia/Dhaka" }) },
   { name: "submitEvidence", data: () => ({ idempotencyKey: key(), text: "paid 300 for tea" }) },
   { name: "recordReconciliation", data: () => ({ idempotencyKey: key(), countedMinor: 0, currency: "BDT" }) },
+  // Last: Bob erases his own account; Alice's tree must still be untouched (CR-009).
+  { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
 ];
 
 const MUST_REFUSE: Case[] = [
-  // Firebase has no account deletion (it ships on Supabase, CR-010); its /api tests prove Bob only ever erases Bob.
-  { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
   { name: "createPaymentInstrument", data: (a) => ({ accountId: a.bank, provider: "brac", maskedIdentifier: "1234", type: "bankAccount" }) },
   { name: "recordOpeningBalance", data: (a) => ({ accountId: a.wallet, amountMinor: 5_000, currency: "BDT", effectiveAtMs: OPENING_AT }) },
   { name: "resolveFollowUp", data: (a) => ({ followUpId: a.followUpId, resolution: { kind: "notSureYet" } }) },
@@ -143,7 +101,7 @@ const MUST_REFUSE: Case[] = [
 ];
 
 /** The callables index.ts exports: the ones built from ./callable/ modules. */
-/** Every client command the backends serve (the registry both Firebase and `/api` read). */
+/** Every client command the backends serve (the registry `/api` reads). */
 function exportedCallables(): string[] {
   return Object.keys(COMMAND_HANDLERS).sort();
 }
@@ -157,7 +115,8 @@ describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {
     const eventId = String(unwrap(await call("submitEvidence", a.user, { idempotencyKey: key(), text: WITHDRAWAL_SMS }))["sourceEventId"]);
     await waitForStatus(a.user.uid, eventId, "posted");
     const event = await db.doc(`users/${a.user.uid}/sourceEvents/${eventId}`).get();
-    const withdrawalTx = String(event.get("transactionId") ?? `txn-${eventId}`);
+    const txField: unknown = event.get("transactionId");
+    const withdrawalTx = typeof txField === "string" ? txField : `txn-${eventId}`;
     const aliceFollowUps = await db.collection(`users/${a.user.uid}/followUps`).get();
     const followUpId = aliceFollowUps.docs[0]?.id ?? "";
     // A cash count that differs, so Alice has an open count Bob can try to adjust.
@@ -192,8 +151,8 @@ describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {
     for (const c of OWN_DATA_ONLY) {
       expect((await call(c.name, bob.user, c.data(alice, bob))).error, c.name).toBeUndefined();
     }
-    // Let any trigger Bob's calls started finish before comparing.
-    await new Promise((r) => setTimeout(r, 2_000));
+    // Let any pipeline work Bob's calls started finish before comparing.
+    await new Promise((r) => setTimeout(r, 500));
 
     expect(await snapshotTree(alice.user.uid)).toEqual(before);
   });

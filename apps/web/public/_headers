@@ -1,4 +1,4 @@
-# Cloudflare Pages (CR-010): the same headers Firebase Hosting sent.
+# Cloudflare Pages (CR-010).
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

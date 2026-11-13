@@ -10,7 +10,6 @@
     "@moneytrace/application": "workspace:*",
     "@moneytrace/contracts": "workspace:*",
     "@moneytrace/domain": "workspace:*",
-    "firebase-admin": "14.5.0",
     "postgres": "3.4.9",
     "zod": "4.6.7"
   },

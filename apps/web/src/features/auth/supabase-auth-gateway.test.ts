@@ -14,6 +14,10 @@ function fakeAuth() {
       calls.push(args);
       return Promise.resolve({ data: {}, error: null });
     },
+    signInAnonymously() {
+      calls.push("anonymous");
+      return Promise.resolve({ data: {}, error: null });
+    },
     signOut() {
       calls.push("signOut");
       return Promise.resolve({ error: null });
@@ -40,6 +44,13 @@ describe("Supabase auth gateway", () => {
     const f = fakeAuth();
     await createSupabaseAuthGateway(f.auth as never, () => Promise.resolve({}), () => "https://app.example").signIn();
     expect(f.calls).toEqual([{ provider: "google", options: { redirectTo: "https://app.example/" } }]);
+  });
+
+  it("local sign-in (end-to-end suite on a local Supabase only) signs in anonymously", async () => {
+    const f = fakeAuth();
+    const gw = createSupabaseAuthGateway(f.auth as never, () => Promise.resolve({}), () => "", { localSignIn: true });
+    await gw.signIn();
+    expect(f.calls).toEqual(["anonymous"]);
   });
 
   it("bootstrap calls /api and checks the reply", async () => {
