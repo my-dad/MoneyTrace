@@ -13,11 +13,15 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 | 6 Callables | Done |
 | 7 Web: cash count | Done |
 | 8 Web: Not a transfer | Done |
-| 9 E2E, final checks, records | Not started |
+| 9 E2E, final checks, records | Done |
 
 ## Next task
 
-Task 9.
+Whole-branch review, then Mabrur chooses how to integrate `cash-count-undo`.
+
+## Last verification
+
+2026-11-13: `pnpm verify` 90 files / 1,497 tests; web build (CI's emulator config) passes; `pnpm test:emulator` 463 + 28; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 5 passed. A bare `pnpm --filter web build` stops on the missing App Check key by design (release blockers); CI builds with the emulator config.
 
 ## Decisions
 
@@ -27,3 +31,5 @@ Task 9.
 
 - Adjust note drops "you can correct it later" (no correction UI yet).
 - "Cash is now ৳X" becomes "Cash now matches your count of ৳X".
+- A reloaded gap question shows "Adjust your cash to your count?" without amounts (the question doc holds only its text).
+- The adjusted Cash goes to `cash-main`; cash not yet explained is left for the ATM questions.

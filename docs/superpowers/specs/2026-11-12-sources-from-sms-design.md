@@ -131,6 +131,6 @@ Limits:
 
 ## 9. Risks
 
-- **Close coincidences:** two unrelated equal amounts within 30 minutes on different sources would be paired. The ledger correction is reversible, and the chat shows the `Transfer` chip so it can be undone with "not a transfer".
+- **Close coincidences:** two unrelated equal amounts within 30 minutes on different sources would be paired. The ledger correction is reversible, and the chat shows the `Transfer` chip so it can be undone with "not a transfer" (built 2026-11-13: `splitTransfer`, plan `2026-11-13-cash-count-and-transfer-undo.md`).
 - **Per-source totals:** these are net in and out since tracking began, not bank-statement balances, because nothing is entered at setup (CR-006).
 - **Refunds:** these raise Came in rather than lowering Spent, by Mabrur's rule.
