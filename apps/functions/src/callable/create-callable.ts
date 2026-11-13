@@ -24,7 +24,6 @@ export const CALLABLE_OPTIONS = {
   minInstances: 0,
   concurrency: 1,
   enforceAppCheck: process.env["FUNCTIONS_EMULATOR"] !== "true",
-  secrets: ["ALLOWED_EMAILS"],
 } satisfies CallableOptions;
 
 type RequestLike = {

@@ -70,10 +70,21 @@ describe("/api gate", () => {
     expect(r).toEqual({ status: 400, body: { error: { code: "invalid-argument", message: "invalid request" } } });
   });
 
-  it("outside local mode, only the allowlist gets in", async () => {
-    const { call } = api({ ALLOWED_EMAILS: "alice@example.com", MONEYTRACE_AI: "deepseek", DEEPSEEK_API_KEY: "unused" });
+  it("outside local mode, any verified Google account gets in, and nothing else does (CR-009)", async () => {
+    const env = { MONEYTRACE_AI: "deepseek", DEEPSEEK_API_KEY: "unused" };
+    const { call } = api(env);
     expect((await call("alice", "bootstrapUser")).status).toBe(200);
-    expect((await call("mallory", "bootstrapUser")).body.error?.code).toBe("permission-denied");
+    expect((await call("friend", "bootstrapUser")).status).toBe(200);
+    const handle = createApiHandler({
+      getDeps: () => composeDeps(store, env),
+      verifyCaller: () => Promise.resolve({ uid: "x", email: "x@example.com", emailVerified: false, provider: "google" }),
+      cronSecret: CRON,
+      allowedOrigins: [],
+      background: () => undefined,
+      nowMs: () => Date.now(),
+    });
+    const res = await handle(new Request("https://x/api", { method: "POST", headers: { authorization: "Bearer t" }, body: JSON.stringify({ command: "bootstrapUser", data: {} }) }));
+    expect(res.status).toBe(403);
   });
 
   it("answers CORS preflight only for the app's own origin", async () => {
