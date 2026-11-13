@@ -66,7 +66,11 @@ describe("PgDocStore documents", () => {
     await store.doc("c/a").set({ v: "a" });
     await store.doc("c/c").set({ v: "c" });
     const snaps = await store.getAll(store.doc("c/c"), store.doc("c/b"), store.doc("c/a"));
-    expect(snaps.map((s) => [s.id, s.exists])).toEqual([["c", true], ["b", false], ["a", true]]);
+    expect(snaps.map((s) => [s.id, s.exists])).toEqual([
+      ["c", true],
+      ["b", false],
+      ["a", true],
+    ]);
   });
 
   it("rejects malformed paths and field names", () => {
@@ -89,19 +93,34 @@ describe("PgDocStore queries", () => {
   const ids = (s: { docs: { id: string }[] }) => s.docs.map((d) => d.id);
 
   it("equality filters within one collection only", async () => {
-    expect(ids(await store.collection("users/alice/entries").where("accountId", "==", "cash").get())).toEqual(["e1", "e2", "e4"]);
+    expect(
+      ids(await store.collection("users/alice/entries").where("accountId", "==", "cash").get()),
+    ).toEqual(["e1", "e2", "e4"]);
   });
 
   it("range filters match only the same JSON type", async () => {
-    expect(ids(await store.collection("users/alice/entries").where("ms", ">=", 20).get())).toEqual(["e1", "e3"]);
-    expect(ids(await store.collection("users/alice/entries").where("ms", ">=", 20).orderBy("ms").get())).toEqual(["e3", "e1"]);
-    expect(ids(await store.collection("users/alice/entries").where("ms", "<", 20).get())).toEqual(["e2"]);
+    expect(ids(await store.collection("users/alice/entries").where("ms", ">=", 20).get())).toEqual([
+      "e1",
+      "e3",
+    ]);
+    expect(
+      ids(await store.collection("users/alice/entries").where("ms", ">=", 20).orderBy("ms").get()),
+    ).toEqual(["e3", "e1"]);
+    expect(ids(await store.collection("users/alice/entries").where("ms", "<", 20).get())).toEqual([
+      "e2",
+    ]);
   });
 
   it("orderBy skips documents without the field and limits", async () => {
-    const q = store.collectionGroup("entries").where("claim.at", "<=", 4).orderBy("claim.at").limit(5);
+    const q = store
+      .collectionGroup("entries")
+      .where("claim.at", "<=", 4)
+      .orderBy("claim.at")
+      .limit(5);
     expect(ids(await q.get())).toEqual(["e3", "b1"]);
-    expect(ids(await store.collectionGroup("entries").orderBy("claim.at", "desc").limit(2).get())).toEqual(["e1", "b1"]);
+    expect(
+      ids(await store.collectionGroup("entries").orderBy("claim.at", "desc").limit(2).get()),
+    ).toEqual(["e1", "b1"]);
   });
 
   it("a collection group spans owners; results carry their owner path", async () => {
@@ -131,9 +150,9 @@ describe("PgDocStore transactions", () => {
 
   it("a throw leaves nothing written", async () => {
     await expect(
-      store.runTransaction(async (tx) => {
+      store.runTransaction((tx) => {
         tx.set(store.doc("c/a"), { n: 1 });
-        throw new Error("boom");
+        return Promise.reject(new Error("boom"));
       }),
     ).rejects.toThrow("boom");
     expect((await store.doc("c/a").get()).exists).toBe(false);
@@ -142,8 +161,9 @@ describe("PgDocStore transactions", () => {
   it("create on an existing document fails the whole transaction", async () => {
     await store.doc("c/a").set({ n: 1 });
     await expect(
-      store.runTransaction(async (tx) => {
+      store.runTransaction((tx) => {
         tx.set(store.doc("c/b"), { n: 1 }).create(store.doc("c/a"), { n: 2 });
+        return Promise.resolve();
       }),
     ).rejects.toEqual(code(ALREADY_EXISTS));
     expect((await store.doc("c/b").get()).exists).toBe(false);
@@ -151,18 +171,25 @@ describe("PgDocStore transactions", () => {
 
   it("reads queries inside the transaction", async () => {
     await store.doc("users/alice/q/1").set({ s: "open" });
-    const n = await store.runTransaction(async (tx) => (await tx.get(store.collection("users/alice/q").where("s", "==", "open"))).size);
+    const n = await store.runTransaction(
+      async (tx) => (await tx.get(store.collection("users/alice/q").where("s", "==", "open"))).size,
+    );
     expect(n).toBe(1);
   });
 
   it("a serialization conflict retries, then gives up with ABORTED", async () => {
     let calls = 0;
     const conflict = Object.assign(new Error("could not serialize"), { code: "40001" });
-    const flaky: SqlClient = { ...client, serializable: async (fn) => (++calls < 3 ? Promise.reject(conflict) : client.serializable(fn)) };
+    const flaky: SqlClient = {
+      ...client,
+      serializable: (fn) => (++calls < 3 ? Promise.reject(conflict) : client.serializable(fn)),
+    };
     const { PgDocStore: Store } = await import("./pg-doc-store");
-    expect(await new Store(flaky).runTransaction(async () => "ok")).toBe("ok");
+    expect(await new Store(flaky).runTransaction(() => Promise.resolve("ok"))).toBe("ok");
     expect(calls).toBe(3);
     calls = -100;
-    await expect(new Store(flaky).runTransaction(async () => "ok", { maxAttempts: 2 })).rejects.toEqual(code(ABORTED));
+    await expect(
+      new Store(flaky).runTransaction(() => Promise.resolve("ok"), { maxAttempts: 2 }),
+    ).rejects.toEqual(code(ABORTED));
   });
 });

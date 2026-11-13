@@ -7,33 +7,16 @@ import { runStage } from "@moneytrace/application";
 import { CapturingLogger } from "@moneytrace/application/testing";
 import { OWNER_COLLECTIONS, type OwnerCollectionName } from "@moneytrace/contracts";
 import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { describe, expect, it } from "vitest";
 import { FirestoreSourceEventRepository } from "../src/firestore/firestore-source-event-repository";
 import { ownerPath } from "../src/firestore/paths";
+import { testBackend } from "./support/backend";
 
-const PROJECT_ID = "demo-moneytrace";
-const host = process.env["FIRESTORE_EMULATOR_HOST"];
-if (host === undefined) throw new Error("run through `firebase emulators:exec`");
-const emulatorHost: string = host;
-
-// Skip the GCE metadata probe: it only produces a timeout warning against the emulator.
-process.env["METADATA_SERVER_DETECTION"] = "none";
-
-const db: Firestore = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
+const { name: backend, db, clear } = await testBackend();
 /** Contended Firestore transactions retry with a 1s-and-growing backoff, so they are slow by design. */
 const CONTENTION_TIMEOUT_MS = 120_000;
 const logger = new CapturingLogger();
 const clock = { nowMs: () => 1_700_000_001_000 };
-
-async function clearFirestore(): Promise<void> {
-  const res = await fetch(
-    `http://${emulatorHost}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-  if (!res.ok) throw new Error(`could not clear the emulator: ${String(res.status)}`);
-}
 
 async function readCollection(
   ownerId: string,
@@ -44,14 +27,14 @@ async function readCollection(
 }
 
 async function makeHarness() {
-  await clearFirestore();
+  await clear();
   return {
     repo: new FirestoreSourceEventRepository(db, clock, logger),
     outputsOf: readCollection,
   };
 }
 
-describeSourceEventContract("firestore", makeHarness);
+describeSourceEventContract(backend, makeHarness);
 
 const ownerId = asOwnerId("alice");
 const sourceEventId = asSourceEventId("evt-par");

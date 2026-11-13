@@ -38,7 +38,7 @@ import {
   type PipelineStage,
   type SourceEventId,
 } from "@moneytrace/domain";
-import type { Firestore, Transaction as FirestoreTransaction } from "firebase-admin/firestore";
+import type { DocStore, DocTransaction } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 import { sourceEventToDoc, toSourceEventRecord } from "./records";
 
@@ -55,11 +55,11 @@ const isAborted = (error: unknown): boolean =>
  * Whole documents are written with `set`, so a cleared claim or reason is never left behind.
  */
 export class FirestoreSourceEventRepository implements SourceEventRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
   private readonly clock: Clock;
   private readonly logger: Logger;
 
-  constructor(db: Firestore, clock: Clock, logger: Logger) {
+  constructor(db: DocStore, clock: Clock, logger: Logger) {
     this.db = db;
     this.clock = clock;
     this.logger = logger;
@@ -70,7 +70,7 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
   }
 
   private async read(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     id: string,
   ): Promise<SourceEventRecord | null> {

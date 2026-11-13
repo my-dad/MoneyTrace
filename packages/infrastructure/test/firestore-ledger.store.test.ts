@@ -11,37 +11,20 @@ import {
   type EntryDraft,
 } from "@moneytrace/domain";
 import type { CorrectionCommit, LedgerCommit, TransactionRecord } from "@moneytrace/application";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FirestoreAccountRepository } from "../src/firestore/firestore-account-repository";
 import { FirestoreLedgerReader } from "../src/firestore/firestore-ledger-reader";
 import { FirestoreLedgerWriter } from "../src/firestore/firestore-ledger-writer";
 import { ownerPath } from "../src/firestore/paths";
+import { testBackend } from "./support/backend";
 
-const PROJECT_ID = "demo-moneytrace";
-const host = process.env["FIRESTORE_EMULATOR_HOST"];
-if (host === undefined) throw new Error("run through `firebase emulators:exec`");
-const emulatorHost: string = host;
-
-// Skip the GCE metadata probe: it only produces a timeout warning against the emulator.
-process.env["METADATA_SERVER_DETECTION"] = "none";
-
-const db: Firestore = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
+const { name: backend, db, clear } = await testBackend();
 /** Contended Firestore transactions retry with a 1s-and-growing backoff, so they are slow by design. */
 const CONTENTION_TIMEOUT_MS = 120_000;
 const clock = { nowMs: () => 1_700_000_001_000 };
 
-async function clearFirestore(): Promise<void> {
-  const res = await fetch(
-    `http://${emulatorHost}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-  if (!res.ok) throw new Error(`could not clear the emulator: ${String(res.status)}`);
-}
-
 async function makeFirestoreHarness() {
-  await clearFirestore();
+  await clear();
   const ledgerWriter = new FirestoreLedgerWriter(db, clock);
   return {
     writer: ledgerWriter,
@@ -50,7 +33,7 @@ async function makeFirestoreHarness() {
   };
 }
 
-describeLedgerContract("firestore", makeFirestoreHarness);
+describeLedgerContract(backend, makeFirestoreHarness);
 
 const owner = asOwnerId("alice");
 const bank: AccountRef = { id: asAccountId("bank-1"), kind: "bank", currency: "BDT" };

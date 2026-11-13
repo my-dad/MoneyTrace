@@ -7,7 +7,7 @@ import {
 } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import { asOwnerId, type OwnerId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 
 const MAX_ATTEMPTS = 5;
@@ -16,9 +16,9 @@ const toRecord = (data: unknown): FollowUpRecord =>
   OWNER_COLLECTIONS.followUps.parse(data) as FollowUpRecord;
 
 export class FirestoreFollowUpRepository implements FollowUpRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
-  constructor(db: Firestore) {
+  constructor(db: DocStore) {
     this.db = db;
   }
 

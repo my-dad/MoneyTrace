@@ -1,7 +1,7 @@
 import { rateWindowId, type RateBucket, type RateLimiter } from "@moneytrace/application";
-import { Timestamp, type Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 
-/** Admin-only: the security rules match no client path here. A TTL policy on `expiresAt` cleans it. */
+/** Server-only: no client can read it. A scheduled job deletes windows past `expiresAtMs`. */
 export const RATE_LIMIT_COLLECTION = "rateLimits";
 
 /**
@@ -9,10 +9,10 @@ export const RATE_LIMIT_COLLECTION = "rateLimits";
  * transaction so concurrent calls serialize. `namespace` keeps environments or test runs apart.
  */
 export class FirestoreRateLimiter implements RateLimiter {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
   private readonly namespace: string;
 
-  constructor(db: Firestore, namespace = "callables") {
+  constructor(db: DocStore, namespace = "callables") {
     this.db = db;
     this.namespace = namespace;
   }
@@ -30,7 +30,7 @@ export class FirestoreRateLimiter implements RateLimiter {
         t.set(ref, {
           namespace: this.namespace,
           count: (counts[i] ?? 0) + 1,
-          expiresAt: Timestamp.fromMillis(windowEndMs + b.windowMs),
+          expiresAtMs: windowEndMs + b.windowMs,
         });
       });
       return "allowed";

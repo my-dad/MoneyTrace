@@ -4,7 +4,9 @@ import { PGlite } from "@electric-sql/pglite";
 import type { DocRow, SqlClient, SqlRunner } from "../../src/docstore/sql-client";
 import { PgDocStore } from "../../src/docstore/pg-doc-store";
 
-const MIGRATION = fileURLToPath(new URL("../../../../supabase/migrations/20261113000000_docs.sql", import.meta.url));
+const MIGRATION = fileURLToPath(
+  new URL("../../../../supabase/migrations/20261113000000_docs.sql", import.meta.url),
+);
 
 const runner = (db: Pick<PGlite, "query">): SqlRunner => ({
   async query(text, params) {
@@ -14,7 +16,11 @@ const runner = (db: Pick<PGlite, "query">): SqlRunner => ({
 });
 
 /** In-process Postgres (no Docker) with the real migration applied. One connection: no real concurrency. */
-export async function pgliteStore(): Promise<{ store: PgDocStore; client: SqlClient; reset: () => Promise<void> }> {
+export async function pgliteStore(): Promise<{
+  store: PgDocStore;
+  client: SqlClient;
+  reset: () => Promise<void>;
+}> {
   const db = new PGlite();
   await db.exec(readFileSync(MIGRATION, "utf8"));
   const client: SqlClient = {
@@ -25,5 +31,11 @@ export async function pgliteStore(): Promise<{ store: PgDocStore; client: SqlCli
         return fn(runner(tx));
       }),
   };
-  return { store: new PgDocStore(client), client, reset: async () => void (await db.exec("truncate docs")) };
+  return {
+    store: new PgDocStore(client),
+    client,
+    reset: async () => {
+      await db.exec("truncate docs");
+    },
+  };
 }

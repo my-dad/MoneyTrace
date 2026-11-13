@@ -9,10 +9,17 @@ import {
   type DocStore,
   type DocTransaction,
   type Query,
+  type QueryDocSnapshot,
   type QuerySnapshot,
   type WhereOp,
 } from "./doc-store";
-import { RETRYABLE_SQLSTATES, UNIQUE_VIOLATION, sqlState, type SqlClient, type SqlRunner } from "./sql-client";
+import {
+  RETRYABLE_SQLSTATES,
+  UNIQUE_VIOLATION,
+  sqlState,
+  type SqlClient,
+  type SqlRunner,
+} from "./sql-client";
 
 const SEGMENT = /^[^/]+$/;
 const FIELD = /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
@@ -43,7 +50,8 @@ function readField(data: DocData | undefined, field: string): unknown {
   return value;
 }
 
-const parseData = (raw: unknown): DocData => (typeof raw === "string" ? JSON.parse(raw) : raw) as DocData;
+const parseData = (raw: unknown): DocData =>
+  (typeof raw === "string" ? JSON.parse(raw) : raw) as DocData;
 
 class Snapshot implements DocSnapshot {
   readonly ref: DocRef;
@@ -68,8 +76,8 @@ class Snapshot implements DocSnapshot {
 }
 
 class Snapshots implements QuerySnapshot {
-  readonly docs: DocSnapshot[];
-  constructor(docs: DocSnapshot[]) {
+  readonly docs: QueryDocSnapshot[];
+  constructor(docs: QueryDocSnapshot[]) {
     this.docs = docs;
   }
   get empty(): boolean {
@@ -78,7 +86,7 @@ class Snapshots implements QuerySnapshot {
   get size(): number {
     return this.docs.length;
   }
-  forEach(fn: (doc: DocSnapshot) => void): void {
+  forEach(fn: (doc: QueryDocSnapshot) => void): void {
     this.docs.forEach(fn);
   }
 }
@@ -94,7 +102,13 @@ class PgQuery implements Query {
   private readonly orders: readonly Order[];
   private readonly max: number | null;
 
-  constructor(store: PgDocStore, source: Source, filters: readonly Filter[] = [], orders: readonly Order[] = [], max: number | null = null) {
+  constructor(
+    store: PgDocStore,
+    source: Source,
+    filters: readonly Filter[] = [],
+    orders: readonly Order[] = [],
+    max: number | null = null,
+  ) {
     this.store = store;
     this.source = source;
     this.filters = filters;
@@ -105,12 +119,24 @@ class PgQuery implements Query {
   where(field: string, op: WhereOp, value: unknown): Query {
     if (!OPS.has(op)) throw new Error(`unsupported operator: ${op}`);
     fieldPath(field);
-    return new PgQuery(this.store, this.source, [...this.filters, { field, op, value }], this.orders, this.max);
+    return new PgQuery(
+      this.store,
+      this.source,
+      [...this.filters, { field, op, value }],
+      this.orders,
+      this.max,
+    );
   }
 
   orderBy(field: string, direction: "asc" | "desc" = "asc"): Query {
     fieldPath(field);
-    return new PgQuery(this.store, this.source, this.filters, [...this.orders, { field, direction }], this.max);
+    return new PgQuery(
+      this.store,
+      this.source,
+      this.filters,
+      [...this.orders, { field, direction }],
+      this.max,
+    );
   }
 
   limit(n: number): Query {
@@ -135,13 +161,18 @@ class PgQuery implements Query {
     }
     for (const o of this.orders) where.push(`data #> ${fieldPath(o.field)} is not null`);
     const last = this.orders.at(-1)?.direction ?? "asc";
-    const orderBy = [...this.orders.map((o) => `data #> ${fieldPath(o.field)} ${o.direction}`), `path ${last}`];
+    const orderBy = [
+      ...this.orders.map((o) => `data #> ${fieldPath(o.field)} ${o.direction}`),
+      `path ${last}`,
+    ];
     const limit = this.max === null ? "" : ` limit ${String(this.max)}`;
     const { rows } = await runner.query(
       `select path, data from docs where ${where.join(" and ")} order by ${orderBy.join(", ")}${limit}`,
       params,
     );
-    return new Snapshots(rows.map((r) => new Snapshot(this.store.doc(r.path), parseData(r.data))));
+    return new Snapshots(
+      rows.map((r) => new Snapshot(this.store.doc(r.path), parseData(r.data)) as QueryDocSnapshot),
+    );
   }
 }
 
@@ -199,7 +230,8 @@ class PgDoc implements DocRef {
   }
 }
 
-type Write = { kind: "set" | "create"; ref: DocRef; data: DocData } | { kind: "delete"; ref: DocRef };
+type Write =
+  { kind: "set" | "create"; ref: DocRef; data: DocData } | { kind: "delete"; ref: DocRef };
 
 class PgTransaction implements DocTransaction {
   private readonly store: PgDocStore;
@@ -274,7 +306,10 @@ export class PgDocStore implements DocStore {
     return this.read(this.client, refs);
   }
 
-  async runTransaction<T>(fn: (tx: DocTransaction) => Promise<T>, options?: { maxAttempts?: number }): Promise<T> {
+  async runTransaction<T>(
+    fn: (tx: DocTransaction) => Promise<T>,
+    options?: { maxAttempts?: number },
+  ): Promise<T> {
     const attempts = options?.maxAttempts ?? DEFAULT_ATTEMPTS;
     for (let attempt = 1; ; attempt++) {
       try {
@@ -287,7 +322,8 @@ export class PgDocStore implements DocStore {
       } catch (error) {
         const state = sqlState(error);
         if (state === undefined || !RETRYABLE_SQLSTATES.has(state)) throw error;
-        if (attempt >= attempts) throw new DocStoreError(ABORTED, "transaction contended past its last attempt");
+        if (attempt >= attempts)
+          throw new DocStoreError(ABORTED, "transaction contended past its last attempt");
         await sleep(Math.floor(Math.random() * 20 * attempt) + 5);
       }
     }
@@ -313,15 +349,20 @@ export class PgDocStore implements DocStore {
     }
     const m = rowMeta(w.ref.path);
     const params = [w.ref.path, m.parent, m.collectionId, m.ownerId, JSON.stringify(w.data)];
-    const insert = "insert into docs (path, parent, collection_id, owner_id, data) values ($1, $2, $3, $4, $5::jsonb)";
+    const insert =
+      "insert into docs (path, parent, collection_id, owner_id, data) values ($1, $2, $3, $4, $5::jsonb)";
     if (w.kind === "set") {
-      await runner.query(`${insert} on conflict (path) do update set data = excluded.data, updated_at = now()`, params);
+      await runner.query(
+        `${insert} on conflict (path) do update set data = excluded.data, updated_at = now()`,
+        params,
+      );
       return;
     }
     try {
       await runner.query(insert, params);
     } catch (error) {
-      if (sqlState(error) === UNIQUE_VIOLATION) throw new DocStoreError(ALREADY_EXISTS, `document already exists: ${w.ref.path}`);
+      if (sqlState(error) === UNIQUE_VIOLATION)
+        throw new DocStoreError(ALREADY_EXISTS, `document already exists: ${w.ref.path}`);
       throw error;
     }
   }

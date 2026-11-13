@@ -30,12 +30,13 @@ import {
   resumeQuotaBlockedEvents as makeResumeQuotaBlockedEvents,
 } from "./schedules";
 import { onSourceEventWritten as makeOnSourceEventWritten } from "./triggers/on-source-event-written";
+import { fromFirestore } from "@moneytrace/infrastructure";
 import { composeDeps, type Deps } from "./composition";
 
 let deps: Deps | undefined;
 /** Built on first request, so loading the bundle (deploy analysis, emulator discovery) touches nothing. */
 const getDeps = (): Deps => {
-  deps ??= composeDeps(getFirestore(getApps()[0] ?? initializeApp()));
+  deps ??= composeDeps(fromFirestore(getFirestore(getApps()[0] ?? initializeApp())));
   return deps;
 };
 

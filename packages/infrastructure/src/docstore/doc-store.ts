@@ -18,11 +18,16 @@ export interface DocSnapshot {
   get(field: string): unknown;
 }
 
+/** A query result always exists, so its data is never undefined. */
+export interface QueryDocSnapshot extends DocSnapshot {
+  data(): DocData;
+}
+
 export interface QuerySnapshot {
-  readonly docs: DocSnapshot[];
+  readonly docs: QueryDocSnapshot[];
   readonly empty: boolean;
   readonly size: number;
-  forEach(fn: (doc: DocSnapshot) => void): void;
+  forEach(fn: (doc: QueryDocSnapshot) => void): void;
 }
 
 export interface Query {
@@ -66,7 +71,10 @@ export interface DocStore {
   collectionGroup(id: string): Query;
   doc(path: string): DocRef;
   getAll(...refs: DocRef[]): Promise<DocSnapshot[]>;
-  runTransaction<T>(fn: (tx: DocTransaction) => Promise<T>, options?: { maxAttempts?: number }): Promise<T>;
+  runTransaction<T>(
+    fn: (tx: DocTransaction) => Promise<T>,
+    options?: { maxAttempts?: number },
+  ): Promise<T>;
 }
 
 /** gRPC codes the adapters already test for. */

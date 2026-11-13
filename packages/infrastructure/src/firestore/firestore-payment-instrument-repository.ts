@@ -6,13 +6,13 @@ import {
 } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import { asAccountId, type OwnerId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 
 export class FirestorePaymentInstrumentRepository implements PaymentInstrumentRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
-  constructor(db: Firestore) {
+  constructor(db: DocStore) {
     this.db = db;
   }
 

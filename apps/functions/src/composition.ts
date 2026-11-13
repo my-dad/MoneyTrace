@@ -53,7 +53,7 @@ import {
   SystemClock,
 } from "@moneytrace/infrastructure";
 import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "@moneytrace/infrastructure";
 import { selectAiProvider } from "./ai-selection";
 import { accessPolicyFromEnv, type AccessPolicy } from "./callable/access";
 import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/create-callable";
@@ -89,7 +89,7 @@ export type Deps = {
 };
 
 /** The only place adapters are wired to ports. */
-export function composeDeps(db: Firestore): Deps {
+export function composeDeps(db: DocStore): Deps {
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
   const hasher = new NodeHasher();
