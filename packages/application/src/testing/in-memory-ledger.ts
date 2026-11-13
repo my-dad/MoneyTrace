@@ -201,6 +201,18 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
         }
         assertTransition(s.transactions.get(r.transaction.id)?.state ?? null, "posted");
       }
+      if (c.alsoPost) {
+        const extra = c.alsoPost;
+        assertPostingAfterCutover(
+          extra.entries,
+          LedgerDate.fromEpochMs(extra.transaction.occurredAtMs),
+          markersOf(s),
+          false,
+        );
+        if (s.transactions.has(extra.transaction.id)) {
+          throw new DomainError("invalidTransition", "that transaction already exists");
+        }
+      }
 
       s.transactions.set(original.id, {
         ...original,
@@ -209,6 +221,7 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       });
       InMemoryLedger.write(s, c.reversal, c.reversalEntries);
       if (c.replacement) InMemoryLedger.write(s, c.replacement.transaction, c.replacement.entries);
+      if (c.alsoPost) InMemoryLedger.write(s, c.alsoPost.transaction, c.alsoPost.entries);
       if (c.cutoverMarker) {
         s.markers.set(c.cutoverMarker.accountId, {
           effectiveAtMs: c.cutoverMarker.effectiveAt.epochMs,

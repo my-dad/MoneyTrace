@@ -6,7 +6,7 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 | Task | State |
 |---|---|
 | 1 Contracts and records | Done |
-| 2 Ledger: extra posting in a correction | Not started |
+| 2 Ledger: extra posting in a correction | Done |
 | 3 Record a cash count | Not started |
 | 4 Adjust to the count | Not started |
 | 5 Split a paired transfer | Not started |
@@ -17,7 +17,7 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 
 ## Next task
 
-Task 2.
+Task 3.
 
 ## Decisions
 

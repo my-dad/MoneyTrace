@@ -310,6 +310,56 @@ export function describeLedgerContract(
       expect(await reader.getBalance(alice, bank.id)).toBe(-300_000);
     });
 
+    it("correction with alsoPost writes reversal, replacement and the extra transaction together", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const correction: CorrectionCommit = {
+        ...correctionOf("c1", "tx-1", 300_000),
+        alsoPost: { transaction: record("tx-extra"), entries: withdrawal(200_000) },
+      };
+      expect((await writer.commitCorrection(alice, correction)).status).toBe("committed");
+      expect((await reader.getTransaction(alice, asTransactionId("tx-extra")))?.state).toBe("posted");
+      expect(await reader.getEntries(alice, asTransactionId("tx-extra"))).toHaveLength(2);
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+      expect(await reader.getBalance(alice, bank.id)).toBe(-500_000);
+      expect(await reader.recomputeBalance(alice, cash.id)).toBe(500_000);
+    });
+
+    it("alsoPost whose id already exists is refused and nothing is written", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      await writer.commit(alice, commitOf("k2", "tx-extra", 1_000));
+      const correction: CorrectionCommit = {
+        ...correctionOf("c1", "tx-1", 300_000),
+        alsoPost: { transaction: record("tx-extra"), entries: withdrawal(200_000) },
+      };
+      await expect(writer.commitCorrection(alice, correction)).rejects.toThrow(code("invalidTransition"));
+      expect((await reader.getTransaction(alice, asTransactionId("tx-1")))?.state).toBe("posted");
+      expect(await reader.getBalance(alice, cash.id)).toBe(501_000);
+    });
+
+    it("alsoPost needs a replacement", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const correction: CorrectionCommit = {
+        ...correctionOf("c1", "tx-1", null),
+        alsoPost: { transaction: record("tx-extra"), entries: withdrawal(200_000) },
+      };
+      await expect(writer.commitCorrection(alice, correction)).rejects.toThrow(code("invalidIntent"));
+      expect((await reader.getTransaction(alice, asTransactionId("tx-1")))?.state).toBe("posted");
+    });
+
+    it("a replay with the same key and alsoPost is duplicate", async () => {
+      await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
+      const correction: CorrectionCommit = {
+        ...correctionOf("c1", "tx-1", 300_000),
+        alsoPost: { transaction: record("tx-extra"), entries: withdrawal(200_000) },
+      };
+      const first = await writer.commitCorrection(alice, correction);
+      expect(await writer.commitCorrection(alice, correction)).toEqual({
+        status: "duplicate",
+        transactionId: committedId(first),
+      });
+      expect(await reader.getBalance(alice, cash.id)).toBe(500_000);
+    });
+
     it("a pure reversal zeroes the balances", async () => {
       await writer.commit(alice, commitOf("k1", "tx-1", 500_000));
       await writer.commitCorrection(alice, correctionOf("c1", "tx-1", null));
