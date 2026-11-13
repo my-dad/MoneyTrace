@@ -10,14 +10,14 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 | 3 Record a cash count | Done |
 | 4 Adjust to the count | Done |
 | 5 Split a paired transfer | Done |
-| 6 Callables | Not started |
+| 6 Callables | Done |
 | 7 Web: cash count | Not started |
 | 8 Web: Not a transfer | Not started |
 | 9 E2E, final checks, records | Not started |
 
 ## Next task
 
-Task 6.
+Task 7.
 
 ## Decisions
 

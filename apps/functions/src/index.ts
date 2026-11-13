@@ -19,6 +19,11 @@ import {
   updateSettings as makeUpdateSettings,
 } from "./callable/follow-up-commands";
 import {
+  recordAdjustment as makeRecordAdjustment,
+  recordReconciliation as makeRecordReconciliation,
+  splitTransfer as makeSplitTransfer,
+} from "./callable/cash-commands";
+import {
   dispatchFollowUps as makeDispatchFollowUps,
   purgeProviderResults as makePurgeProviderResults,
   recoverExpiredClaims as makeRecoverExpiredClaims,
@@ -53,3 +58,6 @@ export const confirmCandidate = makeConfirmCandidate(getDeps);
 export const retrySourceEvent = makeRetrySourceEvent(getDeps);
 export const answerQuestion = makeAnswerQuestion(getDeps);
 export const cancelSourceEvent = makeCancelSourceEvent(getDeps);
+export const recordReconciliation = makeRecordReconciliation(getDeps);
+export const recordAdjustment = makeRecordAdjustment(getDeps);
+export const splitTransfer = makeSplitTransfer(getDeps);

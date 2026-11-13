@@ -95,7 +95,12 @@ async function snapshotTree(uid: string): Promise<Record<string, unknown>> {
   return out;
 }
 
-type Alice = Awaited<ReturnType<typeof setUp>> & { eventId: string; followUpId: string; withdrawalTx: string };
+type Alice = Awaited<ReturnType<typeof setUp>> & {
+  eventId: string;
+  followUpId: string;
+  withdrawalTx: string;
+  reconciliationId: string;
+};
 type Bob = Awaited<ReturnType<typeof setUp>> & { followUpId: string; pendingEventId: string };
 type Case = { name: string; data: (alice: Alice, bob: Bob) => unknown };
 
@@ -108,6 +113,7 @@ const OWN_DATA_ONLY: Case[] = [
   { name: "createAccount", data: () => ({ kind: "bank", name: "Bob bank", currency: "BDT" }) },
   { name: "updateSettings", data: () => ({ timezone: "Asia/Dhaka" }) },
   { name: "submitEvidence", data: () => ({ idempotencyKey: key(), text: "paid 300 for tea" }) },
+  { name: "recordReconciliation", data: () => ({ idempotencyKey: key(), countedMinor: 0, currency: "BDT" }) },
 ];
 
 const MUST_REFUSE: Case[] = [
@@ -131,6 +137,8 @@ const MUST_REFUSE: Case[] = [
   { name: "retrySourceEvent", data: (a) => ({ sourceEventId: a.eventId }) },
   { name: "cancelSourceEvent", data: (a) => ({ sourceEventId: a.eventId }) },
   { name: "answerQuestion", data: (a) => ({ sourceEventId: a.eventId, answer: "paid from it" }) },
+  { name: "recordAdjustment", data: (a) => ({ reconciliationId: a.reconciliationId, cause: "not mine" }) },
+  { name: "splitTransfer", data: (a) => ({ sourceEventId: a.eventId }) },
 ];
 
 /** The callables index.ts exports: the ones built from ./callable/ modules. */
@@ -157,7 +165,10 @@ describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {
     const event = await db.doc(`users/${a.user.uid}/sourceEvents/${eventId}`).get();
     const withdrawalTx = String(event.get("transactionId") ?? `txn-${eventId}`);
     const aliceFollowUps = await db.collection(`users/${a.user.uid}/followUps`).get();
-    alice = { ...a, eventId, withdrawalTx, followUpId: aliceFollowUps.docs[0]?.id ?? "" };
+    const followUpId = aliceFollowUps.docs[0]?.id ?? "";
+    // A cash count that differs, so Alice has an open count Bob can try to adjust.
+    const count = unwrap(await call("recordReconciliation", a.user, { idempotencyKey: key(), countedMinor: 1, currency: "BDT" }));
+    alice = { ...a, eventId, withdrawalTx, followUpId, reconciliationId: String(count["reconciliationId"]) };
 
     const b = await setUp("iso-bob");
     const bobWithdrawal = String(unwrap(await call("submitEvidence", b.user, { idempotencyKey: key(), text: WITHDRAWAL_SMS }))["sourceEventId"]);
