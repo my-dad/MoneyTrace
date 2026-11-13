@@ -15,11 +15,12 @@ const bkashIn = (d: Date) => `You have received deposit from iBanking of Tk 1,70
 async function paste(page: Page, text: string) {
   await page.getByRole("button", { name: /Open chat/ }).click();
   const chat = page.getByRole("dialog", { name: "Chat" });
-  // Wait for THIS message to be recorded: earlier replies already say "Recorded".
+  // Wait for THIS message to be recorded: earlier replies already say "Recorded" (each reply
+  // shows it in more than one place, so wait for the count to grow).
   const before = await chat.getByText("Recorded").count();
   await chat.getByLabel("Message MoneyTrace").fill(text);
   await chat.getByLabel("Message MoneyTrace").press("Enter");
-  await expect(chat.getByText("Recorded")).toHaveCount(before + 1, { timeout: 45_000 });
+  await expect.poll(() => chat.getByText("Recorded").count(), { timeout: 45_000 }).toBeGreaterThan(before);
   await page.keyboard.press("Escape");
 }
 
