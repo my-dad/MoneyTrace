@@ -24,11 +24,11 @@ Supabase equivalent, never deleted. Domain, application and contracts code is no
 
 ## Phase 0 — Decision and setup
 
-- [ ] **T0.1 Record CR-010 in the PRD** `[Claude]`
-  - [ ] Proposed change, rationale (no billing account, so an attack can't run up a bill)
-  - [ ] Security impact (App Check removed; RLS replaces Firestore rules; encrypted backups)
-  - [ ] Cost impact (Supabase free plan, Cloudflare free plan, DeepSeek prepaid ≤ $10/mo)
-  - [ ] Acceptance criteria (this checklist's Phase 7 go-live rule)
+- [x] **T0.1 Record CR-010 in the PRD** `[Claude]`
+  - [x] Proposed change, rationale (no billing account, so an attack can't run up a bill)
+  - [x] Security impact (App Check removed; RLS replaces Firestore rules; encrypted backups)
+  - [x] Cost impact (Supabase free plan, Cloudflare free plan, DeepSeek prepaid ≤ $10/mo)
+  - [x] Acceptance criteria (this checklist's Phase 7 go-live rule)
   - [ ] Update `AGENT.md` locked stack, release checklist section C/D
   - [ ] Mabrur accepts CR-010
 - [ ] **T0.2 Accounts** `[Mabrur]`
@@ -38,15 +38,15 @@ Supabase equivalent, never deleted. Domain, application and contracts code is no
   - [ ] Cloudflare account; connect the GitHub repo to Pages
   - [ ] `age` key pair: public key → GitHub secret `BACKUP_AGE_PUBLIC_KEY`; private key kept offline
   - [ ] GitHub secrets: `SUPABASE_DB_URL`, `SUPABASE_ACCESS_TOKEN`
-- [ ] **T0.3 Workspace** `[Claude]`
-  - [ ] Branch `supabase-migration` from master
-  - [ ] Progress file `docs/superpowers/progress/supabase-migration.md`, updated after every task
+- [x] **T0.3 Workspace** `[Claude]`
+  - [x] Branch `supabase-migration` from master
+  - [x] Progress file `docs/superpowers/progress/supabase-migration.md`, updated after every task
 
 ## Phase 1 — Feasibility check (go / no-go, first 2 hours)
 
 - [ ] **T1.1 Our code runs on Deno (Edge Functions)** `[Claude]`
-  - [ ] esbuild the composition root and one handler (`bootstrapUser`) to a single ESM file
-  - [ ] Run it under Deno locally; `node:crypto` hashing gives identical results
+  - [x] esbuild the composition root and one handler (`bootstrapUser`) to a single ESM file
+  - [x] Run it under Deno locally; `node:crypto` hashing gives identical results
   - [ ] Deploy it as a test Edge Function; one call succeeds
 - [ ] **T1.2 Postgres transactions from an Edge Function** `[Claude]`
   - [ ] Connect through the transaction pooler (port 6543, prepared statements off)
@@ -58,25 +58,25 @@ Supabase equivalent, never deleted. Domain, application and contracts code is no
 
 ## Phase 2 — Data layer on Postgres
 
-- [ ] **T2.1 Schema** `[Claude]`
-  - [ ] Migration: `docs(path pk, owner_id, collection, parent_path, data jsonb, updated_at)`
+- [x] **T2.1 Schema** `[Claude]`
+  - [x] Migration: `docs(path pk, owner_id, collection, parent_path, data jsonb, updated_at)`
   - [ ] Indexes for every `where` / `orderBy` / `collectionGroup` query the adapters use (21 / 3 / 4)
   - [ ] RLS: select only `owner_id = auth.uid()` on read-model collections; no client insert/update/delete
   - [ ] Top-level collections (rate limits, deletion log, global AI counter) not readable by clients
-- [ ] **T2.2 Document store** `[Claude]`
-  - [ ] `DocStore` interface in infrastructure covering exactly what adapters use: get, getAll,
+- [x] **T2.2 Document store** `[Claude]`
+  - [x] `DocStore` interface in infrastructure covering exactly what adapters use: get, getAll,
         create, set, update, delete, where, orderBy, limit, collectionGroup, runTransaction, Timestamp
-  - [ ] Postgres implementation: serializable transactions, retry on conflict (max 5, backoff)
-  - [ ] `create` fails on an existing doc, like Firestore
-- [ ] **T2.3 Test harness** `[Claude]`
-  - [ ] Local: PGlite (in-process Postgres, no Docker)
+  - [x] Postgres implementation: serializable transactions, retry on conflict (max 5, backoff)
+  - [x] `create` fails on an existing doc, like Firestore
+- [x] **T2.3 Test harness** `[Claude]`
+  - [x] Local: PGlite (in-process Postgres, no Docker)
   - [ ] CI: real Postgres service container, migrations applied
-- [ ] **T2.4 Move all 23 adapters** `[Claude]`
-  - [ ] Adapters import `DocStore` instead of `firebase-admin/firestore`
-  - [ ] Ledger writer: atomic commit, correction, alsoPost, idempotency conflicts
-  - [ ] Source events, follow-ups, reconciliations, accounts, instruments, settings, read models
-  - [ ] AI quota counters, rate limiter (concurrency tests on real Postgres)
-  - [ ] All existing adapter contract tests green on Postgres
+- [x] **T2.4 Move all adapters (12 Firestore adapters; 23 files counting helpers)** `[Claude]`
+  - [x] Adapters import `DocStore` instead of `firebase-admin/firestore`
+  - [x] Ledger writer: atomic commit, correction, alsoPost, idempotency conflicts
+  - [x] Source events, follow-ups, reconciliations, accounts, instruments, settings, read models
+  - [x] AI quota counters, rate limiter (concurrency tests on real Postgres)
+  - [x] All existing adapter contract tests green on Postgres
 
 ## Phase 3 — Backend API
 

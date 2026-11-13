@@ -12,4 +12,5 @@ One line per subtask. The last line is always `next:`, `blocked on Mabrur:` or `
 - T2.2 DocStore interface + PgDocStore (serializable tx, retry 40001/40P01, ABORTED=10 after last attempt, create→ALREADY_EXISTS=6, same-JSON-type filters, orderBy skips missing fields). Ruling: store code was written before its tests (17 semantics tests added right after, all green) — cost if wrong: a semantic gap the adapter contract tests (T2.4) will expose.
 - T2.3 PGlite harness (test/support/pglite.ts) applies the real migration
 - T2.4 12 adapters take `DocStore` (not firebase-admin types); Firebase app wraps Firestore with `fromFirestore`. 7 adapter suites renamed `*.store.test.ts` and run on BOTH backends: Postgres (PGlite) in `pnpm test`, Firestore emulator in `test:emulator:core`. Rate limiter stores `expiresAtMs` (number) instead of a Firestore Timestamp. `pnpm verify` → 98 files, 1729 tests pass (was 1510; +276 adapter tests on Postgres, +17 store tests)
-next: T2.4 confirm Firestore emulator suite still green, then T3.1 /api router
+- T2.4 Firestore emulator suite unchanged: 11 files, 463/463 pass with the adapters on DocStore
+next: T3.1 /api router (T3.1–T3.3 first make handlers transport-free; Firebase onCall keeps working)
