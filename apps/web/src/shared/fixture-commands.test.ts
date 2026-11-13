@@ -6,7 +6,7 @@ describe("createFixtureCommands", () => {
   it("every command rejects with DemoUnavailableError", async () => {
     const commands = createFixtureCommands();
     const names = Object.keys(commands) as (keyof typeof commands)[];
-    expect(names).toHaveLength(16);
+    expect(names).toHaveLength(17);
     for (const name of names) {
       const call = commands[name] as (request: unknown) => Promise<unknown>;
       await expect(call({})).rejects.toBeInstanceOf(DemoUnavailableError);

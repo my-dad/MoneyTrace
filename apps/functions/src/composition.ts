@@ -5,7 +5,9 @@ import {
   DEFAULT_AI_ESTIMATE_MICRO_USD,
   DEFAULT_QUOTA_LIMITS,
   LedgerCandidateReader,
+  PlannedQuotaLedger,
   ProviderCallExecutor,
+  type AiPlan,
   PurgeProviderResults,
   RecoverExpiredClaims,
   ResumeQuotaBlockedEvents,
@@ -50,13 +52,16 @@ import {
   FirestoreUserProfileRepository,
   JsonLogger,
   NodeHasher,
+  PgDocStore,
+  PgOwnerEraser,
   SystemClock,
 } from "@moneytrace/infrastructure";
 import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
-import type { Firestore } from "firebase-admin/firestore";
+import type { OwnerId } from "@moneytrace/domain";
+import type { DocStore } from "@moneytrace/infrastructure";
 import { selectAiProvider } from "./ai-selection";
 import { accessPolicyFromEnv, type AccessPolicy } from "./callable/access";
-import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/create-callable";
+import { CALLABLE_RATE_LIMITS, EMULATOR_RATE_LIMITS, type RateLimits } from "./callable/command";
 
 export type CallGate = { access: AccessPolicy; limiter: RateLimiter; limits: RateLimits; nowMs: () => number };
 
@@ -86,10 +91,25 @@ export type Deps = {
   wakeSnoozedFollowUps: WakeSnoozedFollowUps;
   resumeQuotaBlockedEvents: ResumeQuotaBlockedEvents;
   purgeProviderResults: PurgeProviderResults;
+  /** Each user's AI plan (CR-009): the owner is recognised by OWNER_EMAIL at first sign-in. */
+  aiPlans: { planOf(ownerId: OwnerId): Promise<AiPlan>; markOwner(ownerId: OwnerId): Promise<void> };
+  /** Lower-cased OWNER_EMAIL, or undefined when unset (then everyone is a member). */
+  ownerEmail: string | undefined;
+  /** Erases an owner's data and login, verified (CR-009). Undefined on Firebase. */
+  accountDeletion: { erase(ownerId: OwnerId): Promise<string> } | undefined;
+  /** Unclaimed events waiting for a stage, oldest first (the Supabase backend's trigger sweep). */
+  runnableEvents: FirestoreSourceEventRepository["listRunnable"];
 };
 
 /** The only place adapters are wired to ports. */
-export function composeDeps(db: Firestore): Deps {
+/** What only the hosting platform can do. */
+export type Platform = { deleteAuthUser?: (uid: string) => Promise<void> };
+
+export function composeDeps(
+  db: DocStore,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  platform: Platform = {},
+): Deps {
   const clock = new SystemClock();
   const ids = new CryptoIdGenerator();
   const hasher = new NodeHasher();
@@ -106,15 +126,57 @@ export function composeDeps(db: Firestore): Deps {
   const reconciliations = new FirestoreReconciliationRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
   let advance: AdvanceSourceEvent | undefined;
-  const quota = new FirestoreQuotaLedger(db, clock, ids);
+  const plans = new Map<string, AiPlan>();
+  const aiPlans: Deps["aiPlans"] = {
+    async planOf(ownerId) {
+      let plan = plans.get(ownerId);
+      if (plan === undefined) {
+        const snap = await db.doc(`aiPlans/${String(ownerId)}`).get();
+        plan = snap.get("plan") === "owner" ? "owner" : "member";
+        plans.set(ownerId, plan);
+      }
+      return plan;
+    },
+    async markOwner(ownerId) {
+      await db.doc(`aiPlans/${String(ownerId)}`).set({ plan: "owner" });
+      plans.set(ownerId, "owner");
+    },
+  };
+  const ownerEmail = (env["OWNER_EMAIL"] ?? "").trim().toLowerCase();
+  const quota = new PlannedQuotaLedger({
+    inner: new FirestoreQuotaLedger(db, clock, ids),
+    planOf: (ownerId) => aiPlans.planOf(ownerId),
+    globalMonthlyMicroUsd: Number(env["GLOBAL_AI_CAP_MICRO_USD"] ?? "") || 10_000_000,
+  });
   const usage = new FirestoreAiUsageRecorder(db);
   const instruments = new FirestorePaymentInstrumentRepository(db);
+  const deleteAuthUser = platform.deleteAuthUser;
+  const accountDeletion: Deps["accountDeletion"] =
+    db instanceof PgDocStore && deleteAuthUser !== undefined
+      ? {
+          async erase(ownerId) {
+            const eraser = new PgOwnerEraser(db.client);
+            await eraser.erase(ownerId);
+            await deleteAuthUser(ownerId);
+            // Again after the login is gone: a pipeline run already in flight may have written.
+            await eraser.erase(ownerId);
+            if ((await eraser.remaining(ownerId)) !== 0) throw new Error("account deletion not verified");
+            const ownerIdHash = hasher.sha256(ownerId);
+            await db.doc(`deletionLog/${ownerIdHash}`).set({ ownerIdHash, deletedAtMs: clock.nowMs() });
+            plans.delete(ownerId);
+            return `del-${ownerIdHash.slice(0, 32)}`;
+          },
+        }
+      : undefined;
   return {
     logger,
+    aiPlans,
+    accountDeletion,
+    ownerEmail: ownerEmail === "" ? undefined : ownerEmail,
     callGate: {
-      access: accessPolicyFromEnv(process.env),
+      access: accessPolicyFromEnv(env),
       limiter: new FirestoreRateLimiter(db),
-      limits: process.env["FUNCTIONS_EMULATOR"] === "true" ? EMULATOR_RATE_LIMITS : CALLABLE_RATE_LIMITS,
+      limits: env["FUNCTIONS_EMULATOR"] === "true" ? EMULATOR_RATE_LIMITS : CALLABLE_RATE_LIMITS,
       nowMs: () => clock.nowMs(),
     },
     // Built on first use: only the pipeline trigger has the AI key, not every callable.
@@ -135,7 +197,7 @@ export function composeDeps(db: Firestore): Deps {
             logger,
             timeoutSignal: systemTimeoutSignal,
           }),
-          selectAiProvider(process.env),
+          selectAiProvider(env),
           DEFAULT_AI_ESTIMATE_MICRO_USD,
         ),
         post,
@@ -162,6 +224,7 @@ export function composeDeps(db: Firestore): Deps {
       estimateMicroUsd: DEFAULT_AI_ESTIMATE_MICRO_USD,
     }),
     purgeProviderResults: new PurgeProviderResults({ providerCalls, logger }),
+    runnableEvents: (limit) => sourceEvents.listRunnable(limit),
     resolveFollowUp: new ResolveFollowUp({ followUps, reader, accounts, post, clock }),
     snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
     recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),

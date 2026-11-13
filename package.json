@@ -23,15 +23,21 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm boundaries && pnpm test",
     "serve:web": "firebase emulators:start --only hosting --project demo-moneytrace",
     "deploy:prod": "pnpm build:functions && pnpm --filter web build && firebase deploy --project prod --only firestore,storage,functions,hosting",
-    "deploy:dev": "pnpm build:functions && pnpm --filter web build && firebase deploy --project dev --only firestore,storage,functions,hosting"
+    "deploy:dev": "pnpm build:functions && pnpm --filter web build && firebase deploy --project dev --only firestore,storage,functions,hosting",
+    "build:supabase": "node apps/functions/build-supabase.mjs",
+    "smoke:supabase": "pnpm build:supabase && node apps/functions/test/deno-smoke.mjs",
+    "deploy:supabase": "node tools/deploy/supabase-secrets.mjs && pnpm build:supabase && pnpm dlx supabase@2.122.0 db push && pnpm dlx supabase@2.122.0 functions deploy api --use-api --no-verify-jwt"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
     "@firebase/rules-unit-testing": "6.0.0",
     "@moneytrace/contracts": "workspace:*",
     "@moneytrace/domain": "workspace:*",
     "@moneytrace/infrastructure": "workspace:*",
+    "@playwright/test": "1.51.1",
     "@types/node": "22.20.5",
     "@vitejs/plugin-react": "6.2.1",
+    "age-encryption": "0.3.1",
     "dependency-cruiser": "18.7.2",
     "esbuild": "0.28.2",
     "eslint": "10.14.0",
@@ -46,7 +52,6 @@
     "typescript-eslint": "8.72.1",
     "vite": "8.3.6",
     "vitest": "5.1.0",
-    "@playwright/test": "1.51.1",
     "zod": "4.6.7"
   }
 }

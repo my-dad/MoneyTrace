@@ -68,6 +68,14 @@ it("shows a keyboard-reachable sign-in button when signed out", async () => {
   expect(screen.queryByText("private app")).toBeNull();
 });
 
+it("tells people before sign-in where their data goes and that they can delete it (CR-009)", async () => {
+  renderGate(new FakeAuthGateway());
+  await screen.findByRole("button", { name: /sign in with google/i });
+  expect(screen.getByText(/stored in your own private account, which only you can see/)).toBeTruthy();
+  expect(screen.getByText(/sent to DeepSeek, an AI service/)).toBeTruthy();
+  expect(screen.getByText(/delete your account and everything in it at any time from the menu/)).toBeTruthy();
+});
+
 it("shows setting up account while bootstrap runs, not the app", async () => {
   const gateway = new FakeAuthGateway();
   let resolveBootstrap!: () => void;

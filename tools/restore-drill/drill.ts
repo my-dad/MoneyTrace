@@ -7,7 +7,7 @@ import {
 } from "@moneytrace/contracts";
 import { asAccountId, asOwnerId, Money } from "@moneytrace/domain";
 import { composeDeps } from "../../apps/functions/src/composition";
-import { ownerPath } from "@moneytrace/infrastructure";
+import { fromFirestore, ownerPath } from "@moneytrace/infrastructure";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { dataChecksum, diffChecksums, type DataChecksum } from "./checksum";
@@ -256,7 +256,7 @@ function documentId(name: OwnerCollectionName, data: Record<string, unknown>): s
 export async function seed(options: DrillOptions): Promise<void> {
   const db = firestore(options.projectId);
   const owner = asOwnerId(OWNER);
-  const deps = composeDeps(db);
+  const deps = composeDeps(fromFirestore(db));
   await deps.bootstrapUser.execute({ ownerId: owner });
   await db
     .doc("deletionLog/restore-drill")

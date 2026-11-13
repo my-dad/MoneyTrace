@@ -31,6 +31,45 @@ jobs:
         env:
           NEXT_PUBLIC_USE_EMULATORS: "1"
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: demo-moneytrace
+      - name: Web build (Supabase config, as deployed; CR-010)
+        run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+  supabase:
+    name: Supabase backend (real Postgres, Deno bundle)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+      - run: npm install -g corepack@0.34.6 && corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Adapter suites on real Postgres (true concurrency)
+        run: pnpm exec vitest run --no-file-parallelism packages/infrastructure/test
+        env:
+          MONEYTRACE_TEST_PG_URL: postgres://postgres:postgres@localhost:5432/postgres
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.5.6
+      - name: /api bundle under Deno with npm:postgres
+        run: pnpm smoke:supabase
+        env:
+          DENO: deno
 
   emulator:
     name: Emulator suites (rules, adapters, functions)

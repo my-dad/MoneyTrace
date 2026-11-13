@@ -122,7 +122,7 @@ describe("DashboardScreen", () => {
     const onSignOut = vi.fn(() => Promise.resolve());
     open(createFixtureReadModels(), onSignOut);
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-    expect(screen.getByText("$1.43 of $5.00 this month")).toBeTruthy();
+    expect(screen.getByText("$1.43 used this month")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(onSignOut).toHaveBeenCalled();
   });

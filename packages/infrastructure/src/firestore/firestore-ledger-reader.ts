@@ -14,16 +14,16 @@ import {
   type OwnerId,
   type TransactionId,
 } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 import { bySequence, toEntryRecord, toTransactionRecord } from "./records";
 
 export class FirestoreLedgerReader implements LedgerReader {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
   // The clock is accepted so all three adapters share one constructor shape; reads need no time.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(db: Firestore, _clock: Clock) {
+  constructor(db: DocStore, _clock: Clock) {
     this.db = db;
   }
 

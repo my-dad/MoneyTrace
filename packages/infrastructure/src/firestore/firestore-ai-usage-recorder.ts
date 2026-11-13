@@ -6,14 +6,14 @@ import {
   type AIUsageRecorder,
 } from "@moneytrace/application";
 import type { OwnerId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 
 /** The document ID is the record ID, so appending one attempt twice keeps one document. */
 export class FirestoreAiUsageRecorder implements AIUsageRecorder {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
-  constructor(db: Firestore) {
+  constructor(db: DocStore) {
     this.db = db;
   }
 

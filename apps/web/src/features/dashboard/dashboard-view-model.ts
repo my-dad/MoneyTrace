@@ -5,8 +5,6 @@ import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow } from "../../s
 export const SYSTEM_CASH_ACCOUNT_ID = "cash-unassigned";
 
 /** Mirrors the application quota default (packages/application/src/ports/quota-ledger.ts); web can't import application. */
-export const MONTHLY_AI_LIMIT_MICRO_USD = 5_000_000;
-
 const HOUR_MS = 3_600_000;
 // Dhaka has no daylight saving: always UTC+6.
 const DHAKA_OFFSET_MS = 6 * HOUR_MS;
@@ -137,5 +135,6 @@ function usd(micro: number): string {
 
 export function aiSpendLabel(rows: AiUsageRow[]): string {
   const spent = rows.reduce((sum, row) => sum + (row.actualMicroUsd ?? row.estimatedMicroUsd), 0);
-  return `${usd(spent)} of ${usd(MONTHLY_AI_LIMIT_MICRO_USD)} this month`;
+  // Limits differ by person (CR-009), so the label states only what was used.
+  return `${usd(spent)} used this month`;
 }

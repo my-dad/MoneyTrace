@@ -5,16 +5,16 @@ import type {
 } from "@moneytrace/application";
 import { userProfileSchema } from "@moneytrace/contracts";
 import type { OwnerId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { userPath } from "./paths";
 
 /** gRPC ALREADY_EXISTS, which Firestore returns when `create` meets an existing document. */
 const ALREADY_EXISTS = 6;
 
 export class FirestoreUserProfileRepository implements UserProfileRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
-  constructor(db: Firestore) {
+  constructor(db: DocStore) {
     this.db = db;
   }
 

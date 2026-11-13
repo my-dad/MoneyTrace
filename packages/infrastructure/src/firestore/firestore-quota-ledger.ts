@@ -19,7 +19,7 @@ import {
   type ReserveResult,
 } from "@moneytrace/application";
 import type { OwnerId } from "@moneytrace/domain";
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { DocStore, DocTransaction } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 
 const MAX_ATTEMPTS = 10;
@@ -31,11 +31,11 @@ const MAX_ATTEMPTS = 10;
  * decided.
  */
 export class FirestoreQuotaLedger implements QuotaLedger {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
 
-  constructor(db: Firestore, clock: Clock, ids: IdGenerator) {
+  constructor(db: DocStore, clock: Clock, ids: IdGenerator) {
     this.db = db;
     this.clock = clock;
     this.ids = ids;
@@ -46,7 +46,7 @@ export class FirestoreQuotaLedger implements QuotaLedger {
   }
 
   private async read(
-    t: Transaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     window: string,
   ): Promise<QuotaCounter | null> {

@@ -1,9 +1,7 @@
 import { COMMANDS } from "@moneytrace/contracts";
-import type { Deps } from "../composition";
-import { createCallable } from "./create-callable";
+import { command } from "./command";
 
-export const createPaymentInstrument = (getDeps: () => Deps) =>
-  createCallable(COMMANDS.createPaymentInstrument, getDeps, (ctx, data) =>
+export const createPaymentInstrument = command(COMMANDS.createPaymentInstrument, (ctx, data) =>
     ctx.deps.createPaymentInstrument.execute({
       ownerId: ctx.ownerId,
       accountId: data.accountId,

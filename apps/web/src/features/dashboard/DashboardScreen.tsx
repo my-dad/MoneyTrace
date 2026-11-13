@@ -23,11 +23,13 @@ export function DashboardScreen({
   nowMs,
   displayName,
   onSignOut,
+  onDeleteAccount = () => Promise.reject(new Error("account deletion is not available here")),
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
   displayName?: string;
   onSignOut: () => Promise<void>;
+  onDeleteAccount?: (confirmation: string) => Promise<void>;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -146,7 +148,7 @@ export function DashboardScreen({
           <p className={styles.greeting}>{DASHBOARD_COPY.greeting}</p>
           <p className={styles.name}>{displayName ?? ""}</p>
         </div>
-        <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} />
+        <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
       {!newUser && (

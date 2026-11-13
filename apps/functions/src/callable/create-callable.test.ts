@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryRateLimiter } from "@moneytrace/application/testing";
 import { CALLABLE_OPTIONS, CALLABLE_RATE_LIMITS, runCallable, type CallableDeps } from "./create-callable";
 import { accessPolicyFromEnv } from "./access";
+import { CallError } from "./command";
 
 type Logged = { level: string; event: string; fields: Record<string, unknown> };
 
@@ -42,6 +43,22 @@ describe("runCallable error mapping", () => {
     let ran = false;
     const r = await codeOf(
       runCallable(contract, () => ((ran = true), Promise.resolve({ accountId: "a" })), deps, {
+        data: goodData,
+      }),
+    );
+    expect(r.code).toBe("unauthenticated");
+    expect(ran).toBe(false);
+  });
+
+  it.each([
+    ["no user id", { uid: undefined }],
+    ["an empty user id", { uid: "" }],
+  ])("treats a sign-in with %s as unauthenticated", async (_n, auth) => {
+    const { deps } = harness();
+    let ran = false;
+    const r = await codeOf(
+      runCallable(contract, () => ((ran = true), Promise.resolve({ accountId: "a" })), deps, {
+        auth: auth as unknown as { uid: string },
         data: goodData,
       }),
     );
@@ -95,12 +112,12 @@ describe("runCallable error mapping", () => {
     },
   );
 
-  it("passes an already-exists HttpsError from a handler through", async () => {
+  it("passes an already-exists refusal from a handler through as HttpsError", async () => {
     const { deps } = harness();
     const r = await codeOf(
       runCallable(
         contract,
-        () => Promise.reject(new HttpsError("already-exists", "idempotencyConflict")),
+        () => Promise.reject(new CallError("already-exists", "idempotencyConflict")),
         deps,
         authed,
       ),
@@ -173,20 +190,20 @@ describe("runCallable error mapping", () => {
 describe("runCallable gate (release blockers A1, A2, A4)", () => {
   const deployedDeps = (limiter = new InMemoryRateLimiter()) => {
     const { deps, logs } = harness();
-    const gated = { ...deps, callGate: { access: accessPolicyFromEnv({ ALLOWED_EMAILS: "owner@example.com" }), limiter, limits: CALLABLE_RATE_LIMITS, nowMs: () => 1_700_000_040_000 } } as unknown as CallableDeps;
+    const gated = { ...deps, callGate: { access: accessPolicyFromEnv({}), limiter, limits: CALLABLE_RATE_LIMITS, nowMs: () => 1_700_000_040_000 } } as unknown as CallableDeps;
     return { deps: gated, logs };
   };
-  const as = (email: string, provider = "google.com", ip = "203.0.113.7") => ({
-    auth: { uid: "owner", token: { email, email_verified: true, firebase: { sign_in_provider: provider } } },
+  const as = (email: string, provider = "google.com", ip = "203.0.113.7", verified = true) => ({
+    auth: { uid: "owner", token: { email, email_verified: verified, firebase: { sign_in_provider: provider } } },
     rawRequest: { ip },
     data: goodData,
   });
   const ok = () => Promise.resolve({ accountId: "a" });
 
-  it("refuses an account not on the allowlist as permission-denied, without running the handler", async () => {
+  it("refuses an unverified Google account as permission-denied, without running the handler (CR-009)", async () => {
     const { deps } = deployedDeps();
     let ran = false;
-    const r = await codeOf(runCallable(contract, () => ((ran = true), ok()), deps, as("stranger@example.com")));
+    const r = await codeOf(runCallable(contract, () => ((ran = true), ok()), deps, as("stranger@example.com", "google.com", "203.0.113.7", false)));
     expect(r).toEqual({ code: "permission-denied", message: "permission-denied" });
     expect(ran).toBe(false);
   });
@@ -222,7 +239,8 @@ describe("runCallable gate (release blockers A1, A2, A4)", () => {
 describe("callable options (release blockers A3, A5)", () => {
   it("enforces App Check outside the emulator and keeps instances small", () => {
     expect(CALLABLE_OPTIONS).toMatchObject({ enforceAppCheck: true, maxInstances: 3, concurrency: 1, memory: "256MiB", timeoutSeconds: 120 });
-    expect(CALLABLE_OPTIONS.secrets).toContain("ALLOWED_EMAILS");
+    // CR-009: no allowlist secret any more.
+    expect(CALLABLE_OPTIONS).not.toHaveProperty("secrets");
   });
 });
 

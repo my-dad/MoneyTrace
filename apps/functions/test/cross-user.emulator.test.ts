@@ -1,9 +1,8 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { beforeAll, describe, expect, it } from "vitest";
 import corpus from "../../../fixtures/sms/corpus.json";
+import { COMMAND_HANDLERS } from "../src/callable/registry";
 
 /**
  * Gate 35 evidence: another user, holding Alice's real ids, cannot read or change her data
@@ -117,6 +116,8 @@ const OWN_DATA_ONLY: Case[] = [
 ];
 
 const MUST_REFUSE: Case[] = [
+  // Firebase has no account deletion (it ships on Supabase, CR-010); its /api tests prove Bob only ever erases Bob.
+  { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
   { name: "createPaymentInstrument", data: (a) => ({ accountId: a.bank, provider: "brac", maskedIdentifier: "1234", type: "bankAccount" }) },
   { name: "recordOpeningBalance", data: (a) => ({ accountId: a.wallet, amountMinor: 5_000, currency: "BDT", effectiveAtMs: OPENING_AT }) },
   { name: "resolveFollowUp", data: (a) => ({ followUpId: a.followUpId, resolution: { kind: "notSureYet" } }) },
@@ -142,16 +143,9 @@ const MUST_REFUSE: Case[] = [
 ];
 
 /** The callables index.ts exports: the ones built from ./callable/ modules. */
+/** Every client command the backends serve (the registry both Firebase and `/api` read). */
 function exportedCallables(): string[] {
-  const source = readFileSync(join(import.meta.dirname, "../src/index.ts"), "utf8");
-  const names: string[] = [];
-  for (const block of source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"\.\/callable\/[^"]+"/g)) {
-    for (const alias of (block[1] ?? "").matchAll(/as\s+make(\w+)/g)) {
-      const name = alias[1] ?? "";
-      names.push(name.charAt(0).toLowerCase() + name.slice(1));
-    }
-  }
-  return names.sort();
+  return Object.keys(COMMAND_HANDLERS).sort();
 }
 
 describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {

@@ -27,7 +27,7 @@ import {
   type RetrySafety,
   type SourceEventId,
 } from "@moneytrace/domain";
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { DocStore, DocTransaction } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 import { sourceEventToDoc, toSourceEventRecord } from "./records";
 
@@ -39,10 +39,10 @@ const MAX_ATTEMPTS = 5;
  * transaction that keeps aborting under contention throws: the caller must know it did not happen.
  */
 export class FirestoreProviderCallRepository implements ProviderCallRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
   private readonly clock: Clock;
 
-  constructor(db: Firestore, clock: Clock) {
+  constructor(db: DocStore, clock: Clock) {
     this.db = db;
     this.clock = clock;
   }
@@ -55,7 +55,7 @@ export class FirestoreProviderCallRepository implements ProviderCallRepository {
     return this.db.doc(ownerPath(ownerId, "sourceEvents", id));
   }
 
-  private async require(t: Transaction, ownerId: OwnerId, id: string): Promise<ProviderCallRecord> {
+  private async require(t: DocTransaction, ownerId: OwnerId, id: string): Promise<ProviderCallRecord> {
     const s = await t.get(this.callRef(ownerId, id));
     if (!s.exists) throw new DomainError("invalidIntent", "provider call not found");
     return toProviderCallRecord(s.data());

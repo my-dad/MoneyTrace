@@ -27,11 +27,7 @@ import {
   type OwnerId,
   type TransactionId,
 } from "@moneytrace/domain";
-import type {
-  DocumentReference,
-  Firestore,
-  Transaction as FirestoreTransaction,
-} from "firebase-admin/firestore";
+import type { DocRef, DocStore, DocTransaction } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 import { bySequence, toEntryRecord, toTransactionRecord, transactionToDoc } from "./records";
 
@@ -52,10 +48,10 @@ type Delta = { kind: AccountKind; currency: CurrencyCode; minor: number };
  * mirror `InMemoryLedger`.
  */
 export class FirestoreLedgerWriter implements LedgerWriter {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
   private readonly clock: Clock;
 
-  constructor(db: Firestore, clock: Clock) {
+  constructor(db: DocStore, clock: Clock) {
     this.db = db;
     this.clock = clock;
   }
@@ -65,7 +61,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private async readTx(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     id: TransactionId,
   ): Promise<TransactionRecord | null> {
@@ -74,7 +70,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private async replay(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     key: string,
     payloadHash: string,
@@ -91,7 +87,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
 
   /** Stored markers for the real accounts among `entries`, as the domain guard wants. */
   private async readMarkers(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     entries: readonly EntryDraft[],
   ): Promise<CutoverMarker[]> {
@@ -118,7 +114,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
    * in the same Firestore transaction.
    */
   private async hasActivityUpTo(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     accountId: AccountId,
     ms: number,
@@ -138,7 +134,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private async readEntries(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     txId: TransactionId,
   ): Promise<EntryRecord[]> {
@@ -150,7 +146,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
 
   /** Stages the transaction document and its entries, and folds the entries into `deltas`. */
   private stage(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     rec: TransactionRecord,
     drafts: readonly EntryDraft[],
@@ -185,12 +181,12 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private async readBalances(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     ids: Iterable<AccountId>,
-  ): Promise<Map<AccountId, { ref: DocumentReference; data: BalanceDoc | null }>> {
+  ): Promise<Map<AccountId, { ref: DocRef; data: BalanceDoc | null }>> {
     const refs = [...ids].map((id) => this.ref(ownerId, "balances", id));
-    const out = new Map<AccountId, { ref: DocumentReference; data: BalanceDoc | null }>();
+    const out = new Map<AccountId, { ref: DocRef; data: BalanceDoc | null }>();
     if (refs.length === 0) return out;
     for (const s of await t.getAll(...refs)) {
       out.set(asAccountId(s.ref.id), {
@@ -203,7 +199,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
 
   /** Reads the balances (the last reads), then writes every changed projection. */
   private async applyDeltas(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     touched: ReadonlySet<AccountId>,
     stageWrites: () => Map<AccountId, Delta>,
@@ -232,7 +228,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private stageIdempotency(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     key: string,
     payloadHash: string,
@@ -250,7 +246,7 @@ export class FirestoreLedgerWriter implements LedgerWriter {
   }
 
   private stageMarker(
-    t: FirestoreTransaction,
+    t: DocTransaction,
     ownerId: OwnerId,
     marker: CutoverMarker,
     transactionId: TransactionId,

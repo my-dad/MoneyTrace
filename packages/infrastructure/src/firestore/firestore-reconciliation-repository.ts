@@ -5,7 +5,7 @@ import type {
 } from "@moneytrace/application";
 import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import type { OwnerId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { ownerPath } from "./paths";
 
 const MAX_ATTEMPTS = 5;
@@ -14,9 +14,9 @@ const toRecord = (data: unknown): ReconciliationRecord =>
   OWNER_COLLECTIONS.reconciliations.parse(data);
 
 export class FirestoreReconciliationRepository implements ReconciliationRepository {
-  private readonly db: Firestore;
+  private readonly db: DocStore;
 
-  constructor(db: Firestore) {
+  constructor(db: DocStore) {
     this.db = db;
   }
 

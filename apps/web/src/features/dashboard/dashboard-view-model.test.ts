@@ -144,7 +144,7 @@ describe("aiSpendLabel", () => {
     const base = FIXTURE_AI_USAGE[0] as AiUsageRow;
     const estimateOnly: AiUsageRow = { ...base, estimatedMicroUsd: 430_000 };
     delete estimateOnly.actualMicroUsd;
-    expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, estimateOnly])).toBe("$1.43 of $5.00 this month");
-    expect(aiSpendLabel(FIXTURE_AI_USAGE)).toBe("$1.43 of $5.00 this month");
+    expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, estimateOnly])).toBe("$1.43 used this month");
+    expect(aiSpendLabel(FIXTURE_AI_USAGE)).toBe("$1.43 used this month");
   });
 });

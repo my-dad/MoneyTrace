@@ -69,6 +69,11 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
         <span className={styles.logo} aria-hidden="true">M</span>
         <h1>MoneyTrace</h1>
         <p className={styles.lead}>Paste your bank SMS or tell it about cash. It works out where your money goes.</p>
+        <p className={styles.notice}>
+          MoneyTrace is in testing. What you paste is stored in your own private account, which only you can see.
+          When it can&apos;t read a message by itself, the message text is sent to DeepSeek, an AI service, to work
+          it out. You can delete your account and everything in it at any time from the menu.
+        </p>
         {state.error === "signIn" && <p role="alert" className={styles.error}>Sign-in failed. Please try again.</p>}
         <Button
           disabled={signingIn}

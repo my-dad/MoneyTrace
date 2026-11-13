@@ -15,8 +15,6 @@ import {
 } from "@moneytrace/application/testing";
 import { OWNER_COLLECTIONS, type OwnerCollectionName } from "@moneytrace/contracts";
 import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { describe, expect, it } from "vitest";
 import { systemTimeoutSignal } from "../src/system/abort-timeout";
 import { FirestoreAiUsageRecorder } from "../src/firestore/firestore-ai-usage-recorder";
@@ -24,35 +22,20 @@ import { FirestoreProviderCallRepository } from "../src/firestore/firestore-prov
 import { FirestoreQuotaLedger } from "../src/firestore/firestore-quota-ledger";
 import { FirestoreSourceEventRepository } from "../src/firestore/firestore-source-event-repository";
 import { ownerPath } from "../src/firestore/paths";
+import { testBackend } from "./support/backend";
 
-const PROJECT_ID = "demo-moneytrace";
-const host = process.env["FIRESTORE_EMULATOR_HOST"];
-if (host === undefined) throw new Error("run through `firebase emulators:exec`");
-const emulatorHost: string = host;
-
-// Skip the GCE metadata probe: it only produces a timeout warning against the emulator.
-process.env["METADATA_SERVER_DETECTION"] = "none";
-
-const db: Firestore = getFirestore(getApps()[0] ?? initializeApp({ projectId: PROJECT_ID }));
+const { name: backend, db, clear } = await testBackend();
 /** Contended Firestore transactions retry with a growing backoff, so they are slow by design. */
 const CONTENTION_TIMEOUT_MS = 120_000;
 const T0 = 1_700_000_001_000;
-
-async function clearFirestore(): Promise<void> {
-  const res = await fetch(
-    `http://${emulatorHost}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-    { method: "DELETE" },
-  );
-  if (!res.ok) throw new Error(`could not clear the emulator: ${String(res.status)}`);
-}
 
 async function docsOf(ownerId: string, collection: OwnerCollectionName) {
   const snap = await db.collection(ownerPath(ownerId, collection)).get();
   return snap.docs.map((d) => d.data());
 }
 
-describeProviderCallContract("firestore", async () => {
-  await clearFirestore();
+describeProviderCallContract(backend, async () => {
+  await clear();
   const clock = { nowMs: () => T0 };
   return {
     calls: new FirestoreProviderCallRepository(db, clock),
@@ -62,8 +45,8 @@ describeProviderCallContract("firestore", async () => {
   };
 });
 
-describeQuotaContract("firestore", async () => {
-  await clearFirestore();
+describeQuotaContract(backend, async () => {
+  await clear();
   let now = T0;
   const clock = { nowMs: () => now };
   return {
@@ -75,8 +58,8 @@ describeQuotaContract("firestore", async () => {
   };
 });
 
-describeAiUsageContract("firestore", async () => {
-  await clearFirestore();
+describeAiUsageContract(backend, async () => {
+  await clear();
   return { usage: new FirestoreAiUsageRecorder(db), docsOf };
 });
 
@@ -86,7 +69,7 @@ describe("firestore quota ledger under contention", () => {
   it(
     "ten parallel reserves that together exceed the daily limit never over-reserve",
     async () => {
-      await clearFirestore();
+      await clear();
       const quota = new FirestoreQuotaLedger(db, { nowMs: () => T0 }, new SequentialIdGenerator());
       const limits: QuotaLimits = { ...DEFAULT_QUOTA_LIMITS, dailyMicroUsd: 300_000 };
       const settled = await Promise.allSettled(
@@ -121,7 +104,7 @@ describe("firestore quota ledger under contention", () => {
 
 describe("firestore provider calls end to end", () => {
   it("lease expiry parks an unknown none-provider call and keeps its attempt", async () => {
-    await clearFirestore();
+    await clear();
     const clock = { nowMs: () => T0 };
     const logger = new CapturingLogger();
     const events = new FirestoreSourceEventRepository(db, clock, logger);
@@ -179,7 +162,7 @@ describe("firestore provider calls end to end", () => {
   });
 
   it("the executor stores a result, reuses it, and every document validates", async () => {
-    await clearFirestore();
+    await clear();
     const clock = { nowMs: () => T0 };
     const logger = new CapturingLogger();
     const executor = new ProviderCallExecutor({

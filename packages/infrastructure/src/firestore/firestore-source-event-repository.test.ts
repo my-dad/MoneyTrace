@@ -1,13 +1,13 @@
 import { CapturingLogger } from "@moneytrace/application/testing";
 import { asOwnerId, asSourceEventId } from "@moneytrace/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { DocStore } from "../docstore/doc-store";
 import { describe, expect, it } from "vitest";
 import { FirestoreSourceEventRepository } from "./firestore-source-event-repository";
 
 const aborted = (): Error => Object.assign(new Error("aborted"), { code: 10 });
 const abortingDb = {
   runTransaction: () => Promise.reject(aborted()),
-} as unknown as Firestore;
+} as unknown as DocStore;
 const ownerId = asOwnerId("alice");
 const id = asSourceEventId("evt-1");
 const repo = new FirestoreSourceEventRepository(
@@ -40,7 +40,7 @@ describe("FirestoreSourceEventRepository contention handling", () => {
 
   it("does not map a non-ABORTED claim failure", async () => {
     const other = new FirestoreSourceEventRepository(
-      { runTransaction: () => Promise.reject(new Error("boom")) } as unknown as Firestore,
+      { runTransaction: () => Promise.reject(new Error("boom")) } as unknown as DocStore,
       { nowMs: () => 0 },
       new CapturingLogger(),
     );
