@@ -131,6 +131,7 @@ describe("RecordCashAdjustment", () => {
 
   it("a superseded count cannot be adjusted", async () => {
     await counted("k1", 230_000);
+    w.clock.advance(1_000);
     await counted("k2", 250_000);
     await expect(adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "x" })).rejects.toThrow(code("invalidTransition"));
     expect(await w.ledger.getTransaction(alice, asTransactionId("txn-adjust-recon-k1"))).toBeNull();

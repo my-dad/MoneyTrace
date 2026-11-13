@@ -137,6 +137,7 @@ describe("RecordCashCount", () => {
 
   it("a new count supersedes an older open one", async () => {
     await run("k1", 230_000);
+    w.clock.advance(1_000);
     await run("k2", 250_000);
     expect((await reconciliations.get(alice, "recon-k1"))?.reviewStatus).toBe("dismissed");
     expect(await followUps.get(alice, "fu-recon-k1")).toMatchObject({
@@ -144,6 +145,41 @@ describe("RecordCashCount", () => {
       resolution: "superseded",
     });
     expect((await followUps.listOpen(alice)).map((f) => f.id)).toEqual(["fu-recon-k2"]);
+  });
+
+  it("a crash before older counts were closed is finished by the retry", async () => {
+    await run("k1", 230_000);
+    w.clock.advance(1_000);
+    const flaky = new RecordCashCount({
+      accounts: w.accounts,
+      reader: w.ledger,
+      reconciliations: {
+        get: (o, id) => reconciliations.get(o, id),
+        recordCount: (o, r, f) => reconciliations.recordCount(o, r, f),
+        listOpenCashCounts: () => Promise.reject(new Error("crash")),
+        markStatus: (o, id, st, t, n) => reconciliations.markStatus(o, id, st, t, n),
+      },
+      followUps,
+      clock: w.clock,
+    });
+    await expect(flaky.execute({ ownerId: alice, idempotencyKey: "k2", countedMinor: 250_000, currency: "BDT" })).rejects.toThrow("crash");
+    expect((await run("k2", 250_000)).status).toBe("alreadyRecorded");
+    expect((await reconciliations.get(alice, "recon-k1"))?.reviewStatus).toBe("dismissed");
+    expect((await followUps.listOpen(alice)).map((f) => f.id)).toEqual(["fu-recon-k2"]);
+  });
+
+  it("replaying an older count never closes a newer one", async () => {
+    await run("k1", 230_000);
+    w.clock.advance(1_000);
+    await run("k2", 250_000);
+    await run("k1", 230_000);
+    expect((await reconciliations.get(alice, "recon-k2"))?.reviewStatus).toBe("open");
+  });
+
+  it("two counts made at the same moment do not close each other", async () => {
+    await run("k1", 230_000);
+    await run("k2", 250_000);
+    expect((await followUps.listOpen(alice)).map((f) => f.id).sort()).toEqual(["fu-recon-k1", "fu-recon-k2"]);
   });
 
   it("a count over expected says more", async () => {

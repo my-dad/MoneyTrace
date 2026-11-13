@@ -53,10 +53,10 @@ export class RecordCashCount {
     currency: CurrencyCode;
   }): Promise<CashCountResult> {
     const { ownerId, countedMinor } = input;
-    const { accounts, reader, reconciliations, followUps, clock } = this.deps;
+    const { accounts, reader, reconciliations, clock } = this.deps;
     const id = `recon-${input.idempotencyKey}`;
     const stored = await reconciliations.get(ownerId, id);
-    if (stored !== null) return { ...(await this.describe(ownerId, stored)), status: "alreadyRecorded" };
+    if (stored !== null) return this.replay(ownerId, stored);
 
     const cash = (await accounts.list(ownerId)).filter(
       (a) => a.kind === "cash" && a.status === "active",
@@ -99,14 +99,9 @@ export class RecordCashCount {
     if (created === "exists") {
       const winner = await reconciliations.get(ownerId, id);
       if (winner === null) throw new Error("a stored count vanished");
-      return { ...(await this.describe(ownerId, winner)), status: "alreadyRecorded" };
+      return this.replay(ownerId, winner);
     }
-    // The newest count is the one that matters: older open gaps are closed, never adjusted later.
-    for (const older of await reconciliations.listOpenCashCounts(ownerId)) {
-      if (older.id === id) continue;
-      await reconciliations.markStatus(ownerId, older.id, "dismissed", null, nowMs);
-      await followUps.resolve(ownerId, `fu-${older.id}`, "superseded", nowMs);
-    }
+    await this.supersedeOlder(ownerId, record);
     return {
       reconciliationId: id,
       status: "recorded",
@@ -117,6 +112,26 @@ export class RecordCashCount {
       differenceMinor,
       ...(question === null ? {} : { followUpId: question.id }),
     };
+  }
+
+  /** A replay also finishes closing older counts, in case the first attempt stopped before that. */
+  private async replay(ownerId: OwnerId, stored: ReconciliationRecord): Promise<CashCountResult> {
+    await this.supersedeOlder(ownerId, stored);
+    return { ...(await this.describe(ownerId, stored)), status: "alreadyRecorded" };
+  }
+
+  /**
+   * The newest count is the one that matters: strictly older open gaps are closed, never adjusted
+   * later. Idempotent, and counts made at the same moment leave each other open.
+   */
+  private async supersedeOlder(ownerId: OwnerId, current: ReconciliationRecord): Promise<void> {
+    const { reconciliations, followUps, clock } = this.deps;
+    const nowMs = clock.nowMs();
+    for (const older of await reconciliations.listOpenCashCounts(ownerId)) {
+      if (older.id === current.id || older.asOfMs >= current.asOfMs) continue;
+      await reconciliations.markStatus(ownerId, older.id, "dismissed", null, nowMs);
+      await followUps.resolve(ownerId, `fu-${older.id}`, "superseded", nowMs);
+    }
   }
 
   /** A replay reports the stored count. The split is today's, since the count keeps only the total. */
