@@ -1,0 +1,9 @@
+# Cloudflare Pages (CR-010). The old screens now live in the one dashboard (PRD CR-007).
+/chat          /  302
+/activity      /  302
+/accounts      /  302
+/accounts/new  /  302
+/reports       /  302
+/reminders     /  302
+/settings      /  302
+/onboarding    /  302

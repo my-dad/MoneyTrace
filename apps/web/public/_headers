@@ -1,0 +1,12 @@
+# Cloudflare Pages (CR-010): the same headers Firebase Hosting sent.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/sw.js
+  Cache-Control: no-cache
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
