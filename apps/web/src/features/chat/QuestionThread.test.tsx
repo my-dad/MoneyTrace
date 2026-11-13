@@ -74,7 +74,7 @@ describe("QuestionThread (CR-008)", () => {
 
 describe("EvidenceBubble chips (CR-008)", () => {
   it("a recorded message shows its source chip, and a paired transfer both sources", () => {
-    const commands = { confirmCandidate: vi.fn(), retrySourceEvent: vi.fn(), cancelSourceEvent: vi.fn(), answerQuestion: ok() };
+    const commands = { confirmCandidate: vi.fn(), retrySourceEvent: vi.fn(), cancelSourceEvent: vi.fn(), answerQuestion: ok(), splitTransfer: vi.fn() };
     const transfer = FIXTURE_SOURCE_EVENTS.find((e) => e.id === "se-transfer-bkash") as SourceEventRow;
     render(<EvidenceBubble item={{ kind: "evidence", id: transfer.id, text: transfer.retainedText, outcome: "recorded", statusCopy: "Recorded", event: transfer }} accounts={FIXTURE_ACCOUNTS} commands={commands} />);
     expect(screen.getByText("Transfer")).toBeTruthy();

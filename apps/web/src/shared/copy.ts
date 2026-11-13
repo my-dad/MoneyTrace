@@ -125,6 +125,15 @@ export const CHAT_COPY = {
   adjusted: (counted: string, adjustment: string) =>
     `Recorded · Cash now matches your count of ${counted}. The ${adjustment} adjustment is saved with your reason.`,
   adjustFailed: "Couldn't confirm the adjustment. Try again — it won't be recorded twice.",
+  splitOpen: "Not a transfer?",
+  splitTitle: "Count these two separately?",
+  splitSpent: (source: string) => `Spent, from ${source}`,
+  splitCameIn: (source: string) => `Came in, to ${source}`,
+  splitNote: "The transfer is reversed and both are recorded again, with the change kept in the history.",
+  splitYes: "Yes, count separately",
+  splitKeep: "Keep as transfer",
+  splitDone: (amount: string) => `Recorded · Counted separately: Spent ${amount} and Came in ${amount}.`,
+  splitFailed: "Couldn't confirm the change. Try again — it won't be made twice.",
 } as const;
 
 export const DASHBOARD_COPY = {

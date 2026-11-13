@@ -31,6 +31,7 @@ export type ChatCommands = Pick<
   | "answerQuestion"
   | "recordReconciliation"
   | "recordAdjustment"
+  | "splitTransfer"
 >;
 
 const EVENT_LIMIT = 50;

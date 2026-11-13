@@ -101,6 +101,9 @@ function fakeCommands() {
     cancelSourceEvent: vi.fn<ChatCommands["cancelSourceEvent"]>(() => Promise.resolve({ status: "cancelled" })),
     answerQuestion: vi.fn<ChatCommands["answerQuestion"]>(() => Promise.resolve({ status: "received" })),
     recordReconciliation: vi.fn<ChatCommands["recordReconciliation"]>(() => Promise.resolve(SHORT_COUNT)),
+    splitTransfer: vi.fn<ChatCommands["splitTransfer"]>(() =>
+      Promise.resolve({ spentTransactionId: "txn-a:repl:repl", cameInTransactionId: "txn-b", amountMinor: 170_000, status: "recorded" }),
+    ),
     recordAdjustment: vi.fn<ChatCommands["recordAdjustment"]>(() =>
       Promise.resolve({ transactionId: "txn-adjust-recon-k", status: "recorded", countedMinor: 230_000, adjustmentMinor: 70_000 }),
     ),
@@ -846,6 +849,97 @@ describe("count my cash (gate 32)", () => {
     commands.recordReconciliation.mockRejectedValueOnce(new DemoUnavailableError());
     check("2300");
     expect((await screen.findByRole("alert")).textContent).toBe(COPY.demoUnavailable);
+  });
+});
+
+const PAIR_ACCOUNTS: AccountRow[] = [
+  ...ACCOUNTS,
+  account("src-ucb-7777", "bank", "UCB card ••7777"),
+  account("src-bkash-main", "cash", "bKash"),
+];
+
+const pairedCredit = (extra: Partial<SourceEventRow> = {}) =>
+  event({
+    id: "event-b",
+    status: "posted",
+    retainedText: "You have received Tk 1,700.00 … bKash",
+    candidate: candidate({ kind: "unclassifiedCredit", amountMinor: 170_000 }),
+    matchKind: "transferCounterpart",
+    matchedTransactionId: "txn-event-a:repl",
+    resolvedAccountId: "src-bkash-main",
+    resolvedDestinationAccountId: "src-ucb-7777",
+    ...extra,
+  });
+
+describe("not a transfer (CR-008 §9)", () => {
+  it("a paired transfer offers to count the two SMS separately, naming each side", () => {
+    setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    const panel = screen.getByRole("group", { name: "Count these two separately?" });
+    expect(within(panel).getByText("Spent, from UCB card ••7777").parentElement?.textContent).toContain("৳1,700");
+    expect(within(panel).getByText("Came in, to bKash").parentElement?.textContent).toContain("৳1,700");
+    expect(panel.textContent).toContain("The transfer is reversed and both are recorded again, with the change kept in the history.");
+  });
+
+  it("the debit half names the debit source as Spent", () => {
+    setup({
+      events: [
+        pairedCredit({
+          candidate: candidate({ kind: "unclassifiedDebit", amountMinor: 170_000 }),
+          resolvedAccountId: "src-ucb-7777",
+          resolvedDestinationAccountId: "src-bkash-main",
+        }),
+      ],
+      accounts: PAIR_ACCOUNTS,
+    });
+    fireEvent.click(button("Not a transfer?"));
+    expect(screen.getByText("Spent, from UCB card ••7777")).toBeTruthy();
+    expect(screen.getByText("Came in, to bKash")).toBeTruthy();
+  });
+
+  it("keep as transfer closes it and changes nothing", () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Keep as transfer"));
+    expect(screen.queryByRole("group", { name: "Count these two separately?" })).toBeNull();
+    expect(commands.splitTransfer).not.toHaveBeenCalled();
+  });
+
+  it("yes splits once, even on a double tap, and says what was recorded", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    const pending = deferred<Awaited<ReturnType<ChatCommands["splitTransfer"]>>>();
+    commands.splitTransfer.mockReturnValueOnce(pending.promise);
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    fireEvent.click(button("Yes, count separately"));
+    expect(commands.splitTransfer).toHaveBeenCalledTimes(1);
+    expect(commands.splitTransfer).toHaveBeenCalledWith({ sourceEventId: "event-b" });
+    await act(async () => {
+      pending.resolve({ spentTransactionId: "a", cameInTransactionId: "b", amountMinor: 170_000, status: "recorded" });
+      await pending.promise;
+    });
+    expect(screen.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeTruthy();
+  });
+
+  it("a failed split claims nothing", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    commands.splitTransfer.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    expect((await screen.findByRole("alert")).textContent).toBe("Couldn't confirm the change. Try again — it won't be made twice.");
+    expect(screen.queryByText(/Counted separately/)).toBeNull();
+  });
+
+  it("a message that isn't a paired transfer has no button", () => {
+    setup({ events: [event({ status: "posted", candidate: candidate() })], accounts: PAIR_ACCOUNTS });
+    expect(screen.queryByRole("button", { name: "Not a transfer?" })).toBeNull();
+  });
+
+  it("has no axe violations with the panel open", async () => {
+    const { container } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } });
+    expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });
 
