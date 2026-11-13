@@ -109,7 +109,12 @@ describe("RecordCashAdjustment", () => {
   it("a retry after the posting landed but the count was not yet marked finishes the job", async () => {
     await counted("k1", 230_000);
     const flaky = new RecordCashAdjustment({
-      reconciliations: { ...reconciliations, get: reconciliations.get.bind(reconciliations), recordCount: reconciliations.recordCount.bind(reconciliations), listOpenCashCounts: reconciliations.listOpenCashCounts.bind(reconciliations), markStatus: () => Promise.reject(new Error("network")) },
+      reconciliations: {
+        get: (o, id) => reconciliations.get(o, id),
+        recordCount: (o, r, f) => reconciliations.recordCount(o, r, f),
+        listOpenCashCounts: (o) => reconciliations.listOpenCashCounts(o),
+        markStatus: () => Promise.reject(new Error("network")),
+      },
       followUps,
       accounts: w.accounts,
       reader: w.ledger,
