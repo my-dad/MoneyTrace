@@ -4,6 +4,8 @@ import {
   asAccountId,
   asIdempotencyKey,
   asTransactionId,
+  type AccountRef,
+  type AdjustmentIntent,
   type OwnerId,
 } from "@moneytrace/domain";
 import type { AccountRepository } from "../ports/account-repository";
@@ -11,6 +13,7 @@ import type { Clock } from "../ports/clock";
 import type { FollowUpRepository } from "../ports/follow-up-repository";
 import type { LedgerReader } from "../ports/ledger-reader";
 import type { ReconciliationRepository } from "../ports/reconciliation-repository";
+import { SYSTEM_CASH_ACCOUNT_ID } from "./bootstrap-user";
 import type { PostTransaction } from "./post-transaction";
 
 type Deps = {
@@ -24,7 +27,8 @@ type Deps = {
 
 /**
  * Adjusts Cash to an open cash count, with the user's reason and sign-off. Direction and amount
- * come from the stored count, never from the client. The adjustment is never spending.
+ * come from the stored count, never from the client. The adjustment is never spending. A short
+ * count is taken from the cash not yet explained first, then from Cash, in one posting.
  */
 export class RecordCashAdjustment {
   private readonly deps: Deps;
@@ -64,17 +68,33 @@ export class RecordCashAdjustment {
     if (count.reviewStatus !== "open" || count.differenceMinor === 0) {
       throw new DomainError("invalidTransition", "this count is not open for adjustment");
     }
-    const [cash] = await accounts.getMany(ownerId, [asAccountId(count.accountId)]);
+    const found = await accounts.getMany(ownerId, [asAccountId(count.accountId), SYSTEM_CASH_ACCOUNT_ID]);
+    const ref = (id: string): AccountRef | undefined => {
+      const a = found.find((r) => r.id === id);
+      return a === undefined ? undefined : { id: a.id, kind: a.kind, currency: a.currency };
+    };
+    const cash = ref(count.accountId);
     if (cash === undefined) throw new DomainError("accountInvalid", "the Cash account is missing");
+    const decrease = count.differenceMinor < 0;
+    const unexplained = ref(SYSTEM_CASH_ACCOUNT_ID);
+    const held = decrease && unexplained !== undefined ? await reader.getBalance(ownerId, unexplained.id) : 0;
+    const fromUnexplained = Math.min(result.adjustmentMinor, Math.max(held, 0));
+    const fromCash = result.adjustmentMinor - fromUnexplained;
+    const money = (minor: number) => Money.ofMinor(minor, count.currency);
+    const legs: Pick<AdjustmentIntent, "account" | "amount" | "also"> =
+      unexplained === undefined || fromUnexplained === 0
+        ? { account: cash, amount: money(result.adjustmentMinor) }
+        : fromCash === 0
+          ? { account: unexplained, amount: money(fromUnexplained) }
+          : { account: cash, amount: money(fromCash), also: { account: unexplained, amount: money(fromUnexplained) } };
     const outcome = await post.execute({
       ownerId,
       idempotencyKey: asIdempotencyKey(`adjust-${count.id}`),
       transactionId,
       intent: {
         type: "adjustment",
-        account: { id: cash.id, kind: cash.kind, currency: cash.currency },
-        direction: count.differenceMinor < 0 ? "decrease" : "increase",
-        amount: Money.ofMinor(result.adjustmentMinor, count.currency),
+        ...legs,
+        direction: decrease ? "decrease" : "increase",
         cause,
         authorizedBy: ownerId,
       },
@@ -90,8 +110,18 @@ export class RecordCashAdjustment {
   }
 
   private async close(ownerId: OwnerId, id: string, transactionId: string): Promise<void> {
-    const nowMs = this.deps.clock.nowMs();
-    await this.deps.reconciliations.markStatus(ownerId, id, "adjusted", transactionId, nowMs);
-    await this.deps.followUps.resolve(ownerId, `fu-${id}`, "adjusted", nowMs);
+    const { reconciliations, followUps, reader, clock } = this.deps;
+    const nowMs = clock.nowMs();
+    await reconciliations.markStatus(ownerId, id, "adjusted", transactionId, nowMs);
+    await followUps.resolve(ownerId, `fu-${id}`, "adjusted", nowMs);
+    // A count that used up the cash not yet explained also answers its ATM questions.
+    const tx = await reader.getEntries(ownerId, asTransactionId(transactionId));
+    const tookUnexplained = tx.some((e) => e.accountId === SYSTEM_CASH_ACCOUNT_ID && e.side === "credit");
+    if (!tookUnexplained || (await reader.getBalance(ownerId, SYSTEM_CASH_ACCOUNT_ID)) > 0) return;
+    for (const question of await followUps.listOpen(ownerId)) {
+      if (question.trigger === "withdrawalDestination") {
+        await followUps.resolve(ownerId, question.id, "counted", nowMs);
+      }
+    }
   }
 }

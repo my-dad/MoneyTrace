@@ -102,6 +102,37 @@ describe("ResolveFollowUp", () => {
     expect((await followUps.get(alice, "f1"))?.state).toBe("resolved");
   });
 
+  it("answering never moves more than the not-yet-explained cash still holds", async () => {
+    await post.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("counted"),
+      transactionId: asTransactionId("t-count"),
+      intent: { type: "adjustment", account: system, direction: "decrease", amount: bdt(300_000), cause: "count", authorizedBy: "alice" },
+      occurredAtMs: T + 1,
+      sourceEventIds: [],
+      actor: "alice",
+    });
+    expect(await answer("wallet")).toEqual({ state: "resolved" });
+    expect(await balance("wallet")).toBe(100_000);
+    expect(await balance(SYSTEM_CASH_ACCOUNT_ID)).toBe(0);
+  });
+
+  it("answering when that cash was all counted away moves nothing and still closes", async () => {
+    await post.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("counted"),
+      transactionId: asTransactionId("t-count"),
+      intent: { type: "adjustment", account: system, direction: "decrease", amount: bdt(400_000), cause: "count", authorizedBy: "alice" },
+      occurredAtMs: T + 1,
+      sourceEventIds: [],
+      actor: "alice",
+    });
+    expect(await answer("wallet")).toEqual({ state: "resolved" });
+    expect(await balance("wallet")).toBe(0);
+    expect(await balance(SYSTEM_CASH_ACCOUNT_ID)).toBe(0);
+    expect(await w.ledger.getTransaction(alice, asTransactionId("txn-followup-f1"))).toBeNull();
+  });
+
   it("answering Gave to Ammu is custody: the name stays in the audit, no expense", async () => {
     await answer("ammu");
     expect(await balance("ammu")).toBe(400_000);

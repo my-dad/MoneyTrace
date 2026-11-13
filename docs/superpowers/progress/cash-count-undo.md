@@ -17,11 +17,11 @@ Branch `cash-count-undo`, from `master` (`8ef6d5f`). Executor: Native. Read this
 
 ## Next task
 
-Review done (0 Critical; 2 fixed). Mabrur rules on negative Cash after Adjust, then chooses how to integrate `cash-count-undo`.
+Review done (0 Critical; 2 fixed). Mabrur chose "unexplained first" for Adjust (built) and a PR merged on green CI.
 
 ## Last verification
 
-2026-11-13, after review fixes: `pnpm verify` 1,502 tests; web build (CI's emulator config) passes; `pnpm test:emulator` 463 + 28; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 5 passed. A bare `pnpm --filter web build` stops on the missing App Check key by design (release blockers); CI builds with the emulator config.
+2026-11-13, after review fixes and "unexplained first": `pnpm verify` 1,510 tests; web build (CI's emulator config) passes; `pnpm test:emulator` 463 + 28; `pnpm test:e2e` 2 passed; `pnpm test:e2e:fixture` 5 passed. A bare `pnpm --filter web build` stops on the missing App Check key by design (release blockers); CI builds with the emulator config.
 
 ## Decisions
 
@@ -32,4 +32,4 @@ Review done (0 Critical; 2 fixed). Mabrur rules on negative Cash after Adjust, t
 - Adjust note drops "you can correct it later" (no correction UI yet).
 - "Cash is now ৳X" becomes "Cash now matches your count of ৳X".
 - A reloaded gap question shows "Adjust your cash to your count?" without amounts (the question doc holds only its text).
-- The adjusted Cash goes to `cash-main`; cash not yet explained is left for the ATM questions.
+- Adjust (Mabrur's ruling 2026-11-13, "unexplained first"): a short count is taken from cash not yet explained first, then from Cash, in one posting. When that bucket is emptied, its open ATM questions close as "counted"; answering an ATM question never moves more than the bucket holds.

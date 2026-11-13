@@ -49,6 +49,7 @@ const counted = (key: string, minor: number) =>
   count.execute({ ownerId: alice, idempotencyKey: key, countedMinor: minor, currency: "BDT" });
 const equity = () => w.ledger.getBalance(alice, nominal.adjustmentEquity("BDT").id);
 const cashMain = () => w.ledger.getBalance(alice, asAccountId("cash-main"));
+const unexplained = () => w.ledger.getBalance(alice, asAccountId("cash-unassigned"));
 
 beforeEach(async () => {
   w = createWorld();
@@ -63,7 +64,7 @@ beforeEach(async () => {
 });
 
 describe("RecordCashAdjustment", () => {
-  it("adjusting a short count posts a decrease to Cash, not spending", async () => {
+  it("adjusting a short count takes it from cash not yet explained first, never as spending", async () => {
     await counted("k1", 230_000);
     const equityBefore = await equity();
     w.clock.advance(60_000);
@@ -74,7 +75,8 @@ describe("RecordCashAdjustment", () => {
       countedMinor: 230_000,
       adjustmentMinor: 70_000,
     });
-    expect(await cashMain()).toBe(80_000);
+    expect(await cashMain()).toBe(150_000);
+    expect(await unexplained()).toBe(80_000);
     expect((await equity()) - equityBefore).toBe(70_000);
     const tx = await w.ledger.getTransaction(alice, asTransactionId("txn-adjust-recon-k1"));
     expect(tx).toMatchObject({
@@ -91,6 +93,44 @@ describe("RecordCashAdjustment", () => {
     expect(await followUps.get(alice, "fu-recon-k1")).toMatchObject({ state: "resolved", resolution: "adjusted" });
   });
 
+  it("a gap bigger than the unexplained cash empties it, takes the rest from Cash, and closes its ATM questions", async () => {
+    followUps.seed(alice, {
+      id: "fu-atm",
+      trigger: "withdrawalDestination",
+      targetTransactionId: "txn-atm",
+      question: "You withdrew ৳1,500 from an ATM. Where did the cash go?",
+      dueAtMs: 1,
+      snoozedUntilMs: null,
+      state: "open",
+      createdAtMs: 1,
+      resolvedAtMs: null,
+    });
+    await counted("k1", 0);
+    const result = await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "don't know" });
+    expect(result.adjustmentMinor).toBe(300_000);
+    expect(await unexplained()).toBe(0);
+    expect(await cashMain()).toBe(0);
+    expect(await w.ledger.getEntries(alice, asTransactionId("txn-adjust-recon-k1"))).toHaveLength(3);
+    expect(await followUps.get(alice, "fu-atm")).toMatchObject({ state: "resolved", resolution: "counted" });
+  });
+
+  it("a gap the unexplained cash covers leaves its ATM questions open", async () => {
+    followUps.seed(alice, {
+      id: "fu-atm",
+      trigger: "withdrawalDestination",
+      targetTransactionId: "txn-atm",
+      question: "You withdrew ৳1,500 from an ATM. Where did the cash go?",
+      dueAtMs: 1,
+      snoozedUntilMs: null,
+      state: "open",
+      createdAtMs: 1,
+      resolvedAtMs: null,
+    });
+    await counted("k1", 230_000);
+    await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "maybe lost" });
+    expect((await followUps.get(alice, "fu-atm"))?.state).toBe("open");
+  });
+
   it("adjusting an over count posts an increase", async () => {
     await counted("k1", 310_000);
     const result = await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "found a note" });
@@ -103,7 +143,7 @@ describe("RecordCashAdjustment", () => {
     await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "maybe lost" });
     const again = await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "maybe lost" });
     expect(again).toMatchObject({ transactionId: "txn-adjust-recon-k1", status: "alreadyRecorded", adjustmentMinor: 70_000 });
-    expect(await cashMain()).toBe(80_000);
+    expect(await unexplained()).toBe(80_000);
   });
 
   it("a retry after the posting landed but the count was not yet marked finishes the job", async () => {
@@ -124,7 +164,7 @@ describe("RecordCashAdjustment", () => {
     await expect(flaky.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "maybe lost" })).rejects.toThrow("network");
     const retry = await adjust.execute({ ownerId: alice, reconciliationId: "recon-k1", cause: "maybe lost" });
     expect(retry.status).toBe("alreadyRecorded");
-    expect(await cashMain()).toBe(80_000);
+    expect(await unexplained()).toBe(80_000);
     expect((await reconciliations.get(alice, "recon-k1"))?.reviewStatus).toBe("adjusted");
     expect((await followUps.get(alice, "fu-recon-k1"))?.state).toBe("resolved");
   });

@@ -126,6 +126,19 @@ const valid: [string, PostingIntent, unknown[]][] = [
     [D("nominal:equity:adjustment:BDT", 1000), C("cash1", 1000)],
   ],
   [
+    "adjustment down across two cash accounts",
+    {
+      type: "adjustment",
+      account: cash,
+      direction: "decrease",
+      amount: bdt(400),
+      also: { account: cash2, amount: bdt(600) },
+      cause: "count",
+      authorizedBy: "me",
+    },
+    [D("nominal:equity:adjustment:BDT", 1000), C("cash1", 400), C("cash2", 600)],
+  ],
+  [
     "adjustment liability up",
     {
       type: "adjustment",
@@ -242,6 +255,29 @@ const invalid: [string, PostingIntent, string][] = [
   [
     "refund nominal",
     { type: "refund", target: nominal.income("x", "BDT"), category: "food", ...base },
+    "invalidIntent",
+  ],
+  [
+    "adjustment also on the same account",
+    { type: "adjustment", account: cash, direction: "decrease", amount: A, also: { account: cash, amount: A }, cause: "x", authorizedBy: "me" },
+    "invalidIntent",
+  ],
+  [
+    "adjustment also zero",
+    { type: "adjustment", account: cash, direction: "decrease", amount: A, also: { account: cash2, amount: bdt(0) }, cause: "x", authorizedBy: "me" },
+    "invalidIntent",
+  ],
+  [
+    "adjustment also nominal",
+    {
+      type: "adjustment",
+      account: cash,
+      direction: "decrease",
+      amount: A,
+      also: { account: nominal.expense("food", "BDT"), amount: A },
+      cause: "x",
+      authorizedBy: "me",
+    },
     "invalidIntent",
   ],
   [

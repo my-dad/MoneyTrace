@@ -263,7 +263,7 @@ Use case: RecordCashCount
 
 Phase: 1
 
-Request: `{ reconciliationId, cause }`. Adjusts `cash-main` to an open count; direction and amount come from the stored count. Posts an `adjustment` with the cause and the owner's sign-off, never an expense.
+Request: `{ reconciliationId, cause }`. Adjusts Cash to an open count; direction and amount come from the stored count. A short count is taken from `cash-unassigned` first, then `cash-main`, in one `adjustment` posting with the cause and the owner's sign-off, never an expense; emptying `cash-unassigned` closes its open withdrawal questions as "counted". An increase goes to `cash-main`.
 
 Response: `{ transactionId, status: recorded|alreadyRecorded, countedMinor, adjustmentMinor }`
 
