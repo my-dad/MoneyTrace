@@ -86,7 +86,6 @@ jobs:
       - name: Local database state on failure
         if: failure()
         run: >-
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c
-          "select collection_id, path, data->>'status' as status, data->>'matchKind' as match,
-          data->>'matchedTransactionId' as matched, data->>'type' as type, data->'claim' is not null and data->'claim' != 'null' as claimed
-          from docs where collection_id in ('sourceEvents','transactions') order by updated_at" || true
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -x -c
+          "select collection_id, path, updated_at, data from docs
+          where collection_id in ('sourceEvents','ledgerEntries','accounts','paymentInstruments') order by updated_at" || true
