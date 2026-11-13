@@ -35,6 +35,8 @@ import {
   recordCustodyTransferResponse,
   recordReconciliationRequest,
   recordReconciliationResponse,
+  splitTransferRequest,
+  splitTransferResponse,
   upsertCashAllocationRequest,
   upsertCashAllocationResponse,
 } from "./ledger";
@@ -116,15 +118,16 @@ export const COMMANDS = {
   finalizeUpload: { phase: 2, request: finalizeUploadRequest, response: finalizeUploadResponse },
   setOcrConsent: { phase: 2, request: setOcrConsentRequest, response: setOcrConsentResponse },
   recordReconciliation: {
-    phase: 3,
+    phase: 1,
     request: recordReconciliationRequest,
     response: recordReconciliationResponse,
   },
   recordAdjustment: {
-    phase: 3,
+    phase: 1,
     request: recordAdjustmentRequest,
     response: recordAdjustmentResponse,
   },
+  splitTransfer: { phase: 1, request: splitTransferRequest, response: splitTransferResponse },
   requestExport: { phase: 4, request: requestExportRequest, response: requestExportResponse },
   requestAccountDeletion: {
     phase: 4,

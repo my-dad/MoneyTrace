@@ -20,7 +20,7 @@ Owner: **Code** = buildable here and verified by tests. **Mabrur** = needs his G
 - [x] B1 **Web hosting:** the web app builds to a deployable target and `firebase.json` serves it, with the PWA files. — Code (choice: Firebase Hosting static export, recommended because it works on the free tier; App Hosting needs Blaze)
 - [ ] B2 **CI:** GitHub Actions runs `pnpm verify`, the web build and `pnpm test:emulator` on every PR, and the checks are required on `master`. — Code done (`.github/workflows/ci.yml`). Remaining: first green run on GitHub, then Mabrur makes the three jobs required in branch protection.
 - [x] B3 **Deploy command** `pnpm deploy:dev` and `pnpm deploy:prod` checked for flags and targets. — Code
-- [ ] B4 **Release gates 25–36** (27, 29, 30 deferred by CR-001) each mapped to a passing test. Mapped 2026-11-13:
+- [x] B4 **Release gates 25–36** (27, 29, 30 deferred by CR-001) each mapped to a passing test. Mapped 2026-11-13; gate 32 built the same day:
   - 25 withdrawal: `strategies.test.ts`, `advance-source-event.test.ts`, `pipeline.emulator.test.ts`
   - 26 card purchase + partial repayment: same three, plus `firestore-ledger.emulator.test.ts`
   - 28 equal purchases stay separate: `matching.test.ts`, `advance-source-event.test.ts`
@@ -29,8 +29,8 @@ Owner: **Code** = buildable here and verified by tests. **Mabrur** = needs his G
   - 34 AI budget exhausted: `advance-source-event.test.ts`, `pipeline.emulator.test.ts`
   - 35 cross-user isolation: `cross-user.emulator.test.ts`
   - 36 import cutover: `strategies.test.ts`, `record-opening-balance.test.ts`, `ledger-guards.test.ts`
-  - **32 cash count discrepancy: not built.** The `recordReconciliation` contract exists with no use case, callable or UI (it was Phase 3, and CR-007 removed its screen). Mabrur decides: build it as a chat flow ("I have ৳2,300 in my wallet" shows the gap, never adjusts silently), or defer gate 32 by a change request. — Mabrur decides, then Code
-- [ ] B5 **"Not a transfer" undo** (CR-008 spec §9): build it, or record it as an accepted gap in CR-008. — Mabrur decides
+  - 32 cash count discrepancy: `record-cash-count.test.ts`, `record-cash-adjustment.test.ts`, `callable-auth.emulator.test.ts`, `ChatScreen.test.tsx`, `e2e/sms-to-posted.spec.ts` (plan `2026-11-13-cash-count-and-transfer-undo.md`; a count never changes a balance, and Adjust needs a typed reason)
+- [x] B5 **"Not a transfer" undo** (CR-008 spec §9): built 2026-11-13 as `splitTransfer` (reversal plus both postings in one ledger write); tests in `advance-source-event.test.ts`, `ChatScreen.test.tsx`, `e2e/sms-to-posted.spec.ts`. — Code
 
 ## C. Accounts and billing (Mabrur)
 

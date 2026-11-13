@@ -11,6 +11,7 @@ import {
   type IdempotencyKey,
   type OwnerId,
   type PostingIntent,
+  type SourceEventId,
   type TransactionId,
 } from "@moneytrace/domain";
 import type { AccountRepository } from "../ports/account-repository";
@@ -60,6 +61,13 @@ export class ReverseAndReplace {
     rationale: string;
     /** Date of a non-opening replacement; defaults to the original's. */
     occurredAtMs?: number;
+    /** A new transaction posted in the same atomic step; needs a replacement. */
+    alsoPost?: {
+      transactionId: TransactionId;
+      intent: PostingIntent;
+      occurredAtMs: number;
+      sourceEventIds: readonly SourceEventId[];
+    };
   }): Promise<LedgerCommitResult> {
     const { ownerId } = input;
     const { reader } = this.deps;
@@ -141,6 +149,36 @@ export class ReverseAndReplace {
       throw new DomainError("invalidIntent", "a date needs a replacement");
     }
 
+    let extra: { transaction: TransactionRecord; entries: EntryDraft[] } | null = null;
+    if (input.alsoPost !== undefined) {
+      const a = input.alsoPost;
+      if (resolved === null || isOpening || a.intent.type === "openingBalance") {
+        throw new DomainError("invalidIntent", "an extra posting needs a non-opening replacement");
+      }
+      LedgerDate.fromEpochMs(a.occurredAtMs);
+      const { entries } = resolveIntent(a.intent, a.occurredAtMs);
+      if (entries.length === 0) throw new DomainError("invalidIntent", "extra posting produced no entries");
+      await assertAccountsUsable(this.deps.accounts, ownerId, entries);
+      const category = categoryOf(a.intent);
+      const extraAudit = auditDetailsOf(a.intent);
+      extra = {
+        entries,
+        transaction: {
+          id: a.transactionId,
+          state: "posted",
+          intentType: a.intent.type,
+          occurredAtMs: a.occurredAtMs,
+          currency: entries[0]?.amount.currency ?? original.currency,
+          sourceEventIds: a.sourceEventIds,
+          actor: input.actor,
+          rationale: input.rationale,
+          committedAtMs: this.deps.clock.nowMs(),
+          ...(category !== undefined ? { category } : {}),
+          ...(extraAudit ? { auditDetails: extraAudit } : {}),
+        },
+      };
+    }
+
     const committedAtMs = this.deps.clock.nowMs();
     const base = {
       state: "posted",
@@ -189,6 +227,17 @@ export class ReverseAndReplace {
                   resolved.type === "historicalImport" ? resolved.occurredAt.epochMs : null,
               }
             : null,
+        ...(extra
+          ? {
+              alsoPost: {
+                id: extra.transaction.id,
+                entries: entriesToJson(extra.entries),
+                type: extra.transaction.intentType,
+                occurredAtMs: extra.transaction.occurredAtMs,
+                sourceEventIds: [...extra.transaction.sourceEventIds],
+              },
+            }
+          : {}),
       }),
     );
     return this.deps.writer.commitCorrection(ownerId, {
@@ -207,6 +256,7 @@ export class ReverseAndReplace {
           }
         : {}),
       ...(marker ? { cutoverMarker: marker } : {}),
+      ...(extra ? { alsoPost: extra } : {}),
     });
   }
 }

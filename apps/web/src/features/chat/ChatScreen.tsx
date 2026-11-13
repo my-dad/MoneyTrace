@@ -1,7 +1,7 @@
 "use client";
 
 import { MAX_EVIDENCE_TEXT_CHARS } from "@moneytrace/contracts";
-import { Composer } from "@moneytrace/ui-kit";
+import { Chip, Composer } from "@moneytrace/ui-kit";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Commands } from "../../shared/commands";
@@ -17,11 +17,21 @@ import { buildChatTimeline } from "./chat-view-model";
 import styles from "./chat.module.css";
 import { EvidenceBubble } from "./EvidenceBubble";
 import { QuestionCard } from "./QuestionCard";
+import { CashCountCard } from "./CashCountCard";
+import { CashGapActions } from "./CashGapActions";
 import { useOnlineStatus } from "../shell/OfflineBanner";
 
 export type ChatCommands = Pick<
   Commands,
-  "submitEvidence" | "confirmCandidate" | "resolveFollowUp" | "retrySourceEvent" | "cancelSourceEvent" | "answerQuestion"
+  | "submitEvidence"
+  | "confirmCandidate"
+  | "resolveFollowUp"
+  | "retrySourceEvent"
+  | "cancelSourceEvent"
+  | "answerQuestion"
+  | "recordReconciliation"
+  | "recordAdjustment"
+  | "splitTransfer"
 >;
 
 const EVENT_LIMIT = 50;
@@ -50,12 +60,15 @@ export function ChatScreen({
   commands,
   embedded = false,
   nowMs: givenNowMs,
+  startWith,
 }: {
   gateway: ReadModelGateway;
   commands: ChatCommands;
   /** Inside the pop-up panel, which supplies its own title bar. */
   embedded?: boolean;
   nowMs?: number;
+  /** Open on the cash count, as the dashboard's "Count my cash" does. */
+  startWith?: "cashCount";
 }) {
   const [nowMs] = useState(() => givenNowMs ?? Date.now());
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -71,6 +84,17 @@ export function ChatScreen({
   // Survives a failed send, so resending the same text can't record it twice.
   const attempt = useRef<{ text: string; key: string } | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  // Each "Count my cash" starts a fresh card; null means no card is shown.
+  const [countCard, setCountCard] = useState<number | null>(startWith === "cashCount" ? 0 : null);
+  // The just-made count's question is shown by its card, not again from the follow-ups.
+  const [shownFollowUpId, setShownFollowUpId] = useState<string | null>(null);
+  const [placeholder, setPlaceholder] = useState<string>(CHAT_COPY.composerPlaceholder);
+
+  function tellMe() {
+    setPlaceholder(CHAT_COPY.tellMePlaceholder);
+    composerRef.current?.querySelector("textarea")?.focus();
+  }
 
   useEffect(() => {
     const onError = () => {
@@ -89,14 +113,17 @@ export function ChatScreen({
   }, [gateway]);
 
   const timeline = useMemo(
-    () => buildChatTimeline({ events, followUps, accounts, nowMs }),
-    [events, followUps, accounts, nowMs],
+    () =>
+      buildChatTimeline({ events, followUps, accounts, nowMs }).filter(
+        (item) => item.kind !== "followUp" || item.id !== shownFollowUpId,
+      ),
+    [events, followUps, accounts, nowMs, shownFollowUpId],
   );
 
   useEffect(() => {
     const log = logRef.current;
     if (log !== null) log.scrollTop = log.scrollHeight;
-  }, [timeline.length, sending]);
+  }, [timeline.length, sending, countCard]);
 
   async function send() {
     if (text.length > MAX_EVIDENCE_TEXT_CHARS) {
@@ -178,6 +205,16 @@ export function ChatScreen({
         {timeline.map((item) =>
           item.kind === "evidence" ? (
             <EvidenceBubble key={item.id} item={item} accounts={accounts} commands={commands} />
+          ) : item.followUp.trigger === "reconciliationDifference" ? (
+            <fieldset key={item.id} className={styles.question}>
+              <legend className={styles.questionTitle}>{item.followUp.question}</legend>
+              <CashGapActions
+                reconciliationId={item.followUp.targetReconciliationId ?? null}
+                amounts={null}
+                recordAdjustment={commands.recordAdjustment}
+                onTellMe={tellMe}
+              />
+            </fieldset>
           ) : (
             <QuestionCard
               key={item.id}
@@ -186,6 +223,9 @@ export function ChatScreen({
               resolveFollowUp={commands.resolveFollowUp}
             />
           ),
+        )}
+        {countCard !== null && (
+          <CashCountCard key={countCard} commands={commands} onRecorded={setShownFollowUpId} onTellMe={tellMe} />
         )}
         {sending && (
           <p role="status" className={styles.note}>
@@ -204,7 +244,16 @@ export function ChatScreen({
         )}
       </div>
 
-      <div className={styles.composer}>
+      <div ref={composerRef} className={styles.composer}>
+        <div className={styles.quick}>
+          <Chip
+            onClick={() => {
+              setCountCard((n) => (n ?? 0) + 1);
+            }}
+          >
+            {CHAT_COPY.countCash}
+          </Chip>
+        </div>
         {sendError !== null && (
           <p role="alert" className={styles.error}>
             {sendError}
@@ -218,7 +267,7 @@ export function ChatScreen({
           }}
           disabled={sending || !online}
           label={CHAT_COPY.composerLabel}
-          placeholder={CHAT_COPY.composerPlaceholder}
+          placeholder={placeholder}
         />
       </div>
     </div>

@@ -129,6 +129,55 @@ describe("ReverseAndReplace", () => {
     expect(await w.ledger.getBalance(alice, cash.id)).toBe(-700);
   });
 
+  it("posts an extra transaction in the same step, with its category and evidence", async () => {
+    const income: PostingIntent = { type: "income", destination: bank, category: "uncategorized", amount: bdt(400) };
+    const result = await reverse.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("c1"),
+      originalTransactionId: tx1,
+      replacement: purchase(700),
+      actor: "user",
+      rationale: "split",
+      alsoPost: {
+        transactionId: asTransactionId("txn-b"),
+        intent: income,
+        occurredAtMs: 1_700_000_100_000,
+        sourceEventIds: [asSourceEventId("b")],
+      },
+    });
+    expect(result.status).toBe("committed");
+    expect(await w.ledger.getTransaction(alice, asTransactionId("txn-b"))).toMatchObject({
+      state: "posted",
+      intentType: "income",
+      category: "uncategorized",
+      occurredAtMs: 1_700_000_100_000,
+      sourceEventIds: ["b"],
+      actor: "user",
+    });
+    expect(await w.ledger.getBalance(alice, bank.id)).toBe(400);
+  });
+
+  it("the same key with a different alsoPost amount is an idempotencyConflict", async () => {
+    const run = (n: number) =>
+      reverse.execute({
+        ownerId: alice,
+        idempotencyKey: asIdempotencyKey("c1"),
+        originalTransactionId: tx1,
+        replacement: purchase(700),
+        actor: "user",
+        rationale: "split",
+        alsoPost: {
+          transactionId: asTransactionId("txn-b"),
+          intent: { type: "income", destination: bank, category: "uncategorized", amount: bdt(n) },
+          occurredAtMs: 1_700_000_100_000,
+          sourceEventIds: [],
+        },
+      });
+    await run(400);
+    expect(await run(500)).toEqual({ status: "idempotencyConflict" });
+    expect(await w.ledger.getBalance(alice, bank.id)).toBe(400);
+  });
+
   it("rejects a second correction of the same original under a new key", async () => {
     await correct("c1", purchase(700));
     await expect(correct("c2", purchase(900))).rejects.toThrow(code("invalidTransition"));

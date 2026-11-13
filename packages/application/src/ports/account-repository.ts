@@ -15,4 +15,6 @@ export type AccountRepository = {
   ensure(ownerId: OwnerId, record: AccountRecord): Promise<void>;
   /** Returns only the accounts that exist for this owner; unknown and foreign IDs are omitted. */
   getMany(ownerId: OwnerId, ids: readonly AccountId[]): Promise<AccountRecord[]>;
+  /** Every account of this owner, closed ones included. */
+  list(ownerId: OwnerId): Promise<AccountRecord[]>;
 };

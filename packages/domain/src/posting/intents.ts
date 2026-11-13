@@ -41,7 +41,10 @@ export type AdjustmentIntent = {
   type: "adjustment";
   account: AccountRef;
   direction: "increase" | "decrease";
+  /** The amount on `account`. */
   amount: Money;
+  /** A second real account adjusted the same way in the same posting (a cash count's gap). */
+  also?: { account: AccountRef; amount: Money };
   cause: string;
   authorizedBy: string;
 };

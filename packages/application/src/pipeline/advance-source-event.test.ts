@@ -2,6 +2,7 @@ import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
 import {
   Money,
   asAccountId,
+  asIdempotencyKey,
   asOwnerId,
   asSourceEventId,
   asTransactionId,
@@ -23,6 +24,7 @@ import { RecordOpeningBalance } from "../use-cases/record-opening-balance";
 import { AnswerQuestion } from "../use-cases/answer-question";
 import { RetrySourceEvent } from "../use-cases/retry-source-event";
 import { ReverseAndReplace } from "../use-cases/reverse-and-replace";
+import { SplitTransfer } from "../use-cases/split-transfer";
 import { PostTransaction } from "../use-cases/post-transaction";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "./ai-gateway";
 import { AdvanceSourceEvent } from "./advance-source-event";
@@ -694,6 +696,96 @@ describe("own transfers are paired, not counted (CR-008)", () => {
     await confirm.execute({ ownerId: bob, sourceEventId: credit.id, decision: "link" });
     expect((await settle(bob, credit.id))?.status).toBe("posted");
     await expectPaired(debit.id);
+  });
+
+  describe("not a transfer: counted separately again (CR-008 §9)", () => {
+    const splitter = () =>
+      new SplitTransfer({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+    const split = (id: SourceEventId) => splitter().execute({ ownerId: bob, sourceEventId: id });
+    const expectSeparate = async (debitTx: string, creditTx: string) => {
+      expect(await ledger.getTransaction(bob, asTransactionId(debitTx))).toMatchObject({ state: "posted", intentType: "purchase", category: "uncategorized" });
+      expect(await ledger.getTransaction(bob, asTransactionId(creditTx))).toMatchObject({ state: "posted", intentType: "income" });
+      expect(await bobBalance("src-ucb-7777")).toBe(-170_000);
+      expect(await bobBalance("src-bkash-main")).toBe(170_000);
+      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+      expect(await bobBalance("nominal:income:uncategorized:BDT")).toBe(-170_000);
+    };
+
+    it("splitting counts the two SMS as Spent and Came in again", async () => {
+      const debit = await run(CARD_DEBIT, bob);
+      const credit = await run(BKASH_DEPOSIT, bob);
+      const result = await split(credit.id);
+      expect(result).toEqual({
+        spentTransactionId: `txn-${debit.id}:repl:repl`,
+        cameInTransactionId: `txn-${credit.id}`,
+        amountMinor: 170_000,
+        status: "recorded",
+      });
+      expect(await ledger.getTransaction(bob, asTransactionId(`txn-${debit.id}:repl`))).toMatchObject({ state: "reversed" });
+      expect(await ledger.getTransaction(bob, asTransactionId(`txn-${credit.id}`))).toMatchObject({
+        sourceEventIds: [credit.id],
+        rationale: "Not a transfer: counted separately",
+      });
+      await expectSeparate(`txn-${debit.id}:repl:repl`, `txn-${credit.id}`);
+      expect(await w.sourceEvents.get(bob, credit.id)).toMatchObject({
+        status: "posted",
+        matchKind: "none",
+        // The transfer it was once paired into, now reversed: how a replay finds its partner.
+        matchedTransactionId: `txn-${debit.id}:repl`,
+        resolvedDestinationAccountId: null,
+      });
+    });
+
+    it("pairing credit-first then splitting works the same", async () => {
+      const credit = await run(BKASH_DEPOSIT, bob);
+      const debit = await run(CARD_DEBIT, bob);
+      const result = await split(debit.id);
+      expect(result).toMatchObject({ spentTransactionId: `txn-${debit.id}`, cameInTransactionId: `txn-${credit.id}:repl:repl`, status: "recorded" });
+      await expectSeparate(`txn-${debit.id}`, `txn-${credit.id}:repl:repl`);
+    });
+
+    it("a second split returns alreadyRecorded and changes nothing", async () => {
+      await run(CARD_DEBIT, bob);
+      const credit = await run(BKASH_DEPOSIT, bob);
+      const first = await split(credit.id);
+      expect(await split(credit.id)).toEqual({ ...first, status: "alreadyRecorded" });
+      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+    });
+
+    it("a split interrupted after the ledger write finishes on retry", async () => {
+      const debit = await run(CARD_DEBIT, bob);
+      const credit = await run(BKASH_DEPOSIT, bob);
+      const original = w.sourceEvents.markTransferSplit.bind(w.sourceEvents);
+      w.sourceEvents.markTransferSplit = () => Promise.reject(new Error("crash"));
+      await expect(split(credit.id)).rejects.toThrow("crash");
+      w.sourceEvents.markTransferSplit = original;
+      expect((await split(credit.id)).status).toBe("alreadyRecorded");
+      expect((await w.sourceEvents.get(bob, credit.id))?.matchKind).toBe("none");
+      expect(await ledger.getTransaction(bob, asTransactionId(`txn-${debit.id}:repl:rev`))).toMatchObject({ state: "posted" });
+      await expectSeparate(`txn-${debit.id}:repl:repl`, `txn-${credit.id}`);
+    });
+
+    it("a transfer the user already corrected cannot be split", async () => {
+      const debit = await run(CARD_DEBIT, bob);
+      const credit = await run(BKASH_DEPOSIT, bob);
+      await new ReverseAndReplace({ writer: ledger, reader: ledger, accounts, hasher: new TestHasher(), clock: w.clock }).execute({
+        ownerId: bob,
+        idempotencyKey: asIdempotencyKey("user-fix"),
+        originalTransactionId: asTransactionId(`txn-${debit.id}:repl`),
+        replacement: null,
+        actor: "bob",
+        rationale: "wrong",
+      });
+      await expect(split(credit.id)).rejects.toThrow(code("invalidTransition"));
+      expect(await ledger.getTransaction(bob, asTransactionId(`txn-${credit.id}`))).toBeNull();
+      expect((await w.sourceEvents.get(bob, credit.id))?.matchKind).toBe("transferCounterpart");
+    });
+
+    it("an event that is not a paired transfer is refused", async () => {
+      const debit = await run(CARD_DEBIT, bob);
+      await expect(split(debit.id)).rejects.toThrow(code("invalidTransition"));
+      await expect(split(asSourceEventId("nope"))).rejects.toThrow(code("resourceNotFound"));
+    });
   });
 });
 

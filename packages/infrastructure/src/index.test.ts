@@ -16,6 +16,7 @@ describe("@moneytrace/infrastructure", () => {
       "FirestoreProviderCallRepository",
       "FirestoreQuotaLedger",
       "FirestoreRateLimiter",
+      "FirestoreReconciliationRepository",
       "FirestoreSourceEventRepository",
       "FirestoreUserProfileRepository",
       "JsonLogger",

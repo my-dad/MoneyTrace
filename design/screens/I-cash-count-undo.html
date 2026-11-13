@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I · Cash count and transfer undo — MoneyTrace mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../packages/ui-kit/src/tokens.css">
+<style>
+  body { margin:0; background:var(--mt-ground); color:var(--mt-ink); font-family:var(--mt-font); font-variant-numeric:tabular-nums; }
+  .page { padding:48px; display:flex; flex-direction:column; gap:56px; }
+  .page > header h1 { margin:0 0 6px; font-size:22px; }
+  .page > header p { margin:0; color:var(--mt-caption); max-width:820px; line-height:1.5; }
+  .row { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
+  .frame-label { font-size:13px; color:var(--mt-caption); margin:0 0 10px; max-width:390px; }
+  .notes { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:16px; padding:20px 24px; max-width:860px; line-height:1.55; }
+  .notes h2 { margin:0 0 8px; font-size:16px; }
+  .notes li { margin-bottom:6px; }
+
+  .phone { width:390px; min-height:844px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:28px; overflow:hidden; position:relative; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .phone.fixed { height:844px; }
+  .demo { background:#F8EDD0; color:#7A5A12; font-size:12px; font-weight:700; text-align:center; padding:6px; border-bottom:1px dashed #E2C77E; }
+  .bar { display:flex; justify-content:space-between; align-items:center; padding:16px 16px 4px; }
+  .bar .hi { font-size:12px; color:var(--mt-caption); }
+  .bar .name { font-size:20px; font-weight:800; }
+  .menu-btn { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; font-size:18px; }
+  .wrap { padding:0 16px 96px; }
+
+  .month { display:flex; align-items:center; justify-content:space-between; margin:10px 0 8px; }
+  .month b { font-size:15px; }
+  .nav { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; color:var(--mt-body); }
+  .nav.off { color:var(--mt-border-strong); }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tile { background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:12px 14px; }
+  .tile .l { font-size:12px; color:var(--mt-caption); font-weight:600; }
+  .tile .v { font-size:22px; font-weight:800; margin-top:2px; }
+  .unx { margin-top:10px; display:flex; justify-content:space-between; gap:10px; padding:10px 14px; border:1.5px dashed var(--mt-border-dashed); border-radius:14px; background:var(--mt-surface-soft); font-size:13px; }
+  .unx span small { display:block; font-size:12px; color:var(--mt-caption); }
+  .card { margin-top:12px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; }
+  .card h3 { margin:0 0 10px; font-size:13px; font-weight:600; color:var(--mt-caption); }
+  .bars { display:flex; flex-direction:column; gap:11px; }
+  .bl { display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .bl b { font-weight:700; }
+  .track { height:10px; border-radius:6px; background:var(--mt-surface-soft); }
+  .fill { height:10px; border-radius:0 4px 4px 0; background:var(--mt-body); }
+  .trend { font-size:12.5px; color:var(--mt-body); margin-top:10px; }
+  .kv { display:flex; justify-content:space-between; padding:7px 0; border-top:1px solid var(--mt-border-soft); font-size:13px; }
+  .kv:first-of-type { border-top:none; }
+  .kv span:first-child { color:var(--mt-caption); }
+  .kv b { font-weight:700; }
+  .rec { display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--mt-border-soft); }
+  .rec:first-of-type { border-top:none; }
+  .rec .t { flex:1; min-width:0; font-size:13.5px; font-weight:600; }
+  .rec .t small { display:block; font-weight:500; font-size:12px; color:var(--mt-caption); margin-top:1px; }
+  .rec .a { text-align:right; font-size:13.5px; font-weight:700; }
+  .st { display:inline-block; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; margin-top:3px; }
+  .ok { background:var(--mt-verified-tint); color:var(--mt-verified-text); }
+  .wait { background:var(--mt-needs-answer-tint); color:var(--mt-needs-answer-text); }
+  .prog { background:var(--mt-pending-tint); color:var(--mt-pending-text); }
+  .bad { background:var(--mt-failed-tint); color:var(--mt-failed-text); }
+  .nc { background:var(--mt-surface-soft); color:var(--mt-caption); border:1px solid var(--mt-border); }
+
+  .fab { position:absolute; right:16px; bottom:24px; width:60px; height:60px; border-radius:999px; background:var(--mt-accent); color:#fff; display:grid; place-items:center; box-shadow:0 8px 20px rgba(180,80,20,.3); font-size:24px; }
+  .fab i { position:absolute; top:-2px; right:-2px; font-style:normal; min-width:22px; height:22px; border-radius:999px; background:var(--mt-ink); color:#fff; font-size:12px; font-weight:800; display:grid; place-items:center; border:2px solid var(--mt-ground); }
+
+  .empty { text-align:center; padding:96px 28px 0; }
+  .empty .ic { width:64px; height:64px; border-radius:20px; margin:0 auto 16px; background:var(--mt-surface); border:1px solid var(--mt-border); display:grid; place-items:center; font-size:26px; }
+  .empty b { display:block; font-size:18px; margin-bottom:8px; }
+  .empty p { margin:0; color:var(--mt-caption); font-size:14px; line-height:1.55; }
+  .arrow { position:absolute; right:84px; bottom:52px; font-size:13px; color:var(--mt-caption); }
+
+  .status { font-size:13px; color:var(--mt-caption); }
+  .alert { margin:10px 0; padding:10px 14px; border-radius:14px; background:var(--mt-surface-soft); border:1px solid var(--mt-border); font-size:13px; font-weight:600; line-height:1.45; }
+  .skel { height:22px; width:110px; border-radius:8px; background:var(--mt-surface-soft); margin-top:4px; }
+
+  .scrim { position:absolute; inset:0; background:rgba(30,35,32,.35); }
+  .menu { position:absolute; right:16px; top:84px; width:250px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; box-shadow:0 12px 30px rgba(30,35,32,.15); padding:6px; }
+  .menu .mi { padding:12px 12px; font-size:14px; border-radius:12px; }
+  .menu .mi small { display:block; font-size:12px; color:var(--mt-caption); margin-top:2px; }
+  .menu .sep { height:1px; background:var(--mt-border-soft); margin:4px 6px; }
+
+  .chat { position:absolute; inset:0; background:var(--mt-ground); display:flex; flex-direction:column; }
+  .chead { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--mt-surface); border-bottom:1px solid var(--mt-border); }
+  .chead .mk { width:36px; height:36px; border-radius:12px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; }
+  .chead .tt { flex:1; }
+  .chead .tt b { display:block; font-size:15px; }
+  .chead .tt small { font-size:12px; color:var(--mt-caption); }
+  .x { width:44px; height:44px; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); display:grid; place-items:center; font-size:18px; }
+  .log { flex:1; padding:14px 14px 0; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  .me { align-self:flex-end; max-width:82%; background:var(--mt-accent-tint, #F6E3D3); border:1px solid var(--mt-border); padding:10px 12px; border-radius:16px 16px 6px 16px; font-size:13px; line-height:1.45; }
+  .me small { display:block; font-weight:700; color:var(--mt-accent); font-size:11px; margin-bottom:3px; }
+  .ai { align-self:flex-start; max-width:88%; background:var(--mt-surface); border:1px solid var(--mt-border); padding:12px 14px; border-radius:16px 16px 16px 6px; font-size:13px; line-height:1.5; }
+  .ai .q { font-weight:700; font-size:14px; }
+  .ai .opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .ai .opts span { border:1px solid var(--mt-border-strong); border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:600; background:var(--mt-surface); }
+  .ai .note { font-size:12px; color:var(--mt-caption); margin-top:8px; }
+  .comp { display:flex; gap:8px; padding:10px 12px 18px; border-top:1px solid var(--mt-border); background:var(--mt-surface); }
+  .comp .in { flex:1; min-height:44px; border:1.5px solid var(--mt-accent); border-radius:999px; padding:0 16px; display:flex; align-items:center; color:var(--mt-caption); font-size:14px; }
+  .comp .send { width:44px; height:44px; border-radius:999px; background:var(--mt-surface-soft); border:1px solid var(--mt-border); display:grid; place-items:center; }
+
+  .desk { width:1200px; height:760px; background:var(--mt-ground); border:1px solid var(--mt-border); border-radius:20px; overflow:hidden; position:relative; display:flex; box-shadow:0 8px 30px rgba(30,35,32,.06); }
+  .desk .main { flex:1; padding:0 28px; overflow:hidden; }
+  .desk .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .desk .side { width:420px; border-left:1px solid var(--mt-border); position:relative; box-shadow:-12px 0 30px rgba(30,35,32,.08); }
+  .desk .side .chat { position:absolute; }
+
+  .signin { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:760px; padding:0 32px; }
+  .signin .logo { width:64px; height:64px; border-radius:20px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; font-size:26px; margin-bottom:18px; }
+  .signin h2 { margin:0 0 8px; font-size:28px; font-weight:800; }
+  .signin p { margin:0 0 28px; color:var(--mt-body); font-size:15px; line-height:1.55; max-width:300px; }
+  .gbtn { min-height:52px; width:100%; max-width:320px; border-radius:14px; border:1px solid var(--mt-border-strong); background:var(--mt-surface); font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .gbtn .g { width:20px; height:20px; border-radius:999px; background:conic-gradient(#EA4335 0 25%, #FBBC05 0 50%, #34A853 0 75%, #4285F4 0); }
+  .fine { margin-top:16px; font-size:12px; color:var(--mt-caption); max-width:300px; line-height:1.5; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; background:var(--mt-surface-soft); color:var(--mt-body); border:1px solid var(--mt-border); }
+  .chip.tr { background:#E8EEF8; color:#2B4C7E; border-color:#C9D6EC; }
+  .src { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--mt-border-soft); font-size:13px; }
+  .src:first-of-type { border-top:none; }
+  .src small { color:var(--mt-caption); font-size:12px; }
+  .net { font-size:24px; font-weight:800; margin:2px 0 6px; }
+  .qa { align-self:flex-start; max-width:88%; background:var(--mt-surface); border:1px solid var(--mt-border); padding:10px 12px; border-radius:16px 16px 16px 6px; font-size:13px; line-height:1.5; }
+  .qa b { display:block; font-size:11px; color:var(--mt-caption); margin-bottom:2px; }
+  .reply { display:flex; gap:6px; margin-top:8px; }
+  .reply .in { flex:1; min-height:40px; border:1.5px solid var(--mt-border-strong); border-radius:999px; padding:0 12px; display:flex; align-items:center; color:var(--mt-caption); font-size:13px; }
+  .reply span.b { min-height:40px; padding:0 12px; border-radius:999px; border:1px solid var(--mt-border-strong); display:flex; align-items:center; font-size:12.5px; font-weight:700; background:var(--mt-surface); }
+</style>
+<style>
+  .cnt { margin-top:10px; display:flex; gap:8px; align-items:center; }
+  .cnt .amt { flex:1; min-height:44px; border:1.5px solid var(--mt-accent); border-radius:12px; padding:0 12px; display:flex; align-items:center; font-size:16px; font-weight:700; }
+  .btn { min-height:44px; padding:0 16px; border-radius:12px; background:var(--mt-ink); color:#fff; display:inline-flex; align-items:center; font-size:13.5px; font-weight:700; }
+  .btn.ghost { background:var(--mt-surface); color:var(--mt-ink); border:1px solid var(--mt-border-strong); }
+  .acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .math { margin-top:8px; border-top:1px solid var(--mt-border-soft); }
+  .math .kv { font-size:13px; }
+  .gap { font-weight:800; }
+  .quick { display:flex; gap:6px; padding:8px 12px 0; background:var(--mt-surface); border-top:1px solid var(--mt-border); }
+  .quick span { border:1px solid var(--mt-border-strong); border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:700; background:var(--mt-surface); }
+  .quick + .comp { border-top:none; }
+  .unx a { color:var(--mt-accent); font-weight:700; text-decoration:none; white-space:nowrap; align-self:center; }
+  .field { margin-top:8px; }
+  .field label { display:block; font-size:12px; font-weight:700; color:var(--mt-caption); margin-bottom:4px; }
+  .field .in { min-height:44px; border:1.5px solid var(--mt-border-strong); border-radius:12px; padding:0 12px; display:flex; align-items:center; font-size:13.5px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>I · Count your cash, and undo a wrong transfer (release gates)</h1>
+    <p>Two release blockers. <b>Count cash (gate 32):</b> you say how much cash you have, the app compares it with what it expected and shows any gap. It never changes a balance on its own and never calls the gap spending. <b>Not a transfer (CR-008 §9):</b> if two SMS were paired as your own transfer by mistake, one tap counts them separately again (Spent and Came in), through the normal correction trail.</p>
+  </header>
+
+  <div class="row">
+    <div>
+      <p class="frame-label">I1 · Start a count: from the unexplained-cash box, or the chat's quick action</p>
+      <div class="phone fixed">
+        <div class="bar"><div><div class="hi">Good evening</div><div class="name">November</div></div><div class="menu-btn">☰</div></div>
+        <div class="wrap">
+          <div class="tiles">
+            <div class="tile"><div class="l">Spent</div><div class="v">৳18,450</div></div>
+            <div class="tile"><div class="l">Came in</div><div class="v">৳85,000</div></div>
+          </div>
+          <div class="unx"><span>৳1,500 cash not yet explained<small>From an ATM withdrawal on 9 Nov</small></span><a>Count my cash</a></div>
+        </div>
+        <div class="chat" style="top:300px; border-top:1px solid var(--mt-border); border-radius:22px 22px 0 0;">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>MoneyTrace</b><small>Paste an SMS or tell me about cash</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="ai">
+              <div class="q">How much cash do you have right now?</div>
+              <div class="note" style="margin-top:4px">Count your wallet and any cash at home. Leave out cash family members are holding.</div>
+              <div class="cnt"><div class="amt">৳ 2,300</div><span class="btn">Check</span></div>
+            </div>
+          </div>
+          <div class="quick"><span>Count my cash</span></div>
+          <div class="comp"><div class="in">Paste an SMS…</div><div class="send">➤</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">I2 · The gap is shown, nothing is changed</p>
+      <div class="phone fixed">
+        <div class="chat">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>MoneyTrace</b><small>Paste an SMS or tell me about cash</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="me"><small>Cash count</small>I have ৳2,300</div>
+            <div class="ai">
+              <div class="q">৳700 isn't accounted for</div>
+              <div class="math">
+                <div class="kv"><span>Cash</span><b>৳1,500</b></div>
+                <div class="kv"><span>Not yet explained (ATM, 9 Nov)</span><b>৳1,500</b></div>
+                <div class="kv"><span>The app expected</span><b>৳3,000</b></div>
+                <div class="kv"><span>You counted</span><b>৳2,300</b></div>
+                <div class="kv"><span>Difference</span><b class="gap">−৳700</b></div>
+              </div>
+              <div class="note">Nothing has been changed, and this isn't counted as spending.</div>
+              <div class="acts"><span class="btn ghost">Tell me what it was for</span><span class="btn ghost">Adjust to my count…</span><span class="btn ghost">Leave it open</span></div>
+            </div>
+            <div class="ai" style="font-size:12.5px"><span class="st wait">Waiting for your answer</span><div class="note" style="margin-top:4px">“Tell me what it was for” lets you type it (“৳500 rickshaw and lunch, ৳200 to Rafi”) and each part is recorded the normal way.</div></div>
+          </div>
+          <div class="comp"><div class="in">Paste an SMS…</div><div class="send">➤</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">I3 · Adjusting needs a reason, and says what it is</p>
+      <div class="phone fixed">
+        <div class="chat">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>MoneyTrace</b><small>Paste an SMS or tell me about cash</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="ai">
+              <div class="q">Adjust your cash to ৳2,300?</div>
+              <div class="field"><label>Why is it different? (required)</label><div class="in">Don't know — maybe lost</div></div>
+              <div class="note">Recorded as a cash adjustment of −৳700 with your reason. It is not counted as spending, and you can correct it later.</div>
+              <div class="acts"><span class="btn">Adjust</span><span class="btn ghost">Cancel</span></div>
+            </div>
+            <div class="me"><small>Cash count</small>Adjust: Don't know — maybe lost</div>
+            <div class="ai"><span class="st ok">Recorded</span><div style="margin-top:4px">Cash is now ৳2,300. The ৳700 adjustment is saved with your reason.</div></div>
+            <div class="ai"><span class="st ok">Recorded</span><div style="margin-top:4px"><b>Your count matches.</b> ৳3,000 — nothing to do.</div><div class="note">(What a matching count looks like.)</div></div>
+          </div>
+          <div class="comp"><div class="in">Paste an SMS…</div><div class="send">➤</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-label">I4 · Not a transfer: count the two SMS separately again</p>
+      <div class="phone fixed">
+        <div class="chat">
+          <div class="chead"><div class="mk">M</div><div class="tt"><b>MoneyTrace</b><small>Paste an SMS or tell me about cash</small></div><div class="x">✕</div></div>
+          <div class="log">
+            <div class="me"><small>SMS</small>You have received Tk 1,700.00 … bKash</div>
+            <div class="ai">
+              <b>Transfer</b> · ৳1,700
+              <div class="chips"><span class="chip tr">Transfer</span><span class="chip">UCB card ••7777</span><span class="chip">bKash</span></div>
+              <div style="margin-top:6px"><span class="st ok">Recorded</span></div>
+              <div class="acts"><span class="btn ghost">Not a transfer?</span></div>
+            </div>
+            <div class="ai">
+              <div class="q">Count these two separately?</div>
+              <div class="math">
+                <div class="kv"><span>Spent, from UCB card ••7777</span><b>৳1,700</b></div>
+                <div class="kv"><span>Came in, to bKash</span><b>৳1,700</b></div>
+              </div>
+              <div class="note">The transfer is reversed and both are recorded again, with the change kept in the history.</div>
+              <div class="acts"><span class="btn">Yes, count separately</span><span class="btn ghost">Keep as transfer</span></div>
+            </div>
+            <div class="ai"><span class="st ok">Recorded</span><div style="margin-top:4px">Counted separately: Spent ৳1,700 and Came in ৳1,700.</div></div>
+          </div>
+          <div class="comp"><div class="in">Paste an SMS…</div><div class="send">➤</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="notes">
+    <h2>How it behaves</h2>
+    <ul>
+      <li><b>Expected cash</b> is your Cash plus cash not yet explained (from withdrawals). Cash held by family is left out, and the question says so.</li>
+      <li>A count is saved every time (as a reconciliation), whatever the result. A gap stays open as a question in the chat until you answer it; it never becomes spending by itself.</li>
+      <li><b>Adjust</b> needs a typed reason and posts a cash adjustment with that reason and your sign-off (audit). It does not touch Spent.</li>
+      <li><b>Not a transfer</b> appears on any SMS the app paired as a transfer. It reverses the transfer and records the original debit as Spent and the credit as Came in.</li>
+      <li>Money is checked in whole poisha; the count accepts “2300”, “2,300” or “2300.50”.</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

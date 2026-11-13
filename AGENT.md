@@ -24,8 +24,11 @@ The dashboard reads real read models; demo mode (`NEXT_PUBLIC_DATA_SOURCE=fixtur
 shows a fixed demo household and its actions save nothing. Piece 2 (PRD CR-008)
 reads each SMS's source and remembers it (shown as chips), counts debits as Spent and
 credits as Came in except paired own-account transfers, and lets DeepSeek ask up to 3
-questions about an SMS it can't read clearly. Next: piece 3 (tips from DeepSeek) and
-piece 4 (going live).
+questions about an SMS it can't read clearly. Release gate 32 (count my cash, with an
+audited Adjust) and the "Not a transfer" undo are built (see
+[`docs/superpowers/progress/cash-count-undo.md`](docs/superpowers/progress/cash-count-undo.md)).
+Next: CR-009 (open sign-up for friends and family: global AI cap, data notice, account
+deletion), piece 3 (tips from DeepSeek) and piece 4 (going live).
 
 ## What it is
 

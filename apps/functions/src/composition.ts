@@ -26,6 +26,9 @@ import {
   CreateAccount,
   CreatePaymentInstrument,
   RecordOpeningBalance,
+  RecordCashCount,
+  RecordCashAdjustment,
+  SplitTransfer,
   type IdGenerator,
   type Logger,
   type RateLimiter,
@@ -34,6 +37,7 @@ import {
   CryptoIdGenerator,
   FirestoreAccountRepository,
   FirestoreFollowUpRepository,
+  FirestoreReconciliationRepository,
   FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
   FirestoreQuotaLedger,
@@ -73,6 +77,9 @@ export type Deps = {
   snoozeFollowUp: SnoozeFollowUp;
   recordCustodyTransfer: RecordCustodyTransfer;
   correctTransaction: CorrectTransaction;
+  recordCashCount: RecordCashCount;
+  recordCashAdjustment: RecordCashAdjustment;
+  splitTransfer: SplitTransfer;
   updateSettings: UpdateSettings;
   advanceSourceEvent: AdvanceSourceEvent;
   recoverExpiredClaims: RecoverExpiredClaims;
@@ -96,6 +103,7 @@ export function composeDeps(db: Firestore): Deps {
   const sourceEvents = new FirestoreSourceEventRepository(db, clock, logger);
   const providerCalls = new FirestoreProviderCallRepository(db, clock);
   const followUps = new FirestoreFollowUpRepository(db);
+  const reconciliations = new FirestoreReconciliationRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
   let advance: AdvanceSourceEvent | undefined;
   const quota = new FirestoreQuotaLedger(db, clock, ids);
@@ -158,6 +166,9 @@ export function composeDeps(db: Firestore): Deps {
     snoozeFollowUp: new SnoozeFollowUp({ followUps, clock }),
     recordCustodyTransfer: new RecordCustodyTransfer({ accounts, post }),
     correctTransaction: new CorrectTransaction({ reader, writer, accounts, hasher, clock }),
+    recordCashCount: new RecordCashCount({ accounts, reader, reconciliations, followUps, clock }),
+    recordCashAdjustment: new RecordCashAdjustment({ reconciliations, followUps, accounts, reader, post, clock }),
+    splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock }),
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

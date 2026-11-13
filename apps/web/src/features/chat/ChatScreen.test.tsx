@@ -100,16 +100,38 @@ function fakeCommands() {
     retrySourceEvent: vi.fn<ChatCommands["retrySourceEvent"]>(() => Promise.resolve({ status: "received" })),
     cancelSourceEvent: vi.fn<ChatCommands["cancelSourceEvent"]>(() => Promise.resolve({ status: "cancelled" })),
     answerQuestion: vi.fn<ChatCommands["answerQuestion"]>(() => Promise.resolve({ status: "received" })),
+    recordReconciliation: vi.fn<ChatCommands["recordReconciliation"]>(() => Promise.resolve(SHORT_COUNT)),
+    splitTransfer: vi.fn<ChatCommands["splitTransfer"]>(() =>
+      Promise.resolve({ spentTransactionId: "txn-a:repl:repl", cameInTransactionId: "txn-b", amountMinor: 170_000, status: "recorded" }),
+    ),
+    recordAdjustment: vi.fn<ChatCommands["recordAdjustment"]>(() =>
+      Promise.resolve({ transactionId: "txn-adjust-recon-k", status: "recorded", countedMinor: 230_000, adjustmentMinor: 70_000 }),
+    ),
   };
 }
 
-function setup(state: { events?: SourceEventRow[]; followUps?: FollowUpRow[]; accounts?: AccountRow[] } = {}) {
+const SHORT_COUNT = {
+  reconciliationId: "recon-k",
+  status: "recorded" as const,
+  countedMinor: 230_000,
+  expectedMinor: 300_000,
+  cashMinor: 150_000,
+  unexplainedMinor: 150_000,
+  differenceMinor: -70_000,
+  followUpId: "fu-recon-k",
+};
+
+function setup(
+  state: { events?: SourceEventRow[]; followUps?: FollowUpRow[]; accounts?: AccountRow[]; startWith?: "cashCount" } = {},
+) {
   const gateway = new InMemoryReadModelGateway();
   gateway.setAccounts(state.accounts ?? ACCOUNTS);
   gateway.setSourceEvents(state.events ?? []);
   gateway.setFollowUps(state.followUps ?? []);
   const commands = fakeCommands();
-  const view = render(<ChatScreen gateway={gateway} commands={commands} />);
+  const view = render(
+    <ChatScreen gateway={gateway} commands={commands} {...(state.startWith === undefined ? {} : { startWith: state.startWith })} />,
+  );
   return { gateway, commands, ...view };
 }
 
@@ -638,6 +660,325 @@ describe("keyboard", () => {
   });
 });
 
+const gapFollowUp = (extra: Partial<FollowUpRow> = {}): FollowUpRow =>
+  followUp({
+    id: "fu-recon-k",
+    trigger: "reconciliationDifference",
+    targetTransactionId: undefined,
+    targetAccountId: "cash-main",
+    targetReconciliationId: "recon-k",
+    question: "Your cash count was ৳700 less than expected. What explains the difference?",
+    ...extra,
+  });
+
+const amountField = () => screen.getByLabelText<HTMLInputElement>("Cash you have, in taka");
+
+function check(text: string) {
+  fireEvent.change(amountField(), { target: { value: text } });
+  fireEvent.click(button("Check"));
+}
+
+describe("count my cash (gate 32)", () => {
+  it("the quick action opens the count, and Check sends the amount in poisha", async () => {
+    const { commands } = setup();
+    fireEvent.click(button("Count my cash"));
+    expect(screen.getByText("How much cash do you have right now?")).toBeTruthy();
+    expect(screen.getByText("Count your wallet and any cash at home. Leave out cash family members are holding.")).toBeTruthy();
+    expect(amountField().inputMode).toBe("decimal");
+    check("2,300");
+    await waitFor(() => {
+      expect(commands.recordReconciliation).toHaveBeenCalledTimes(1);
+    });
+    expect(commands.recordReconciliation.mock.calls[0]?.[0]).toMatchObject({ countedMinor: 230_000, currency: "BDT" });
+  });
+
+  it("a short count shows the gap and every line of the sum, and says nothing changed", async () => {
+    setup({ startWith: "cashCount" });
+    check("2300");
+    expect(await screen.findByText("৳700 isn't accounted for")).toBeTruthy();
+    const card = screen.getByRole("group", { name: "Cash count" });
+    for (const [label, value] of [
+      ["Cash", "৳1,500"],
+      ["Not yet explained", "৳1,500"],
+      ["The app expected", "৳3,000"],
+      ["You counted", "৳2,300"],
+      ["Difference", "−৳700"],
+    ] as const) {
+      expect(within(card).getByText(label).parentElement?.textContent).toContain(value);
+    }
+    expect(card.textContent).toContain("Nothing has been changed, and this isn't counted as spending.");
+    expect(button("Tell me what it was for")).toBeTruthy();
+    expect(button("Adjust to my count…")).toBeTruthy();
+    expect(button("Leave it open")).toBeTruthy();
+  });
+
+  it("the stored question for this count is not shown twice", async () => {
+    const { gateway } = setup({ startWith: "cashCount" });
+    check("2300");
+    await screen.findByText("৳700 isn't accounted for");
+    act(() => {
+      gateway.setFollowUps([gapFollowUp()]);
+    });
+    expect(screen.queryByText("Your cash count was ৳700 less than expected. What explains the difference?")).toBeNull();
+  });
+
+  it("a count over expected says more", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordReconciliation.mockResolvedValueOnce({ ...SHORT_COUNT, countedMinor: 310_000, differenceMinor: 10_000 });
+    check("3100");
+    expect(await screen.findByText("৳100 more than expected")).toBeTruthy();
+    expect(screen.getByText("Difference").parentElement?.textContent).toContain("+৳100");
+  });
+
+  it("a matching count says so and offers nothing to do", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordReconciliation.mockResolvedValueOnce({
+      reconciliationId: "recon-k",
+      status: "recorded",
+      countedMinor: 300_000,
+      expectedMinor: 300_000,
+      cashMinor: 150_000,
+      unexplainedMinor: 150_000,
+      differenceMinor: 0,
+    });
+    check("3000");
+    expect(await screen.findByText("Recorded · Your count matches. ৳3,000 — nothing to do.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Adjust to my count…" })).toBeNull();
+  });
+
+  it("counting zero is sent", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    check("0");
+    await waitFor(() => {
+      expect(commands.recordReconciliation).toHaveBeenCalledWith(expect.objectContaining({ countedMinor: 0 }));
+    });
+  });
+
+  it("an unclear amount is refused before anything is sent", () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    check("abc");
+    expect(screen.getByRole("alert").textContent).toBe("Type an amount like 2300 or 2,300.50");
+    expect(commands.recordReconciliation).not.toHaveBeenCalled();
+  });
+
+  it("a double tap sends once, and a retry after a failure reuses the same key", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    const pending = deferred<typeof SHORT_COUNT>();
+    commands.recordReconciliation.mockReturnValueOnce(pending.promise);
+    check("2300");
+    fireEvent.click(button("Check"));
+    expect(commands.recordReconciliation).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pending.reject(new Error("offline"));
+      await pending.promise.catch(() => undefined);
+    });
+    expect(screen.getByRole("alert").textContent).toBe("Couldn't confirm your count. Try again — it won't be saved twice.");
+    fireEvent.click(button("Check"));
+    await waitFor(() => {
+      expect(commands.recordReconciliation).toHaveBeenCalledTimes(2);
+    });
+    const [first, second] = commands.recordReconciliation.mock.calls;
+    expect(second?.[0].idempotencyKey).toBe(first?.[0].idempotencyKey);
+  });
+
+  it("adjusting needs a reason, then records it and says what it is", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Adjust to my count…" }));
+    expect(screen.getByText("Adjust your cash to ৳2,300?")).toBeTruthy();
+    expect(screen.getByText("Recorded as a cash adjustment of −৳700 with your reason. It is not counted as spending.")).toBeTruthy();
+    fireEvent.click(button("Adjust"));
+    expect(commands.recordAdjustment).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Why is it different? (required)"), { target: { value: "maybe lost" } });
+    fireEvent.click(button("Adjust"));
+    expect(
+      await screen.findByText("Recorded · Cash now matches your count of ৳2,300. The ৳700 adjustment is saved with your reason."),
+    ).toBeTruthy();
+    expect(commands.recordAdjustment).toHaveBeenCalledWith({ reconciliationId: "recon-k", cause: "maybe lost" });
+  });
+
+  it("a failed adjustment claims nothing", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordAdjustment.mockRejectedValueOnce(new Error("offline"));
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Adjust to my count…" }));
+    fireEvent.change(screen.getByLabelText("Why is it different? (required)"), { target: { value: "maybe lost" } });
+    fireEvent.click(button("Adjust"));
+    expect((await screen.findByRole("alert")).textContent).toBe("Couldn't confirm the adjustment. Try again — it won't be recorded twice.");
+    expect(screen.queryByText(/Cash now matches/)).toBeNull();
+  });
+
+  it("a count that can no longer be adjusted says so instead of asking to try again", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordAdjustment.mockRejectedValueOnce(Object.assign(new Error("invalidTransition"), { code: "functions/failed-precondition" }));
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Adjust to my count…" }));
+    fireEvent.change(screen.getByLabelText("Why is it different? (required)"), { target: { value: "maybe lost" } });
+    fireEvent.click(button("Adjust"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This count was replaced by a newer one or already adjusted. Count again to check.",
+    );
+  });
+
+  it("leave it open closes the choices and calls nothing", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Leave it open" }));
+    expect(screen.queryByRole("button", { name: "Adjust to my count…" })).toBeNull();
+    expect(screen.getByText("Left open · it stays as a question here.")).toBeTruthy();
+    expect(commands.recordAdjustment).not.toHaveBeenCalled();
+  });
+
+  it("tell me what it was for focuses the composer with an example", async () => {
+    setup({ startWith: "cashCount" });
+    check("2300");
+    fireEvent.click(await screen.findByRole("button", { name: "Tell me what it was for" }));
+    expect(document.activeElement).toBe(composer());
+    expect(composer().placeholder).toBe("e.g. ৳500 rickshaw and lunch, ৳200 to Rafi");
+  });
+
+  it("a stored gap question offers the same three answers", async () => {
+    const { commands } = setup({ followUps: [gapFollowUp()] });
+    const question = screen.getByRole("group", { name: "Your cash count was ৳700 less than expected. What explains the difference?" });
+    expect(within(question).getByRole("button", { name: "Tell me what it was for" })).toBeTruthy();
+    fireEvent.click(within(question).getByRole("button", { name: "Adjust to my count…" }));
+    expect(screen.getByText("Adjust your cash to your count?")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Why is it different? (required)"), { target: { value: "spent, forgot" } });
+    fireEvent.click(button("Adjust"));
+    await waitFor(() => {
+      expect(commands.recordAdjustment).toHaveBeenCalledWith({ reconciliationId: "recon-k", cause: "spent, forgot" });
+    });
+  });
+
+  it("a stored gap question without its count hides Adjust", () => {
+    setup({ followUps: [gapFollowUp({ targetReconciliationId: undefined })] });
+    expect(screen.queryByRole("button", { name: "Adjust to my count…" })).toBeNull();
+    expect(button("Leave it open")).toBeTruthy();
+  });
+
+  it("in demo mode a count says nothing was saved", async () => {
+    const { commands } = setup({ startWith: "cashCount" });
+    commands.recordReconciliation.mockRejectedValueOnce(new DemoUnavailableError());
+    check("2300");
+    expect((await screen.findByRole("alert")).textContent).toBe(COPY.demoUnavailable);
+  });
+});
+
+const PAIR_ACCOUNTS: AccountRow[] = [
+  ...ACCOUNTS,
+  account("src-ucb-7777", "bank", "UCB card ••7777"),
+  account("src-bkash-main", "cash", "bKash"),
+];
+
+const pairedCredit = (extra: Partial<SourceEventRow> = {}) =>
+  event({
+    id: "event-b",
+    status: "posted",
+    retainedText: "You have received Tk 1,700.00 … bKash",
+    candidate: candidate({ kind: "unclassifiedCredit", amountMinor: 170_000 }),
+    matchKind: "transferCounterpart",
+    matchedTransactionId: "txn-event-a:repl",
+    resolvedAccountId: "src-bkash-main",
+    resolvedDestinationAccountId: "src-ucb-7777",
+    ...extra,
+  });
+
+describe("not a transfer (CR-008 §9)", () => {
+  it("a paired transfer offers to count the two SMS separately, naming each side", () => {
+    setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    const panel = screen.getByRole("group", { name: "Count these two separately?" });
+    expect(within(panel).getByText("Spent, from UCB card ••7777").parentElement?.textContent).toContain("৳1,700");
+    expect(within(panel).getByText("Came in, to bKash").parentElement?.textContent).toContain("৳1,700");
+    expect(panel.textContent).toContain("The transfer is reversed and both are recorded again, with the change kept in the history.");
+  });
+
+  it("the debit half names the debit source as Spent", () => {
+    setup({
+      events: [
+        pairedCredit({
+          candidate: candidate({ kind: "unclassifiedDebit", amountMinor: 170_000 }),
+          resolvedAccountId: "src-ucb-7777",
+          resolvedDestinationAccountId: "src-bkash-main",
+        }),
+      ],
+      accounts: PAIR_ACCOUNTS,
+    });
+    fireEvent.click(button("Not a transfer?"));
+    expect(screen.getByText("Spent, from UCB card ••7777")).toBeTruthy();
+    expect(screen.getByText("Came in, to bKash")).toBeTruthy();
+  });
+
+  it("keep as transfer closes it and changes nothing", () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Keep as transfer"));
+    expect(screen.queryByRole("group", { name: "Count these two separately?" })).toBeNull();
+    expect(commands.splitTransfer).not.toHaveBeenCalled();
+  });
+
+  it("yes splits once, even on a double tap, and says what was recorded", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    const pending = deferred<Awaited<ReturnType<ChatCommands["splitTransfer"]>>>();
+    commands.splitTransfer.mockReturnValueOnce(pending.promise);
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    fireEvent.click(button("Yes, count separately"));
+    expect(commands.splitTransfer).toHaveBeenCalledTimes(1);
+    expect(commands.splitTransfer).toHaveBeenCalledWith({ sourceEventId: "event-b" });
+    await act(async () => {
+      pending.resolve({ spentTransactionId: "a", cameInTransactionId: "b", amountMinor: 170_000, status: "recorded" });
+      await pending.promise;
+    });
+    expect(screen.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeTruthy();
+  });
+
+  it("the done line stays when the server's update arrives, and a split message offers nothing more", async () => {
+    const { gateway } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    await screen.findByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.");
+    act(() => {
+      gateway.setSourceEvents([pairedCredit({ matchKind: "none", resolvedDestinationAccountId: null })]);
+    });
+    expect(screen.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeTruthy();
+    cleanup();
+    setup({ events: [pairedCredit({ matchKind: "none", resolvedDestinationAccountId: null })], accounts: PAIR_ACCOUNTS });
+    expect(screen.queryByRole("button", { name: "Not a transfer?" })).toBeNull();
+  });
+
+  it("a failed split claims nothing", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    commands.splitTransfer.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    expect((await screen.findByRole("alert")).textContent).toBe("Couldn't confirm the change. Try again — it won't be made twice.");
+    expect(screen.queryByText(/Counted separately/)).toBeNull();
+  });
+
+  it("a transfer that was already changed says so instead of asking to try again", async () => {
+    const { commands } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    commands.splitTransfer.mockRejectedValueOnce(Object.assign(new Error("invalidTransition"), { code: "functions/failed-precondition" }));
+    fireEvent.click(button("Not a transfer?"));
+    fireEvent.click(button("Yes, count separately"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This was already changed, so it can't be split here. Nothing new was recorded.",
+    );
+  });
+
+  it("a message that isn't a paired transfer has no button", () => {
+    setup({ events: [event({ status: "posted", candidate: candidate() })], accounts: PAIR_ACCOUNTS });
+    expect(screen.queryByRole("button", { name: "Not a transfer?" })).toBeNull();
+  });
+
+  it("has no axe violations with the panel open", async () => {
+    const { container } = setup({ events: [pairedCredit()], accounts: PAIR_ACCOUNTS });
+    fireEvent.click(button("Not a transfer?"));
+    const results = await axe.run(container, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } });
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
 describe("axe", () => {
   const states: [string, Parameters<typeof setup>[0]][] = [
     ["empty", {}],
@@ -657,6 +998,18 @@ describe("axe", () => {
       rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
     });
     expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("has no axe violations on the count, the gap and the adjust form", async () => {
+    const { container } = setup({ startWith: "cashCount" });
+    const run = async () =>
+      (await axe.run(container, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } })).violations.map((v) => v.id);
+    expect(await run()).toEqual([]);
+    check("2300");
+    await screen.findByText("৳700 isn't accounted for");
+    expect(await run()).toEqual([]);
+    fireEvent.click(button("Adjust to my count…"));
+    expect(await run()).toEqual([]);
   });
 
   it("says a demo send was not saved instead of asking to send again", async () => {

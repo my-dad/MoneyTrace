@@ -28,6 +28,9 @@ button.menuItem { cursor:pointer; border-top:1px solid var(--mt-border-soft); bo
 .unexplained { margin-top:10px; display:flex; justify-content:space-between; gap:10px; padding:10px 14px; border:1.5px dashed var(--mt-border-dashed); border-radius:14px; background:var(--mt-surface-soft); font-size:13px; }
 .unexplained small { display:block; font-size:12px; color:var(--mt-caption); }
 .unexplained b { white-space:nowrap; }
+.unexplained { flex-wrap:wrap; align-items:center; }
+.countLink { min-height:44px; padding:0 12px; border:none; background:none; color:var(--mt-accent); font:inherit; font-weight:700; cursor:pointer; white-space:nowrap; }
+.countLink:focus-visible { outline:2px solid var(--mt-accent); outline-offset:2px; border-radius:8px; }
 
 .card { margin-top:12px; background:var(--mt-surface); border:1px solid var(--mt-border); border-radius:18px; padding:14px 16px; }
 .card h3 { margin:0 0 10px; font-size:13px; font-weight:600; color:var(--mt-caption); }

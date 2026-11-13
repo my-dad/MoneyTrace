@@ -6,7 +6,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createFixtureCommands } from "../../shared/fixture-commands";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
 import { FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS } from "../../shared/fixtures/household";
-import { ChatLauncher, openQuestionCount } from "./ChatLauncher";
+import { ChatLauncher, openQuestionCount, useChatOpener } from "./ChatLauncher";
+
+function CountButton() {
+  const opener = useChatOpener();
+  return opener === null ? null : (
+    <button type="button" onClick={() => { opener.openChat("cashCount"); }}>
+      Count from the page
+    </button>
+  );
+}
 
 afterEach(cleanup);
 
@@ -19,6 +28,22 @@ const open = () =>
   );
 
 describe("ChatLauncher", () => {
+  it("lets the page open the chat straight on the cash count", () => {
+    render(
+      <ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={FIXTURE_NOW_MS}>
+        <CountButton />
+      </ChatLauncher>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Count from the page" }));
+    const dialog = screen.getByRole("dialog", { name: "Chat" });
+    expect(within(dialog).getByText("How much cash do you have right now?")).toBeTruthy();
+  });
+
+  it("outside a launcher there is no opener", () => {
+    render(<CountButton />);
+    expect(screen.queryByRole("button", { name: "Count from the page" })).toBeNull();
+  });
+
   it("opens, traps focus, closes on Escape and returns focus", () => {
     open();
     const button = screen.getByRole("button", { name: /Open chat/ });

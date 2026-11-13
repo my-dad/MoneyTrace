@@ -367,9 +367,21 @@ export class FirestoreLedgerWriter implements LedgerWriter {
           existingReplacement = await this.readTx(t, ownerId, r.transaction.id);
           assertTransition(existingReplacement?.state ?? null, "posted");
         }
+        if (c.alsoPost) {
+          const extra = c.alsoPost;
+          assertPostingAfterCutover(
+            extra.entries,
+            LedgerDate.fromEpochMs(extra.transaction.occurredAtMs),
+            await this.readMarkers(t, ownerId, extra.entries),
+            false,
+          );
+          if ((await this.readTx(t, ownerId, extra.transaction.id)) !== null) {
+            throw new DomainError("invalidTransition", "that transaction already exists");
+          }
+        }
 
         const touched = idsOf(
-          [...c.reversalEntries, ...(c.replacement?.entries ?? [])],
+          [...c.reversalEntries, ...(c.replacement?.entries ?? []), ...(c.alsoPost?.entries ?? [])],
           c.cutoverMarker,
         );
         await this.applyDeltas(t, ownerId, touched, () => {
@@ -395,6 +407,9 @@ export class FirestoreLedgerWriter implements LedgerWriter {
               staged,
               existingReplacement ? "set" : "create",
             );
+          }
+          if (c.alsoPost) {
+            this.stage(t, ownerId, c.alsoPost.transaction, c.alsoPost.entries, staged, "create");
           }
           if (c.cutoverMarker) {
             this.stageMarker(

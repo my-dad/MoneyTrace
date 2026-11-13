@@ -4,6 +4,18 @@ import { asAccountId, type AccountId, type OwnerId } from "@moneytrace/domain";
 import type { Firestore } from "firebase-admin/firestore";
 import { ownerPath } from "./paths";
 
+function toRecord(data: unknown): AccountRecord {
+  const d = OWNER_COLLECTIONS.accounts.parse(data);
+  return {
+    id: asAccountId(d.id),
+    kind: d.kind,
+    name: d.name,
+    currency: d.currency,
+    status: d.status,
+    createdAtMs: d.createdAtMs,
+  };
+}
+
 export class FirestoreAccountRepository implements AccountRepository {
   private readonly db: Firestore;
 
@@ -27,6 +39,11 @@ export class FirestoreAccountRepository implements AccountRepository {
     });
   }
 
+  async list(ownerId: OwnerId): Promise<AccountRecord[]> {
+    const snap = await this.db.collection(ownerPath(ownerId, "accounts")).get();
+    return snap.docs.map((s) => toRecord(s.data()));
+  }
+
   async getMany(ownerId: OwnerId, ids: readonly AccountId[]): Promise<AccountRecord[]> {
     const unique = [...new Set(ids)];
     if (unique.length === 0) return [];
@@ -36,15 +53,7 @@ export class FirestoreAccountRepository implements AccountRepository {
     const found: AccountRecord[] = [];
     for (const s of snaps) {
       if (!s.exists) continue;
-      const d = OWNER_COLLECTIONS.accounts.parse(s.data());
-      found.push({
-        id: asAccountId(d.id),
-        kind: d.kind,
-        name: d.name,
-        currency: d.currency,
-        status: d.status,
-        createdAtMs: d.createdAtMs,
-      });
+      found.push(toRecord(s.data()));
     }
     return found;
   }

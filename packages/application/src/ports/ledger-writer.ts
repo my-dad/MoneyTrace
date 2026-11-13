@@ -30,6 +30,11 @@ export type CorrectionCommit = {
   };
   /** Present exactly when the original is an opening balance: replaces the account's marker. */
   cutoverMarker?: CutoverMarker;
+  /**
+   * A new transaction written in the same atomic step (the second SMS when a transfer is split).
+   * Needs a replacement; it has no `correctionOf`, must not exist yet, and passes the cutover check.
+   */
+  alsoPost?: { transaction: TransactionRecord; entries: readonly EntryDraft[] };
 };
 
 export type LedgerCommitResult =
@@ -59,6 +64,8 @@ export type LedgerCommitResult =
  * is refused with `cutoverHasActivity` if any entry of that account outside opening-balance
  * transactions is dated at or before the new date, reversed or not. The replacement must link
  * back through `correctionOf`. Entry sets may be empty only for an opening balance with no entries.
+ * `alsoPost` is written in the same step; an existing id is `invalidTransition`, and a missing
+ * replacement or an opening original is `invalidIntent`.
  */
 export type LedgerWriter = {
   commit(ownerId: OwnerId, c: LedgerCommit): Promise<LedgerCommitResult>;

@@ -201,6 +201,18 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
         }
         assertTransition(s.transactions.get(r.transaction.id)?.state ?? null, "posted");
       }
+      if (c.alsoPost) {
+        const extra = c.alsoPost;
+        assertPostingAfterCutover(
+          extra.entries,
+          LedgerDate.fromEpochMs(extra.transaction.occurredAtMs),
+          markersOf(s),
+          false,
+        );
+        if (s.transactions.has(extra.transaction.id)) {
+          throw new DomainError("invalidTransition", "that transaction already exists");
+        }
+      }
 
       s.transactions.set(original.id, {
         ...original,
@@ -209,6 +221,7 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
       });
       InMemoryLedger.write(s, c.reversal, c.reversalEntries);
       if (c.replacement) InMemoryLedger.write(s, c.replacement.transaction, c.replacement.entries);
+      if (c.alsoPost) InMemoryLedger.write(s, c.alsoPost.transaction, c.alsoPost.entries);
       if (c.cutoverMarker) {
         s.markers.set(c.cutoverMarker.accountId, {
           effectiveAtMs: c.cutoverMarker.effectiveAt.epochMs,
@@ -311,6 +324,10 @@ export class InMemoryAccountRepository implements AccountRepository {
       this.owners.set(ownerId, accounts);
       if (!accounts.has(record.id)) accounts.set(record.id, { ...record });
     });
+  }
+
+  list(ownerId: OwnerId): Promise<AccountRecord[]> {
+    return atomically(() => [...(this.owners.get(ownerId)?.values() ?? [])].map((r) => ({ ...r })));
   }
 
   getMany(ownerId: OwnerId, ids: readonly AccountId[]): Promise<AccountRecord[]> {

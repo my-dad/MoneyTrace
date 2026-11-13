@@ -100,6 +100,45 @@ describe("authenticated callables", { timeout: 60_000 }, () => {
     expect(tx.error?.status).toBe("NOT_FOUND");
   });
 
+  it("the cash count, adjustment and split callables require a token", async () => {
+    for (const [name, data] of [
+      ["recordReconciliation", { idempotencyKey: "k", countedMinor: 0, currency: "BDT" }],
+      ["recordAdjustment", { reconciliationId: "recon-k", cause: "x" }],
+      ["splitTransfer", { sourceEventId: "se1" }],
+    ] as const) {
+      const r = await call(name, null, data);
+      expect(r.error?.status, name).toBe("UNAUTHENTICATED");
+    }
+  });
+
+  it("a cash count opens a question without changing Cash, and Adjust moves Cash to the count", async () => {
+    const user = await signUp("count");
+    unwrap(await call("bootstrapUser", user, {}));
+    unwrap(
+      await call("recordOpeningBalance", user, {
+        accountId: "cash-main",
+        amountMinor: 300_000,
+        currency: "BDT",
+        effectiveAtMs: Date.parse("2026-01-01T00:00:00Z"),
+      }),
+    );
+    const count = unwrap(
+      await call("recordReconciliation", user, { idempotencyKey: "c1", countedMinor: 230_000, currency: "BDT" }),
+    );
+    expect(count).toMatchObject({ reconciliationId: "recon-c1", expectedMinor: 300_000, differenceMinor: -70_000, followUpId: "fu-recon-c1" });
+    expect(await balanceOf(user.uid, "cash-main")).toBe(300_000);
+    expect((await db.doc(`users/${user.uid}/followUps/fu-recon-c1`).get()).get("state")).toBe("open");
+
+    const adjusted = unwrap(await call("recordAdjustment", user, { reconciliationId: "recon-c1", cause: "maybe lost" }));
+    expect(adjusted).toMatchObject({ status: "recorded", countedMinor: 230_000, adjustmentMinor: 70_000 });
+    expect(await balanceOf(user.uid, "cash-main")).toBe(230_000);
+    expect((await db.doc(`users/${user.uid}/followUps/fu-recon-c1`).get()).get("state")).toBe("resolved");
+    const again = await call("recordAdjustment", user, { reconciliationId: "recon-c1", cause: "maybe lost" });
+    expect(again.result?.["status"]).toBe("alreadyRecorded");
+    const notPaired = await call("splitTransfer", user, { sourceEventId: "nope" });
+    expect(notPaired.error?.status).toBe("NOT_FOUND");
+  });
+
   it("submitEvidence requires a token", async () => {
     const r = await call("submitEvidence", null, { idempotencyKey: "k", text: "paid 500" });
     expect(r.status).toBe(401);

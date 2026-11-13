@@ -18,8 +18,9 @@ export function AppShell({ children, services }: { children: ReactNode; services
       {resolved.fixture && <DemoMarker />}
       <OfflineBanner />
       <AuthGate gateway={resolved.auth}>
-        <div className={styles.content}>{children}</div>
-        <ChatLauncher gateway={resolved.readModels} commands={resolved.commands} nowMs={resolved.nowMs()} />
+        <ChatLauncher gateway={resolved.readModels} commands={resolved.commands} nowMs={resolved.nowMs()}>
+          <div className={styles.content}>{children}</div>
+        </ChatLauncher>
       </AuthGate>
     </AppServicesProvider>
   );

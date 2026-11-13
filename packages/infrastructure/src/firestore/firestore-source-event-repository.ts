@@ -8,6 +8,7 @@ import {
   decideReopen,
   decideAnswer,
   decideUserDecision,
+  decideTransferSplit,
   holdsClaim,
   newSourceEvent,
   sourceHashRecordId,
@@ -282,6 +283,10 @@ export class FirestoreSourceEventRepository implements SourceEventRepository {
     decision: UserDecision,
   ): Promise<"applied" | "stale"> {
     return this.transition(ownerId, id, "applied", (e) => decideUserDecision(e, decision));
+  }
+
+  markTransferSplit(ownerId: OwnerId, id: SourceEventId, transferId: string): Promise<"applied" | "stale"> {
+    return this.transition(ownerId, id, "applied", (e) => decideTransferSplit(e, transferId));
   }
 
   private transition<R extends string>(

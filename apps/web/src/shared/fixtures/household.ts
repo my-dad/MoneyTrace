@@ -364,6 +364,7 @@ export const FIXTURE_FOLLOW_UPS: FollowUpRow[] = [
     id: "fu-home-count",
     trigger: "reconciliationDifference",
     targetAccountId: "cash-home",
+    targetReconciliationId: "recon-home-1",
     question: "Home cash counted ৳300 less than expected. What explains the difference?",
     dueAtMs: at("2026-11-08T21:00:00"),
     snoozedUntilMs: at("2026-12-01T09:00:00"),

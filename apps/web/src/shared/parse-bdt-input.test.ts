@@ -19,4 +19,13 @@ describe("parseBdtInput", () => {
       expect(parseBdtInput(text)).toBeNull();
     },
   );
+
+  it("a cash count may be zero, and still refuses anything unclear", () => {
+    expect(parseBdtInput("0", { allowZero: true })).toBe(0);
+    expect(parseBdtInput("0.00", { allowZero: true })).toBe(0);
+    expect(parseBdtInput("2,300.50", { allowZero: true })).toBe(230050);
+    expect(parseBdtInput("0")).toBeNull();
+    expect(parseBdtInput("-1", { allowZero: true })).toBeNull();
+    expect(parseBdtInput("abc", { allowZero: true })).toBeNull();
+  });
 });

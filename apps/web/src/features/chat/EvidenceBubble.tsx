@@ -6,10 +6,15 @@ import { CHAT_COPY } from "../../shared/copy";
 import styles from "./chat.module.css";
 import { TransactionPreview } from "./TransactionPreview";
 import { QuestionThread } from "./QuestionThread";
+import { SplitTransferPanel } from "./SplitTransferPanel";
 import { toRecentItems } from "../dashboard/recent-items";
 import { useAction } from "../../shared/use-action";
 
 type EvidenceItem = Extract<ChatItem, { kind: "evidence" }>;
+
+/** Split by "Not a transfer": no longer paired, still pointing at the reversed transfer. */
+const wasSplit = (event: EvidenceItem["event"]): boolean =>
+  event.matchKind === "none" && event.matchedTransactionId?.endsWith(":repl") === true;
 
 const timeFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Dhaka",
@@ -80,7 +85,7 @@ export function EvidenceBubble({
 }: {
   item: EvidenceItem;
   accounts: AccountRow[];
-  commands: Pick<Commands, "confirmCandidate" | "retrySourceEvent" | "cancelSourceEvent" | "answerQuestion">;
+  commands: Pick<Commands, "confirmCandidate" | "retrySourceEvent" | "cancelSourceEvent" | "answerQuestion" | "splitTransfer">;
 }) {
   const { event } = item;
   const { busy, failed, run } = useAction();
@@ -113,6 +118,10 @@ export function EvidenceBubble({
           <span className={styles.chips}>
             {chips.map((chip, index) => <span key={`${chip}-${String(index)}`} className={styles.chip}>{chip}</span>)}
           </span>
+        )}
+        {/* A split message stays mounted, so its done line survives the server's update. */}
+        {item.outcome === "recorded" && (event.matchKind === "transferCounterpart" || wasSplit(event)) && (
+          <SplitTransferPanel event={event} accounts={accounts} splitTransfer={commands.splitTransfer} />
         )}
         {(unknown || quota) && (
           <>

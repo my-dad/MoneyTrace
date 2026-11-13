@@ -92,6 +92,20 @@ export function assertCorrectionShape(original: TransactionRecord, c: Correction
       assertBalanced(replacement.entries);
     }
   }
+  if (c.alsoPost) {
+    const t = c.alsoPost.transaction;
+    if (replacement === undefined || isOpening) {
+      throw invalid("an extra posting needs a replacement and cannot touch an opening");
+    }
+    if (t.correctionOf !== undefined || t.state !== "posted") {
+      throw invalid("an extra posting is a new posted transaction");
+    }
+    if ([original.id, reversal.id, replacement.transaction.id].includes(t.id)) {
+      throw invalid("an extra posting must have its own transaction id");
+    }
+    if (c.alsoPost.entries.length === 0) throw invalid("an extra posting needs entries");
+    assertBalanced(c.alsoPost.entries);
+  }
 }
 
 /** Same provider, and the shorter of two endings is a suffix of the other. A wallet has no digits. */

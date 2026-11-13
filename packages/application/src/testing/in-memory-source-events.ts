@@ -30,6 +30,7 @@ import {
   decideReopen,
   decideAnswer,
   decideUserDecision,
+  decideTransferSplit,
   holdsClaim,
   isLeaseExpired,
   newSourceEvent,
@@ -239,6 +240,14 @@ export class InMemorySourceEvents implements SourceEventRepository {
   ): Promise<"applied" | "stale"> {
     const d = this.data(ownerId);
     const next = decideUserDecision(d.events.get(id) ?? null, decision);
+    if (next === null) return Promise.resolve("stale");
+    d.events.set(id, next);
+    return Promise.resolve("applied");
+  }
+
+  markTransferSplit(ownerId: OwnerId, id: SourceEventId, transferId: string): Promise<"applied" | "stale"> {
+    const d = this.data(ownerId);
+    const next = decideTransferSplit(d.events.get(id) ?? null, transferId);
     if (next === null) return Promise.resolve("stale");
     d.events.set(id, next);
     return Promise.resolve("applied");

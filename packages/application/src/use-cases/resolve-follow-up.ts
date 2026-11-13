@@ -91,7 +91,11 @@ export class ResolveFollowUp {
     const entries = await reader.getEntries(ownerId, await currentVersion(reader, ownerId, followUp.targetTransactionId));
     const entry = entries.find((e) => e.accountId === SYSTEM_CASH_ACCOUNT_ID && e.side === "debit");
     if (entry === undefined) throw new DomainError("invalidIntent", "nothing to place");
-    const amount = Money.ofMinor(entry.amountMinor, entry.currency);
+    // A cash count may already have taken some of it: never move more than is still there.
+    const held = await reader.getBalance(ownerId, SYSTEM_CASH_ACCOUNT_ID);
+    const minor = Math.min(entry.amountMinor, held);
+    if (minor <= 0) return;
+    const amount = Money.ofMinor(minor, entry.currency);
     let intent: PostingIntent;
     if (destination.kind === "cash") {
       intent = { type: "transfer", from: refOf(from), to: refOf(destination), amount };

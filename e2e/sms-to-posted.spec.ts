@@ -22,6 +22,8 @@ async function paste(page: Page, text: string) {
 }
 
 test("SMS are read for their source: Came in, Spent, and an own transfer counted in neither", async ({ page }) => {
+  // Four SMS through the emulated pipeline, then the split: longer than the 30 s default.
+  test.setTimeout(120_000);
   await page.goto("/");
   await page.getByRole("button", { name: "Sign in with Google" }).click();
   await expect(page.getByText("Paste a bank SMS or tell me about a purchase to get started.")).toBeVisible();
@@ -41,4 +43,30 @@ test("SMS are read for their source: Came in, Spent, and an own transfer counted
   await expect(recent.getByText("Transfer").first()).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("group", { name: "Spent" })).toContainText("৳1,900");
   await expect(page.getByRole("group", { name: "Came in" })).toContainText("৳15,000");
+
+  // Not a transfer (CR-008 §9): the two SMS are counted separately again.
+  await page.getByRole("button", { name: /Open chat/ }).click();
+  const chat = page.getByRole("dialog", { name: "Chat" });
+  await chat.getByRole("button", { name: "Not a transfer?" }).click();
+  await chat.getByRole("button", { name: "Yes, count separately" }).click();
+  await expect(chat.getByText("Recorded · Counted separately: Spent ৳1,700 and Came in ৳1,700.")).toBeVisible({ timeout: 45_000 });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("group", { name: "Spent" })).toContainText("৳3,600");
+  await expect(page.getByRole("group", { name: "Came in" })).toContainText("৳16,700");
+});
+
+test("a cash count shows the gap without changing anything, and Adjust needs a reason (gate 32)", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign in with Google" }).click();
+  await page.getByRole("button", { name: /Open chat/ }).click();
+  const chat = page.getByRole("dialog", { name: "Chat" });
+  await chat.getByRole("button", { name: "Count my cash" }).click();
+  await chat.getByLabel("Cash you have, in taka").fill("500");
+  await chat.getByRole("button", { name: "Check" }).click();
+  await expect(chat.getByText("৳500 more than expected")).toBeVisible({ timeout: 45_000 });
+  await expect(chat.getByText("Nothing has been changed, and this isn't counted as spending.")).toBeVisible();
+  await chat.getByRole("button", { name: "Adjust to my count…" }).click();
+  await chat.getByLabel("Why is it different? (required)").fill("cash from before I started");
+  await chat.getByRole("button", { name: "Adjust", exact: true }).click();
+  await expect(chat.getByText("Recorded · Cash now matches your count of ৳500. The ৳500 adjustment is saved with your reason.")).toBeVisible({ timeout: 45_000 });
 });
