@@ -97,6 +97,8 @@ a.menuItem:focus-visible { outline:3px solid var(--mt-focus); }
 @media (min-width: 1024px) {
   .page { padding:16px 28px 48px; }
   .columns { grid-template-columns:1fr 1fr; align-items:start; gap:14px; }
+  /* The month governs the left column (Spent, Came in, the chart), so its switcher spans exactly that. */
+  .month { max-width:none; width:calc(50% - 7px); }
   .columns > div > .card:first-child { margin-top:0; }
 }
 
