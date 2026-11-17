@@ -140,5 +140,5 @@ function usd(micro: number): string {
 export function aiSpendLabel(rows: AiUsageRow[]): string {
   const spent = rows.reduce((sum, row) => sum + (row.actualMicroUsd ?? row.estimatedMicroUsd), 0);
   // Limits differ by person (CR-009), so the label states only what was used.
-  return `${usd(spent)} used this month`;
+  return `${usd(spent)} used`;
 }

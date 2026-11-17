@@ -1,11 +1,11 @@
 export const COPY = {
-  recorded: "Recorded · saved to your ledger",
+  recorded: "Recorded · saved",
   waiting: "Waiting for your answer · not saved yet",
   failed: "Failed · nothing was saved",
   notAnExpense: "Not an expense. Your total money stays the same.",
   otpRefused: "This looks like a one-time code or secret. Nothing was saved.",
   awaitingClarification: "Waiting for your answer · not saved yet",
-  aiQuotaExhausted: "Waiting for your answer · AI budget reached",
+  aiQuotaExhausted: "Waiting · this month's AI limit is reached, so it can't be read yet",
   providerOutcomeUnknown: "Waiting for your answer · the provider outcome is unknown",
   stageFailed: "Couldn't read · nothing was saved. If it's from your bank, paste the whole SMS exactly as it came.",
   readingFailed: "Couldn't read · something went wrong while reading it, and nothing was saved.",
@@ -72,7 +72,7 @@ export const CHAT_COPY = {
   spending: "Spending",
   transfer: "Transfer between my accounts",
   somethingElse: "Something else",
-  somethingElseHint: "I can't record this kind yet. Reject it to keep it out of your ledger.",
+  somethingElseHint: "I can't record this kind yet. Reject it so it isn't counted.",
   whichAccount: "Which account?",
   fromWhichAccount: "From which of your accounts?",
   toWhichAccount: "To which of your accounts?",
@@ -93,7 +93,7 @@ export const CHAT_COPY = {
   cancel: "Cancel",
   retryFailed: "That didn't work. Nothing changed. Please try again.",
   secondCharge:
-    "I don't know if the AI service finished reading this. Retrying could charge your AI budget a second time. Nothing is in your ledger from this message.",
+    "I don't know if the AI service finished reading this. Retrying could be charged a second time against your AI limit. Nothing has been recorded from this message.",
   // Cash count (gate 32) and "Not a transfer" (CR-008 §9), as approved in mockup I.
   countCash: "Count my cash",
   countLabel: "Cash count",
@@ -144,7 +144,7 @@ export const DASHBOARD_COPY = {
   appName: "MoneyTrace",
   greeting: "Good to see you",
   menu: "Menu",
-  aiBudget: "AI budget",
+  aiBudget: "AI help this month",
   signOut: "Sign out",
   deleteAccount: "Delete my account",
   deleteExplain:

@@ -8,7 +8,7 @@ import { AccountMenu } from "./AccountMenu";
 afterEach(cleanup);
 
 const openMenu = (onDeleteAccount = vi.fn<(confirmation: string) => Promise<void>>(() => Promise.resolve())) => {
-  const view = render(<AccountMenu aiSpend="$0.10 used this month" onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
+  const view = render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
   fireEvent.click(screen.getByRole("button", { name: "Menu" }));
   fireEvent.click(screen.getByRole("button", { name: "Delete my account" }));
   return { ...view, onDeleteAccount };
@@ -60,7 +60,7 @@ describe("closing the menu", () => {
     render(
       <div>
         <p>Elsewhere on the page</p>
-        <AccountMenu aiSpend="$0.10 used this month" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
+        <AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
       </div>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
@@ -75,7 +75,7 @@ describe("closing the menu", () => {
 
   it("a tap inside the menu keeps it open", () => {
     show();
-    fireEvent.pointerDown(screen.getByText("AI budget"));
+    fireEvent.pointerDown(screen.getByText("AI help this month"));
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
 

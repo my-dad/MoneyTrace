@@ -18,7 +18,7 @@ describe("chat view model", () => {
   });
 
   it("only a posted event says Recorded", () => {
-    expect(chatStatusCopy(event("posted"))).toBe("Recorded · saved to your ledger");
+    expect(chatStatusCopy(event("posted"))).toBe("Recorded · saved");
     for (const status of ["pending", "deadLetter", "rejected", "received", "linkedAsDuplicate", "cancelled"] as const) {
       expect(chatOutcome(event(status))).not.toBe("recorded");
       expect(chatStatusCopy(event(status))).not.toMatch(/^Recorded/);
