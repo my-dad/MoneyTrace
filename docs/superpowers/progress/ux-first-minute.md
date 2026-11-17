@@ -38,5 +38,6 @@ local app). Mabrur approved fixing #1–#5 ("lets do it"). One commit per fix, t
 - [x] #7 Not a real problem: the page already leaves 112 px under the last row, so the chat button
   never covers it (checked at phone size, scrolled to the bottom). The audit's overlap came from a
   full-page screenshot drawing the fixed button mid-page. No change.
-- [ ] #11 Focus lost when a chat card replaces the focused button (cash count Check), so Escape stops
-  working.
+- [x] #11 Focus lost when a chat card replaces the focused button (cash count Check), so Escape
+  stopped working. `useModalFocus` now watches the dialog and brings focus back to it when focus
+  falls to the page. Checked in Chromium: after Check, focus is on the dialog and Escape closes it.

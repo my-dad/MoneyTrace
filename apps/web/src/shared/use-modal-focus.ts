@@ -19,7 +19,16 @@ export function useModalFocus(onClose: () => void) {
     const target = preferred?.matches(FOCUSABLE) === true ? preferred : preferred?.querySelector<HTMLElement>(FOCUSABLE);
     const first = target ?? dialog?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? dialog)?.focus();
-    return () => { if (opener?.isConnected === true) opener.focus(); };
+    // A control that replaces itself (Check → the result) drops focus to the page, where Escape
+    // and Tab no longer reach the dialog. Catch it and bring focus back to the dialog.
+    const keeper = new MutationObserver(() => {
+      if (dialog !== null && (document.activeElement === null || document.activeElement === document.body)) dialog.focus();
+    });
+    if (dialog !== null) keeper.observe(dialog, { childList: true, subtree: true });
+    return () => {
+      keeper.disconnect();
+      if (opener?.isConnected === true) opener.focus();
+    };
   }, []);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
