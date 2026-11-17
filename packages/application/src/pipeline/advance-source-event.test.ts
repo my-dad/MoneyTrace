@@ -1006,3 +1006,44 @@ describe("a mapping the posting rules refuse", () => {
   });
 });
 });
+
+describe("transfer destinations the SMS names without a number (go-live 2026-11-17)", () => {
+  const eblToBkash = {
+    kind: "transfer",
+    amountMinor: 43_000,
+    currency: "BDT",
+    occurredAtMs: NOW,
+    provider: "ebl",
+    instrumentMask: "104",
+    counterparty: "bKash",
+  } as const;
+
+  it("a transfer to a wallet the SMS names (bKash) goes to that wallet, and posts once confirmed", async () => {
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: eblToBkash });
+    const { id, event } = await run("AC 116***104 is debited with BDT 430 as EBL Skybanking MFS Transfer-bKash");
+    expect(event).toMatchObject({
+      status: "pending",
+      resolvedAccountId: "src-ebl-104",
+      resolvedDestinationAccountId: "src-bkash-main",
+    });
+    await confirm.execute({ ownerId: alice, sourceEventId: id, decision: "confirm" });
+    expect((await settle(alice, id))?.status).toBe("posted");
+    expect(await balance("src-ebl-104")).toBe(-43_000);
+    expect(await balance("src-bkash-main")).toBe(43_000);
+    expect((await entriesOf(id)).some((e) => e.accountKind === "expense")).toBe(false);
+  });
+
+  it("a transfer the user sends from a bank to their own cash is recorded as a withdrawal, not refused", async () => {
+    const { id } = await run(UCB_DEBIT_SMS);
+    await confirm.execute({
+      ownerId: alice,
+      sourceEventId: id,
+      decision: "confirm",
+      overrides: { kind: "transfer", destinationAccountId: "wallet", occurredAtMs: NOW },
+    });
+    expect((await settle(alice, id))?.status).toBe("posted");
+    expect(await balance("ucb-bank")).toBe(10_000_000 - 800_000);
+    expect(await balance("wallet")).toBe(800_000);
+    expect((await entriesOf(id)).some((e) => e.accountKind === "expense")).toBe(false);
+  });
+});

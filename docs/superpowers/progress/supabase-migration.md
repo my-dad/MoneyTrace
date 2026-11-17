@@ -68,3 +68,15 @@ next: go-live checks with Mabrur (runbook §4): sign-in on phone, a real SMS per
 - 2026-11-17 Docker installed on Mabrur's machine. `pnpm dev:local` (`tools/dev/local-supabase.sh`): local Supabase with our migrations + Studio, Vault pointed at the local /api (cron jobs answered 200), /api served with the fake AI (`supabase/.env.dev.local`, gitignored, switches to the real DeepSeek), web built with local sign-in, served at http://127.0.0.1:5005. `pnpm dev:local:stop` stops the stack; data persists between runs.
 - 2026-11-17 Privacy policy: Mabrur hosts it on Google Sites instead of a /privacy page in the app: https://sites.google.com/view/money-tracer-policy/privacy-policy (text drafted from the code: Supabase Mumbai, DeepSeek servers in China for unreadable SMS only, masked identifiers, 14-day encrypted backups outlive deletion, no SMS/amounts/emails in logs). Before publishing the Google app: a real contact email on the page (currently a stand-in), check for doubled sections, confirm it opens signed out, then put the link in Google Cloud Console → Branding. Update the page if backup retention or region changes.
 - 2026-11-17 Fix: switching tabs no longer reloads the dashboard. `AuthGate` ignores a repeated sign-in event for the same user (Supabase sends one on tab refocus and token refresh) (421f6ca).
+- 2026-11-18 Go-live check 2 found: an EBL "MFS Transfer-bKash" SMS (read by DeepSeek, no EBL parser)
+  stayed "Waiting" after four Confirms. Cause, from the live records (read with Mabrur's yes): the SMS has
+  no bKash number, bKash wasn't a known account yet, the "To which account?" list offered Cash, and
+  the transfer rule refuses bank → cash, so every confirm ended `invariantsFailed` and went back to
+  waiting with no reason shown. Fixes (branch `golive-fixes`): a transfer that names a wallet with no
+  number goes to that wallet (`src-bkash-main`, as bKash SMS are kept); bank → own cash is posted as a
+  withdrawal; family holders are no longer offered as transfer accounts; EBL is named "EBL". Also: the
+  Recent list's Waiting label no longer takes the needs-your-answer card's style, and messages waiting
+  for a Confirm count on the badge and the dashboard card.
+  Needs `pnpm deploy:supabase` (Mabrur). Then reject the stuck ৳430 message and paste it again
+  (a rejected message frees its text). Not yet fixed: a confirm the rules refuse still goes back to
+  "Waiting" without saying why.
