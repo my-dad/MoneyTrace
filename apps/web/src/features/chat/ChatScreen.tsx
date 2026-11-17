@@ -67,8 +67,8 @@ export function ChatScreen({
   /** Inside the pop-up panel, which supplies its own title bar. */
   embedded?: boolean;
   nowMs?: number;
-  /** Open on the cash count, as the dashboard's "Count my cash" does. */
-  startWith?: "cashCount";
+  /** Open on the cash count, as the dashboard's "Count my cash" does, or ready for a pasted SMS. */
+  startWith?: "cashCount" | "paste";
 }) {
   const [nowMs] = useState(() => givenNowMs ?? Date.now());
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -259,16 +259,19 @@ export function ChatScreen({
             {sendError}
           </p>
         )}
-        <Composer
-          value={text}
-          onChange={setText}
-          onSend={() => {
-            void send();
-          }}
-          disabled={sending || !online}
-          label={CHAT_COPY.composerLabel}
-          placeholder={placeholder}
-        />
+        {/* The dialog moves focus to the message box first when the chat was opened to paste. */}
+        <div className={styles.composerBox} {...(startWith === "paste" ? { "data-autofocus": "" } : {})}>
+          <Composer
+            value={text}
+            onChange={setText}
+            onSend={() => {
+              void send();
+            }}
+            disabled={sending || !online}
+            label={CHAT_COPY.composerLabel}
+            placeholder={placeholder}
+          />
+        </div>
       </div>
     </div>
   );

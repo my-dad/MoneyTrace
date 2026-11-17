@@ -9,6 +9,20 @@
 .title span { font-size:12px; color:var(--mt-caption); }
 .close { width:44px; height:44px; flex:none; border-radius:999px; border:1px solid var(--mt-border); background:var(--mt-surface); font-size:16px; color:var(--mt-ink); cursor:pointer; }
 .close:focus-visible { outline:3px solid var(--mt-focus); }
+/* Motion: the chat slides up on a phone and in from the right on a desktop, and back out when closed. */
+@keyframes panelIn { from { opacity:0; transform:translateY(32px); } }
+@keyframes panelOut { to { opacity:0; transform:translateY(32px); } }
+@keyframes panelInSide { from { opacity:0; transform:translateX(32px); } }
+@keyframes panelOutSide { to { opacity:0; transform:translateX(32px); } }
+@keyframes pop { from { transform:scale(0.4); } 70% { transform:scale(1.15); } }
+.panel { animation:panelIn var(--mt-motion-slow) var(--mt-ease-out) both; }
+.panel.closing { animation:panelOut var(--mt-motion) var(--mt-ease-in) forwards; pointer-events:none; }
+.badge { animation:pop var(--mt-motion-slow) var(--mt-ease-out) both; }
+.fab { transition:transform var(--mt-motion-fast) var(--mt-ease-out), box-shadow var(--mt-motion-fast) ease; }
+.fab:active { transform:scale(0.94); }
+.close { transition:transform var(--mt-motion-fast) var(--mt-ease-out), border-color var(--mt-motion-fast) ease; }
+.close:active { transform:scale(0.92); }
 @media (min-width: 1024px) {
-  .panel { left:auto; width:420px; border-left:1px solid var(--mt-border); box-shadow:-12px 0 30px rgba(30,35,32,.08); }
+  .panel { left:auto; width:420px; border-left:1px solid var(--mt-border); box-shadow:-12px 0 30px rgba(30,35,32,.08); animation-name:panelInSide; }
+  .panel.closing { animation-name:panelOutSide; }
 }

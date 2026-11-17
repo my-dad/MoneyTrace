@@ -49,7 +49,7 @@ export type DashboardView = {
   unexplainedCashMinor: number;
   /** Everything in minus everything out across all sources since tracking began (CR-008). */
   netMoneyMinor: number;
-  /** Each source's money in and out this month; the system wallet for unexplained cash is shown on its own. */
+  /** Each source's money in and out this month, withdrawn cash with no place yet as "Cash". */
   sources: SourceRow[];
   categories: CategoryRow[];
   comparison: string | null;
@@ -59,10 +59,14 @@ export type DashboardView = {
 const net = (rows: LedgerEntryRow[], positive: "debit" | "credit"): number =>
   rows.reduce((sum, row) => sum + (row.side === positive ? row.amountMinor : -row.amountMinor), 0);
 
+/** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo. */
+const categoryOf = (accountId: string): string =>
+  /^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, "");
+
 function categoriesOf(expenses: LedgerEntryRow[]): CategoryRow[] {
   const totals = new Map<string, number>();
   for (const row of expenses) {
-    const category = row.accountId.replace(/^expense-/, "");
+    const category = categoryOf(row.accountId);
     totals.set(category, (totals.get(category) ?? 0) + (row.side === "debit" ? row.amountMinor : -row.amountMinor));
   }
   const positive = [...totals].filter(([, amount]) => amount > 0).sort((a, b) => b[1] - a[1]);
@@ -109,14 +113,14 @@ export function buildDashboard(input: {
 
 /** Money in (debits) and out (credits) per source; for a card as for a bank, a debit is money in. */
 function sourcesOf(entries: LedgerEntryRow[], accounts: AccountRow[]): SourceRow[] {
-  const names = new Map(accounts.map((a) => [a.id, a.name]));
+  // Withdrawn cash counts in the total, so it is listed too, or the rows wouldn't add up.
+  const names = new Map([...accounts.map((a): [string, string] => [a.id, a.name]), [SYSTEM_CASH_ACCOUNT_ID, "Cash"]]);
   const rows = new Map<string, SourceRow>();
   // A corrected transaction and its reversal cancel out; only the replacement counts.
   const reversed = new Set(
     entries.filter((e) => e.transactionId.endsWith(":rev")).map((e) => e.transactionId.slice(0, -":rev".length)),
   );
   for (const entry of entries) {
-    if (entry.accountId === SYSTEM_CASH_ACCOUNT_ID) continue;
     if (reversed.has(entry.transactionId) || entry.transactionId.endsWith(":rev")) continue;
     const row = rows.get(entry.accountId) ?? { accountId: entry.accountId, label: names.get(entry.accountId) ?? entry.accountId, inMinor: 0, outMinor: 0 };
     if (entry.side === "debit") row.inMinor += entry.amountMinor;

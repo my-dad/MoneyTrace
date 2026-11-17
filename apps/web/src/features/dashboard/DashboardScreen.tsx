@@ -1,6 +1,7 @@
 "use client";
 
 import { formatBdt } from "@moneytrace/contracts";
+import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
@@ -86,6 +87,12 @@ export function DashboardScreen({
       <div className={styles.empty}>
         <p className={styles.emptyTitle}>{DASHBOARD_COPY.newUserTitle}</p>
         <p>{DASHBOARD_COPY.newUserBody}</p>
+        {chat !== null && (
+          <>
+            <Button className={styles.pasteButton} onClick={() => { chat.openChat("paste"); }}>{DASHBOARD_COPY.pasteSms}</Button>
+            <p className={styles.howTo}>{DASHBOARD_COPY.howToCopy}</p>
+          </>
+        )}
       </div>
     );
   } else if (view === null) {
@@ -151,6 +158,12 @@ export function DashboardScreen({
         <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
+      {chat !== null && chat.waiting > 0 && (
+        <button type="button" className={styles.waiting} onClick={() => { chat.openChat(); }}>
+          <span>{DASHBOARD_COPY.questionsWaiting(chat.waiting)}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
       {!newUser && (
         <MonthSwitch label={month.label} canGoNext={offset < 0} onPrevious={() => { setOffset((n) => n - 1); }} onNext={() => { setOffset((n) => Math.min(0, n + 1)); }} />
       )}

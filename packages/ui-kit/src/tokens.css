@@ -25,6 +25,25 @@
   --mt-failed-text: #8E3A2B;
   --mt-failed-tint: #F7E5E0;
   --mt-font: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, sans-serif;
+  /* Motion: quick and quiet. Things arrive with ease-out and leave with ease-in. */
+  --mt-motion-fast: 120ms;
+  --mt-motion: 200ms;
+  --mt-motion-slow: 260ms;
+  --mt-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mt-ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* People who asked their device for less motion get none: changes still happen, instantly. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
 }
 
 body {
@@ -61,6 +80,32 @@ button:focus-visible,
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+:where(.mt-button, .mt-chip) {
+  transition:
+    background-color var(--mt-motion-fast) ease,
+    border-color var(--mt-motion-fast) ease,
+    color var(--mt-motion-fast) ease,
+    filter var(--mt-motion-fast) ease,
+    transform var(--mt-motion-fast) var(--mt-ease-out);
+}
+
+/* A press is felt: the control gives a little, then springs back. */
+.mt-button:not(:disabled):active,
+.mt-chip:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) {
+  .mt-button--primary:not(:disabled):hover {
+    filter: brightness(0.93);
+  }
+
+  .mt-button--secondary:not(:disabled):hover,
+  .mt-chip:not(.mt-chip--selected):hover {
+    border-color: var(--mt-ink);
+  }
 }
 
 .mt-button {

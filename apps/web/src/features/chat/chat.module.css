@@ -395,3 +395,25 @@
 .adjust {
   margin-top: 8px;
 }
+
+.composerBox { display:contents; }
+
+/* Motion: each message, status line and question rises into place once, when it appears. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.bubble,
+.outcome,
+.question,
+.note,
+.error {
+  animation: rise var(--mt-motion) var(--mt-ease-out) both;
+}
+
+.bubble {
+  transform-origin: bottom right;
+}

@@ -41,18 +41,20 @@ describe("DashboardScreen", () => {
     expect(note.textContent).toContain("৳5,000");
     expect(note.textContent).toContain("not counted as spending");
     expect(screen.getByText("৳1,740 more than this time last month")).toBeTruthy();
-    expect(figure("Net money")).toContain("৳1,25,630");
+    expect(figure("Money tracked")).toContain("৳1,25,630");
   });
 
   it("lists each source with its money in and out this month (CR-008)", () => {
     open();
-    const sources = screen.getByRole("region", { name: "Net money" });
+    const sources = screen.getByRole("region", { name: "Money tracked" });
     expect(within(sources).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "DBBL Savingsin ৳85,000 · out ৳15,000",
       "City Bank Amexin ৳0 · out ৳2,150",
       "bKashin ৳10,000 · out ৳950",
       "Walletin ৳0 · out ৳650",
+      "Cashin ৳5,000 · out ৳0",
     ]);
+    expect(within(sources).getByText("Only what you've added here, so it won't match your bank balance.")).toBeTruthy();
   });
 
   it("shows source chips on recent rows, and Transfer with both sources", () => {
@@ -163,14 +165,14 @@ describe("DashboardScreen", () => {
     open(gateway);
     expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
     expect(screen.getByRole("note", { name: "Cash not yet explained" }).textContent).toContain("৳5,000");
-    expect(figure("Net money")).toContain("৳1,25,630");
+    expect(figure("Money tracked")).toContain("৳1,25,630");
     expect(screen.queryByRole("group", { name: "Spent" })).toBeNull();
   });
 
   it("the unexplained-cash box offers Count my cash, which opens the chat on the count", () => {
     const openChat = vi.fn();
     render(
-      <ChatOpenerContext.Provider value={{ openChat }}>
+      <ChatOpenerContext.Provider value={{ openChat, waiting: 0 }}>
         <DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />
       </ChatOpenerContext.Provider>,
     );
@@ -183,5 +185,36 @@ describe("DashboardScreen", () => {
     open();
     const box = screen.getByRole("note", { name: "Cash not yet explained" });
     expect(within(box).queryByRole("button")).toBeNull();
+  });
+
+  const withChat = (gateway: ReadModelGateway, waiting = 0) => {
+    const openChat = vi.fn();
+    render(
+      <ChatOpenerContext.Provider value={{ openChat, waiting }}>
+        <DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />
+      </ChatOpenerContext.Provider>,
+    );
+    return openChat;
+  };
+
+  it("a new user gets a Paste button that opens the chat ready to paste, and how to copy an SMS", () => {
+    const openChat = withChat(new InMemoryReadModelGateway());
+    expect(screen.getByText(/press and hold it, then tap Copy/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Paste a bank SMS" }));
+    expect(openChat).toHaveBeenCalledWith("paste");
+  });
+
+  it("says how many questions are waiting, and opens the chat to answer them", () => {
+    const openChat = withChat(createFixtureReadModels(), 2);
+    fireEvent.click(screen.getByRole("button", { name: "2 questions need your answer" }));
+    expect(openChat).toHaveBeenCalledWith();
+  });
+
+  it("one waiting question reads in the singular, and none shows nothing", () => {
+    withChat(createFixtureReadModels(), 1);
+    expect(screen.getByRole("button", { name: "1 question needs your answer" })).toBeTruthy();
+    cleanup();
+    withChat(createFixtureReadModels(), 0);
+    expect(screen.queryByRole("button", { name: /need/ })).toBeNull();
   });
 });

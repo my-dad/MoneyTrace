@@ -28,7 +28,8 @@ export function chatStatusCopy(event: SourceEventRow): string {
     return COPY.awaitingClarification;
   }
   if (event.status === "deadLetter" && event.deadLetterReason === "beforeOpeningBalance") return COPY.beforeOpeningBalance;
-  if (event.status === "deadLetter") return COPY.failed;
+  // The message itself made no sense to the reader; anything else failed on the reading side.
+  if (event.status === "deadLetter") return event.deadLetterReason === "stageFailed" ? COPY.stageFailed : COPY.readingFailed;
   return "Reading your evidence";
 }
 

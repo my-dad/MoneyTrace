@@ -113,7 +113,8 @@ export function EvidenceBubble({
             confirmCandidate={commands.confirmCandidate}
           />
         )}
-        <OutcomeLine outcome={item.outcome} copy={item.statusCopy} />
+        {/* Keyed by outcome, so Reading → Recorded arrives as a new line rather than a silent swap. */}
+        <OutcomeLine key={item.outcome} outcome={item.outcome} copy={item.statusCopy} />
         {item.outcome === "recorded" && chips.length > 0 && (
           <span className={styles.chips}>
             {chips.map((chip, index) => <span key={`${chip}-${String(index)}`} className={styles.chip}>{chip}</span>)}

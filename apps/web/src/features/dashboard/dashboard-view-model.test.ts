@@ -106,12 +106,13 @@ describe("buildDashboard", () => {
     expect(view(0, { balances: [balance("card-a", "creditLiability", -1_845_000), balance("bank-a", "bank", 2_000_000)] }).netMoneyMinor).toBe(155_000);
   });
 
-  it("lists each source's money in and out this month, the system wallet left out", () => {
+  it("lists each source's money in and out this month, withdrawn cash as Cash, so the rows add up to the total", () => {
     expect(view(0).sources).toEqual([
       { accountId: "bank-dbbl", label: "DBBL Savings", inMinor: 8_500_000, outMinor: 1_500_000 },
       { accountId: "card-amex", label: "City Bank Amex", inMinor: 0, outMinor: 215_000 },
       { accountId: "bank-bkash", label: "bKash", inMinor: 1_000_000, outMinor: 95_000 },
       { accountId: "cash-wallet", label: "Wallet", inMinor: 0, outMinor: 65_000 },
+      { accountId: "cash-unassigned", label: "Cash", inMinor: 500_000, outMinor: 0 },
     ]);
   });
 
@@ -127,6 +128,16 @@ describe("buildDashboard", () => {
       { accountId: "bank-x", label: "bank-x", inMinor: 0, outMinor: 170_000 },
       { accountId: "bank-y", label: "bank-y", inMinor: 170_000, outMinor: 0 },
     ]);
+  });
+
+  it("reads the category from the ledger's expense account names, not only the demo's", () => {
+    const v = view(0, {
+      expenses: [
+        entry("nominal:expense:uncategorized:BDT", "debit", 3_000),
+        entry("nominal:expense:groceries:BDT", "debit", 1_000),
+      ],
+    });
+    expect(v.categories.map((row) => row.category)).toEqual(["uncategorized", "groceries"]);
   });
 
   it("hides negative unexplained cash", () => {
