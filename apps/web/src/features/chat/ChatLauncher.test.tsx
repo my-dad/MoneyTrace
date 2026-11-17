@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import axe from "axe-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureCommands } from "../../shared/fixture-commands";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
 import { FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS } from "../../shared/fixtures/household";
@@ -142,6 +142,47 @@ describe("ChatLauncher", () => {
     fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
     const dialog = screen.getByRole("dialog", { name: "Chat" });
     fireEvent.keyDown(within(dialog).getByLabelText("Message MoneyTrace"), { key: "Escape", isComposing: true });
+    expect(screen.getByRole("dialog", { name: "Chat" })).toBeTruthy();
+  });
+});
+
+describe("ChatLauncher motion", () => {
+  const motionOk = () => {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query })) as unknown as typeof window.matchMedia;
+  };
+  afterEach(() => {
+    Reflect.deleteProperty(window, "matchMedia");
+    vi.useRealTimers();
+  });
+
+  it("slides out before the chat is removed, and is removed even if the animation never ends", () => {
+    motionOk();
+    vi.useFakeTimers();
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    expect(screen.getByRole("dialog", { name: "Chat" })).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(400); });
+    expect(screen.queryByRole("dialog", { name: "Chat" })).toBeNull();
+  });
+
+  it("is removed as soon as its slide-out ends", () => {
+    motionOk();
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    fireEvent.animationEnd(screen.getByRole("dialog", { name: "Chat" }));
+    expect(screen.queryByRole("dialog", { name: "Chat" })).toBeNull();
+  });
+
+  it("opening again while it slides out keeps it open", () => {
+    motionOk();
+    vi.useFakeTimers();
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Close chat" }));
+    fireEvent.click(screen.getByRole("button", { name: /Open chat/ }));
+    act(() => { vi.advanceTimersByTime(400); });
     expect(screen.getByRole("dialog", { name: "Chat" })).toBeTruthy();
   });
 });

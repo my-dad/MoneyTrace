@@ -95,3 +95,24 @@ button.menuItem { cursor:pointer; border-top:1px solid var(--mt-border-soft); bo
   .columns { grid-template-columns:1fr 1fr; align-items:start; gap:14px; }
   .columns > div > .card:first-child { margin-top:0; }
 }
+
+/* Motion. Figures fade in once they have loaded (and again for each month); the menu grows out of
+   its button; the category bars grow from the left; buttons give a little when pressed. */
+@keyframes fadeIn { from { opacity:0; } }
+@keyframes rise { from { opacity:0; transform:translateY(8px); } }
+@keyframes menuIn { from { opacity:0; transform:scale(0.95) translateY(-4px); } }
+@keyframes grow { from { transform:scaleX(0); } }
+.columns, .empty, .emptyMonth { animation:fadeIn var(--mt-motion-slow) var(--mt-ease-out) both; }
+.waiting, .unexplained { animation:rise var(--mt-motion) var(--mt-ease-out) both; }
+.menu { transform-origin:top right; animation:menuIn var(--mt-motion) var(--mt-ease-out) both; }
+.fill { transform-origin:left; animation:grow var(--mt-motion-slow) var(--mt-ease-out) both; }
+.menuButton, .nav, .countLink, .waiting, button.menuItem {
+  transition:background-color var(--mt-motion-fast) ease, border-color var(--mt-motion-fast) ease, transform var(--mt-motion-fast) var(--mt-ease-out);
+}
+.menuButton:active, .nav:not(:disabled):active, .waiting:active { transform:scale(0.95); }
+.waiting:active { transform:scale(0.98); }
+@media (hover: hover) {
+  button.menuItem:not(:disabled):hover { background:var(--mt-surface-soft); }
+  .menuButton:hover, .nav:not(:disabled):hover { border-color:var(--mt-border-strong); }
+  .waiting:hover { background:var(--mt-accent-tint); }
+}
