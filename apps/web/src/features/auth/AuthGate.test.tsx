@@ -236,3 +236,43 @@ it("has no axe violations on the sign-in page", async () => {
   await screen.findByRole("button", { name: "Sign in with Google" });
   expect((await axe.run(container)).violations).toEqual([]);
 });
+
+it("keeps the app on screen when the same user is reported again (tab refocus, token refresh)", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  renderGate(gateway);
+  await screen.findByText("private app");
+  const shown = screen.getByText("private app");
+
+  act(() => { gateway.emit({ uid: "alice" }); });
+
+  expect(screen.queryByText("Setting up your account")).toBeNull();
+  expect(screen.getByText("private app")).toBe(shown);
+  expect(gateway.bootstrapCalls).toBe(1);
+});
+
+it("sets up again when a different user signs in", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  renderGate(gateway);
+  await screen.findByText("private app");
+
+  act(() => { gateway.emit({ uid: "bob" }); });
+
+  await screen.findByText("private app");
+  expect(gateway.bootstrapCalls).toBe(2);
+});
+
+it("sets up again after signing out and back in as the same user", async () => {
+  const gateway = new FakeAuthGateway();
+  gateway.user = { uid: "alice" };
+  renderGate(gateway);
+  await screen.findByText("private app");
+
+  act(() => { gateway.emit(null); });
+  await screen.findByRole("button", { name: /sign in with google/i });
+  act(() => { gateway.emit({ uid: "alice" }); });
+
+  await screen.findByText("private app");
+  expect(gateway.bootstrapCalls).toBe(2);
+});

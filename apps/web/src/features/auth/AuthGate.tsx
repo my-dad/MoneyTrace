@@ -47,6 +47,8 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
 
     const unsubscribe = gateway.onChange((user) => {
       if (disposed) return;
+      // Supabase reports the session again on tab refocus and token refresh; that is not a new sign-in.
+      if (user !== null && activeUser?.uid === user.uid) return;
       activeUser = user;
       if (user === null) {
         setState({ kind: "signedOut" });
