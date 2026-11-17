@@ -73,3 +73,4 @@ next: go-live checks with Mabrur (runbook §4): sign-in on phone, a real SMS per
   now leaves those two lines out (a real restore through psql runs them), and on failure prints only
   the error message, not the decrypted SQL. Rerun on backup run 44137471915: `restore drill: PASS`
   (11 collections, 0 mismatches, 0 ledger problems).
+- 2026-11-17 Go-live check 1 (phone: data notice, Google sign-in, dashboard): PASS (Mabrur).
