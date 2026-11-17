@@ -41,18 +41,20 @@ describe("DashboardScreen", () => {
     expect(note.textContent).toContain("৳5,000");
     expect(note.textContent).toContain("not counted as spending");
     expect(screen.getByText("৳1,740 more than this time last month")).toBeTruthy();
-    expect(figure("Net money")).toContain("৳1,25,630");
+    expect(figure("Money tracked")).toContain("৳1,25,630");
   });
 
   it("lists each source with its money in and out this month (CR-008)", () => {
     open();
-    const sources = screen.getByRole("region", { name: "Net money" });
+    const sources = screen.getByRole("region", { name: "Money tracked" });
     expect(within(sources).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "DBBL Savingsin ৳85,000 · out ৳15,000",
       "City Bank Amexin ৳0 · out ৳2,150",
       "bKashin ৳10,000 · out ৳950",
       "Walletin ৳0 · out ৳650",
+      "Cashin ৳5,000 · out ৳0",
     ]);
+    expect(within(sources).getByText("Only what you've added here, so it won't match your bank balance.")).toBeTruthy();
   });
 
   it("shows source chips on recent rows, and Transfer with both sources", () => {
@@ -163,7 +165,7 @@ describe("DashboardScreen", () => {
     open(gateway);
     expect(screen.getByText("Nothing recorded in November 2026")).toBeTruthy();
     expect(screen.getByRole("note", { name: "Cash not yet explained" }).textContent).toContain("৳5,000");
-    expect(figure("Net money")).toContain("৳1,25,630");
+    expect(figure("Money tracked")).toContain("৳1,25,630");
     expect(screen.queryByRole("group", { name: "Spent" })).toBeNull();
   });
 

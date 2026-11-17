@@ -14,4 +14,5 @@ local app). Mabrur approved fixing #1–#5 ("lets do it"). One commit per fix, t
   sense of (`stageFailed`) says to paste the whole SMS; a reading-side failure
   (`attemptsExhausted`, `providerResultMissing`) doesn't blame the message. No Retry added:
   the server refuses most dead letters.
-- [ ] #5 "Net money" explained (won't match the bank balance) and the Cash row listed.
+- [x] #5 "Net money" is now "Money tracked" with "Only what you've added here, so it won't match
+  your bank balance." Withdrawn cash with no place yet is listed as "Cash", so the rows add up.
