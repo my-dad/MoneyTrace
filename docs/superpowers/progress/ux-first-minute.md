@@ -10,5 +10,8 @@ local app). Mabrur approved fixing #1–#5 ("lets do it"). One commit per fix, t
   message box focused, via `data-autofocus` in `useModalFocus`) and how to copy an SMS.
 - [x] #3 "N questions need your answer" on the dashboard, opening the chat. The chat opener
   now carries the badge's count (`waiting`).
-- [ ] #4 Failed messages: one wording ("Couldn't read") and what to do.
+- [x] #4 Failed messages say "Couldn't read", like Recent. A message the reader couldn't make
+  sense of (`stageFailed`) says to paste the whole SMS; a reading-side failure
+  (`attemptsExhausted`, `providerResultMissing`) doesn't blame the message. No Retry added:
+  the server refuses most dead letters.
 - [ ] #5 "Net money" explained (won't match the bank balance) and the Cash row listed.

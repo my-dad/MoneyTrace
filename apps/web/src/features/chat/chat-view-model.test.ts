@@ -43,8 +43,18 @@ describe("chat view model", () => {
     expect(chatStatusCopy(event("cancelled"))).toBe("Cancelled · nothing was saved");
   });
 
-  it("a real failure still says Failed", () => {
-    expect(chatStatusCopy(event("deadLetter"))).toBe("Failed · nothing was saved");
+  it("a message it couldn't make sense of says so, nothing was saved, and what to try", () => {
+    expect(chatStatusCopy(event("deadLetter", { deadLetterReason: "stageFailed" }))).toBe(
+      "Couldn't read · nothing was saved. If it's from your bank, paste the whole SMS exactly as it came.",
+    );
+  });
+
+  it("a failure on the reading side doesn't blame the message", () => {
+    for (const deadLetterReason of ["attemptsExhausted", "providerResultMissing"]) {
+      expect(chatStatusCopy(event("deadLetter", { deadLetterReason }))).toBe(
+        "Couldn't read · something went wrong while reading it, and nothing was saved.",
+      );
+    }
   });
 
   it("renders events and follow-ups in one timeline", () => {
