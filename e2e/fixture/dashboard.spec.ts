@@ -17,7 +17,7 @@ test("the dashboard shows the demo month", async ({ page }) => {
 
 test("the chat opens, a demo send says nothing was saved, Escape closes it", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Open chat, 2 questions waiting" }).click();
+  await page.getByRole("button", { name: /^Open chat, \d+ waiting for your answer$/ }).click();
   const chat = page.getByRole("dialog", { name: "Chat" });
   await chat.getByLabel("Message MoneyTrace").fill("paid 500 for rickshaw");
   await chat.getByLabel("Message MoneyTrace").press("Enter");

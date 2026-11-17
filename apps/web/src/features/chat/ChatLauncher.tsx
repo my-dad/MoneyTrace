@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CHAT_COPY } from "../../shared/copy";
-import type { FollowUpRow, ReadModelGateway } from "../../shared/read-model-gateway";
+import type { FollowUpRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useModalFocus } from "../../shared/use-modal-focus";
 import { isAwaitingAnswer } from "./chat-view-model";
 import { ChatScreen, type ChatCommands } from "./ChatScreen";
@@ -20,8 +20,20 @@ const motionAllowed = (): boolean =>
 /** Longest the slide-out may take before the panel is removed anyway (its animation is 200 ms). */
 const CLOSE_FALLBACK_MS = 400;
 
+/** A message held for the user: to confirm what was read, or to answer the AI's question. */
+const awaitsUser = (event: SourceEventRow): boolean =>
+  event.status === "pending" && (event.pendingReason === "awaitingClarification" || event.pendingReason === "aiQuestion");
+
+/** Everything waiting for the user: open questions and messages held for an answer. */
+export function waitingCount(followUps: FollowUpRow[], events: SourceEventRow[], nowMs: number): number {
+  return openQuestionCount(followUps, nowMs) + events.filter(awaitsUser).length;
+}
+
+/** The newest messages the badge looks at, the same window the chat shows. */
+const EVENT_WINDOW = 50;
+
 const buttonLabel = (count: number): string =>
-  count === 0 ? "Open chat" : `Open chat, ${String(count)} ${count === 1 ? "question" : "questions"} waiting`;
+  count === 0 ? "Open chat" : `Open chat, ${String(count)} waiting for your answer`;
 
 /** Where the chat opens: on the cash count, or with the message box ready for a pasted SMS. */
 export type ChatStart = "cashCount" | "paste";
@@ -59,8 +71,10 @@ export function ChatLauncher({
     setOpen(false);
   }, []);
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
+  const [events, setEvents] = useState<SourceEventRow[]>([]);
   useEffect(() => gateway.watchFollowUps(setFollowUps), [gateway]);
-  const count = openQuestionCount(followUps, nowMs);
+  useEffect(() => gateway.watchSourceEvents(EVENT_WINDOW, setEvents, () => undefined), [gateway]);
+  const count = waitingCount(followUps, events, nowMs);
   const opener = useMemo<ChatOpener>(
     () => ({
       openChat: (start) => {

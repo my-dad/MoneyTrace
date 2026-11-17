@@ -5,8 +5,8 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFixtureCommands } from "../../shared/fixture-commands";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
-import { FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS } from "../../shared/fixtures/household";
-import { ChatLauncher, openQuestionCount, useChatOpener } from "./ChatLauncher";
+import { FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
+import { ChatLauncher, openQuestionCount, useChatOpener, waitingCount } from "./ChatLauncher";
 
 function PasteButton() {
   const opener = useChatOpener();
@@ -62,7 +62,7 @@ describe("ChatLauncher", () => {
         <Waiting />
       </ChatLauncher>,
     );
-    expect(screen.getByText(`waiting ${String(openQuestionCount(FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS))}`)).toBeTruthy();
+    expect(screen.getByText(`waiting ${String(waitingCount(FIXTURE_FOLLOW_UPS, FIXTURE_SOURCE_EVENTS, FIXTURE_NOW_MS))}`)).toBeTruthy();
   });
 
   it("lets the page open the chat straight on the cash count", () => {
@@ -103,8 +103,16 @@ describe("ChatLauncher", () => {
   it("badge counts open and expired-snooze questions", () => {
     expect(openQuestionCount(FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS)).toBe(2);
     expect(openQuestionCount(FIXTURE_FOLLOW_UPS, Date.parse("2026-12-02T00:00:00+06:00"))).toBe(3);
+  });
+
+  it("badge also counts messages waiting for the user to confirm or answer", () => {
+    const waitingEvents = FIXTURE_SOURCE_EVENTS.filter(
+      (e) => e.status === "pending" && (e.pendingReason === "awaitingClarification" || e.pendingReason === "aiQuestion"),
+    ).length;
+    expect(waitingEvents).toBeGreaterThan(0);
+    expect(waitingCount(FIXTURE_FOLLOW_UPS, FIXTURE_SOURCE_EVENTS, FIXTURE_NOW_MS)).toBe(2 + waitingEvents);
     open();
-    expect(screen.getByRole("button", { name: "Open chat, 2 questions waiting" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: `Open chat, ${String(2 + waitingEvents)} waiting for your answer` })).toBeTruthy();
   });
 
   it("sending in the demo shows the demo status inside the panel", async () => {
@@ -132,7 +140,7 @@ describe("ChatLauncher", () => {
   it("shows the question the badge counts, including one whose snooze has passed", () => {
     const later = Date.parse("2026-12-02T00:00:00+06:00");
     render(<ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={later} />);
-    fireEvent.click(screen.getByRole("button", { name: "Open chat, 3 questions waiting" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Open chat, \d+ waiting for your answer$/ }));
     const dialog = screen.getByRole("dialog", { name: "Chat" });
     expect(within(dialog).getByText(/Home cash counted ৳300 less than expected/)).toBeTruthy();
   });

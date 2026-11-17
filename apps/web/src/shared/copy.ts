@@ -177,7 +177,7 @@ export const DASHBOARD_COPY = {
   newUserBody: "Paste a bank SMS or tell me about a purchase to get started.",
   pasteSms: "Paste a bank SMS",
   howToCopy: "On your phone, open the SMS from your bank, press and hold it, then tap Copy.",
-  questionsWaiting: (n: number) => (n === 1 ? "1 question needs your answer" : `${String(n)} questions need your answer`),
+  questionsWaiting: (n: number) => (n === 1 ? "1 thing needs your answer" : `${String(n)} things need your answer`),
   emptyMonth: (label: string) => `Nothing recorded in ${label}`,
   emptyMonthHint: "Use › to go to a later month.",
   categories: { uncategorized: "Not sorted yet", groceries: "Groceries", "eating-out": "Eating out", transport: "Transport", other: "Other" } as Record<string, string>,
