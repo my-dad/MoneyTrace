@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountMenu } from "./AccountMenu";
@@ -92,5 +92,19 @@ describe("closing the menu", () => {
     fireEvent.pointerDown(button);
     fireEvent.click(button);
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+});
+
+describe("Your data", () => {
+  it("keeps Delete my account apart from Sign out, under Your data, with the privacy policy", () => {
+    render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const group = screen.getByRole("group", { name: "Your data" });
+    const policy = within(group).getByRole("link", { name: /Privacy policy/ });
+    expect(policy.getAttribute("href")).toBe("https://sites.google.com/view/money-tracer-policy/privacy-policy");
+    expect(policy.getAttribute("target")).toBe("_blank");
+    expect(policy.getAttribute("rel")).toContain("noopener");
+    expect(within(group).getByRole("button", { name: "Delete my account" })).toBeTruthy();
+    expect(within(group).queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 });

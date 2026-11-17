@@ -146,6 +146,10 @@ export const DASHBOARD_COPY = {
   menu: "Menu",
   aiBudget: "AI help this month",
   signOut: "Sign out",
+  yourData: "Your data",
+  privacyPolicy: "Privacy policy",
+  /** Mabrur's published policy (Google Sites), the same link Google's sign-in branding uses. */
+  privacyPolicyUrl: "https://sites.google.com/view/money-tracer-policy/privacy-policy",
   deleteAccount: "Delete my account",
   deleteExplain:
     "This permanently deletes your accounts, messages, transactions and questions, and your sign-in. It can't be undone.",
