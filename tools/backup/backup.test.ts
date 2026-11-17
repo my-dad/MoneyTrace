@@ -61,6 +61,13 @@ describe("encrypted backups and the restore drill (CR-010)", () => {
     expect(report.counts["ledgerEntries"]).toBeGreaterThan(0);
   });
 
+  it("restores a pg_dump 17 file, which wraps the data in psql's \\restrict and \\unrestrict lines", async () => {
+    const lines = dump.split("\n");
+    const wrapped = [lines[0], "\\restrict AbC123token", ...lines.slice(1), "\\unrestrict AbC123token", ""].join("\n");
+    const report = await run(wrapped, manifest);
+    expect(report.ok).toBe(true);
+  });
+
   it("catches a lost row", async () => {
     const lines = dump.split("\n");
     const cut = lines.findIndex((l) => l.includes("/ledgerEntries/"));

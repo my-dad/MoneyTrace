@@ -34,7 +34,9 @@ export async function drill(dumpSql, manifest) {
   const root = new URL("../../", import.meta.url);
   const db = new PGlite();
   await db.exec(readFileSync(new URL("supabase/migrations/20261113000000_docs.sql", root), "utf8"));
-  await db.exec(dumpSql);
+  // pg_dump 17 wraps the data in psql's \restrict / \unrestrict lines. psql (a real restore) runs
+  // them; PGlite can't, and they guard nothing here, so the drill leaves them out.
+  await db.exec(dumpSql.replace(/^\\(?:un)?restrict\b.*$/gm, ""));
   // pg_dump clears search_path at the top of every dump.
   await db.exec("set search_path to public");
   const counts = Object.fromEntries(
@@ -62,7 +64,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else if (cmd === "drill") {
     const key = readFileSync(args[1], "utf8").trim();
     const sql = await decrypt(key, readFileSync(args[0]));
-    const report = await drill(sql, JSON.parse(await decrypt(key, readFileSync(args[2]))));
+    let report;
+    try {
+      report = await drill(sql, JSON.parse(await decrypt(key, readFileSync(args[2]))));
+    } catch (error) {
+      // Only the message: the error object carries the failing SQL, which is the decrypted data.
+      console.error(`restore drill: FAIL (${error instanceof Error ? error.message : "unknown error"})`);
+      process.exit(1);
+    }
     console.log(JSON.stringify(report, null, 2));
     console.log(report.ok ? "restore drill: PASS" : "restore drill: FAIL");
     process.exit(report.ok ? 0 : 1);
