@@ -170,6 +170,6 @@ export const DASHBOARD_COPY = {
   newUserBody: "Paste a bank SMS or tell me about a purchase to get started.",
   emptyMonth: (label: string) => `Nothing recorded in ${label}`,
   emptyMonthHint: "Use › to go to a later month.",
-  categories: { groceries: "Groceries", "eating-out": "Eating out", transport: "Transport", other: "Other" } as Record<string, string>,
+  categories: { uncategorized: "Not sorted yet", groceries: "Groceries", "eating-out": "Eating out", transport: "Transport", other: "Other" } as Record<string, string>,
   countCash: "Count my cash",
 } as const;

@@ -129,6 +129,16 @@ describe("buildDashboard", () => {
     ]);
   });
 
+  it("reads the category from the ledger's expense account names, not only the demo's", () => {
+    const v = view(0, {
+      expenses: [
+        entry("nominal:expense:uncategorized:BDT", "debit", 3_000),
+        entry("nominal:expense:groceries:BDT", "debit", 1_000),
+      ],
+    });
+    expect(v.categories.map((row) => row.category)).toEqual(["uncategorized", "groceries"]);
+  });
+
   it("hides negative unexplained cash", () => {
     expect(view(0, { balances: [balance("cash-unassigned", "cash", -100)] }).unexplainedCashMinor).toBe(0);
   });

@@ -59,10 +59,14 @@ export type DashboardView = {
 const net = (rows: LedgerEntryRow[], positive: "debit" | "credit"): number =>
   rows.reduce((sum, row) => sum + (row.side === positive ? row.amountMinor : -row.amountMinor), 0);
 
+/** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo. */
+const categoryOf = (accountId: string): string =>
+  /^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, "");
+
 function categoriesOf(expenses: LedgerEntryRow[]): CategoryRow[] {
   const totals = new Map<string, number>();
   for (const row of expenses) {
-    const category = row.accountId.replace(/^expense-/, "");
+    const category = categoryOf(row.accountId);
     totals.set(category, (totals.get(category) ?? 0) + (row.side === "debit" ? row.amountMinor : -row.amountMinor));
   }
   const positive = [...totals].filter(([, amount]) => amount > 0).sort((a, b) => b[1] - a[1]);
