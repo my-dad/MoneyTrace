@@ -49,7 +49,7 @@ export function QuestionCard({
               answer(place.id);
             }}
           >
-            {place.name}
+            {place.kind === "familyCash" ? CHAT_COPY.placeWithFamily(place.name) : CHAT_COPY.placeWithMe(place.name)}
           </Chip>
         ))}
         <Chip tentative onClick={notSure}>

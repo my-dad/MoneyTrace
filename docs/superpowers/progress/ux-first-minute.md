@@ -41,3 +41,18 @@ local app). Mabrur approved fixing #1–#5 ("lets do it"). One commit per fix, t
 - [x] #11 Focus lost when a chat card replaces the focused button (cash count Check), so Escape
   stopped working. `useModalFocus` now watches the dialog and brings focus back to it when focus
   falls to the page. Checked in Chromium: after Check, focus is on the dialog and Escape closes it.
+
+## Round 3 (Mabrur: "fix the remaining audit items too"), branch `ux-polish-3`
+
+- [x] Menu closes on a tap outside or Escape (side session, `56288a0`).
+- [x] #8 Cash-count result: three lines (expected, counted, difference) plus one line saying where
+  the expected amount comes from.
+- [x] #9 "Where did the cash go?" answers say who has it: "With me · Cash", "With Ammu". Answers the
+  server can't record (spent some, gave it away) are not offered; that would need a new resolution.
+- [x] #10 Plain words: "Recorded · saved", "AI help this month · $0.00 used", AI-limit messages
+  without "budget" or "ledger".
+- [x] #12 "Count my cash" button hides while the count asks its question, returns with the result.
+- [x] #13 Menu: "Your data" section below a line with the privacy policy link and Delete my account.
+- [x] #14 Desktop: the month switcher spans the left column, which is what the month governs.
+- Noticed, not changed: "Add a wallet or family holder in Accounts" points at a screen that no
+  longer exists (CR-007). Rarely shown, since every account starts with a Cash wallet.

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountMenu } from "./AccountMenu";
@@ -8,7 +8,7 @@ import { AccountMenu } from "./AccountMenu";
 afterEach(cleanup);
 
 const openMenu = (onDeleteAccount = vi.fn<(confirmation: string) => Promise<void>>(() => Promise.resolve())) => {
-  const view = render(<AccountMenu aiSpend="$0.10 used this month" onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
+  const view = render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
   fireEvent.click(screen.getByRole("button", { name: "Menu" }));
   fireEvent.click(screen.getByRole("button", { name: "Delete my account" }));
   return { ...view, onDeleteAccount };
@@ -52,5 +52,59 @@ describe("Delete my account (CR-009)", () => {
   it("has no axe violations", async () => {
     const { container } = openMenu();
     expect((await axe.run(container)).violations).toEqual([]);
+  });
+});
+
+describe("closing the menu", () => {
+  const show = () => {
+    render(
+      <div>
+        <p>Elsewhere on the page</p>
+        <AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  };
+
+  it("a tap anywhere outside closes it", () => {
+    show();
+    fireEvent.pointerDown(screen.getByText("Elsewhere on the page"));
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+
+  it("a tap inside the menu keeps it open", () => {
+    show();
+    fireEvent.pointerDown(screen.getByText("AI help this month"));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  });
+
+  it("Escape closes it and puts focus back on the menu button", () => {
+    show();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Sign out" }), { key: "Escape" });
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Menu" }));
+  });
+
+  it("the menu button still toggles it closed", () => {
+    show();
+    const button = screen.getByRole("button", { name: "Menu" });
+    fireEvent.pointerDown(button);
+    fireEvent.click(button);
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+});
+
+describe("Your data", () => {
+  it("keeps Delete my account apart from Sign out, under Your data, with the privacy policy", () => {
+    render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const group = screen.getByRole("group", { name: "Your data" });
+    const policy = within(group).getByRole("link", { name: /Privacy policy/ });
+    expect(policy.getAttribute("href")).toBe("https://sites.google.com/view/money-tracer-policy/privacy-policy");
+    expect(policy.getAttribute("target")).toBe("_blank");
+    expect(policy.getAttribute("rel")).toContain("noopener");
+    expect(within(group).getByRole("button", { name: "Delete my account" })).toBeTruthy();
+    expect(within(group).queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 });
