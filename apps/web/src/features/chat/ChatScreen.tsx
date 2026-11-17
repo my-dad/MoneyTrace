@@ -87,6 +87,8 @@ export function ChatScreen({
   const composerRef = useRef<HTMLDivElement>(null);
   // Each "Count my cash" starts a fresh card; null means no card is shown.
   const [countCard, setCountCard] = useState<number | null>(startWith === "cashCount" ? 0 : null);
+  // While a count is still being asked, its own card is the way in; the quick button would repeat it.
+  const [countAnswered, setCountAnswered] = useState(false);
   // The just-made count's question is shown by its card, not again from the follow-ups.
   const [shownFollowUpId, setShownFollowUpId] = useState<string | null>(null);
   const [placeholder, setPlaceholder] = useState<string>(CHAT_COPY.composerPlaceholder);
@@ -225,7 +227,15 @@ export function ChatScreen({
           ),
         )}
         {countCard !== null && (
-          <CashCountCard key={countCard} commands={commands} onRecorded={setShownFollowUpId} onTellMe={tellMe} />
+          <CashCountCard
+            key={countCard}
+            commands={commands}
+            onRecorded={(followUpId) => {
+              setShownFollowUpId(followUpId);
+              setCountAnswered(true);
+            }}
+            onTellMe={tellMe}
+          />
         )}
         {sending && (
           <p role="status" className={styles.note}>
@@ -245,15 +255,18 @@ export function ChatScreen({
       </div>
 
       <div ref={composerRef} className={styles.composer}>
-        <div className={styles.quick}>
-          <Chip
-            onClick={() => {
-              setCountCard((n) => (n ?? 0) + 1);
-            }}
-          >
-            {CHAT_COPY.countCash}
-          </Chip>
-        </div>
+        {(countCard === null || countAnswered) && (
+          <div className={styles.quick}>
+            <Chip
+              onClick={() => {
+                setCountAnswered(false);
+                setCountCard((n) => (n ?? 0) + 1);
+              }}
+            >
+              {CHAT_COPY.countCash}
+            </Chip>
+          </div>
+        )}
         {sendError !== null && (
           <p role="alert" className={styles.error}>
             {sendError}

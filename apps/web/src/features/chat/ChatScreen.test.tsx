@@ -679,6 +679,14 @@ function check(text: string) {
 }
 
 describe("count my cash (gate 32)", () => {
+  it("hides the Count my cash button while a count is being asked, and brings it back with the result", async () => {
+    setup();
+    fireEvent.click(button("Count my cash"));
+    expect(screen.queryByRole("button", { name: "Count my cash" })).toBeNull();
+    check("2300");
+    expect(await screen.findByRole("button", { name: "Count my cash" })).toBeTruthy();
+  });
+
   it("the quick action opens the count, and Check sends the amount in poisha", async () => {
     const { commands } = setup();
     fireEvent.click(button("Count my cash"));
