@@ -20,7 +20,10 @@ export function RecentList({ items }: { items: RecentItem[] }) {
                   ))}
                 </span>
               )}
-              <span className={`${styles.status ?? ""} ${styles[item.status] ?? ""}`}>{item.statusLabel}</span>
+              {/* Recorded is the normal case; only what needs attention is marked. */}
+              {item.status !== "recorded" && (
+                <span className={`${styles.status ?? ""} ${styles[item.status] ?? ""}`}>{item.statusLabel}</span>
+              )}
             </span>
             <b>{item.amountMinor === null ? "—" : formatBdt(item.amountMinor)}</b>
           </li>

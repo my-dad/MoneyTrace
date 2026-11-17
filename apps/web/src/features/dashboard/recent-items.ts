@@ -81,7 +81,8 @@ export function toRecentItems(events: SourceEventRow[], accounts: AccountRow[], 
       return {
         id: event.id,
         title,
-        detail: `${source} · ${dhakaDayLabel(atMs)}`,
+        // A source already shown as a chip isn't repeated here; only the date is.
+        detail: chips.includes(source) ? dhakaDayLabel(atMs) : `${source} · ${dhakaDayLabel(atMs)}`,
         amountMinor: candidate?.amountMinor ?? null,
         atMs,
         status,

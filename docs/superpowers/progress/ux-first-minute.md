@@ -30,3 +30,13 @@ local app). Mabrur approved fixing #1–#5 ("lets do it"). One commit per fix, t
 - Left out on purpose: amounts counting up (would show figures that aren't real for a moment).
 - Checked in Chromium (Pixel 7): animations run, chat removed after its slide-out, gone at once with
   reduced motion.
+
+## Round 2 (Mabrur: "fix 6, 7 and 11 too"), branch `ux-polish-2`
+
+- [x] #6 Recent rows name the source once (its chip, per CR-008), not again under the title, and
+  only mark what needs attention: no "Recorded" badge on every row. The chat still says Recorded.
+- [x] #7 Not a real problem: the page already leaves 112 px under the last row, so the chat button
+  never covers it (checked at phone size, scrolled to the bottom). The audit's overlap came from a
+  full-page screenshot drawing the fixed button mid-page. No change.
+- [ ] #11 Focus lost when a chat card replaces the focused button (cash count Check), so Escape stops
+  working.
