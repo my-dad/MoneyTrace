@@ -16,7 +16,14 @@ export function openQuestionCount(rows: FollowUpRow[], nowMs: number): number {
 const buttonLabel = (count: number): string =>
   count === 0 ? "Open chat" : `Open chat, ${String(count)} ${count === 1 ? "question" : "questions"} waiting`;
 
-export type ChatOpener = { openChat: (start?: "cashCount") => void };
+/** Where the chat opens: on the cash count, or with the message box ready for a pasted SMS. */
+export type ChatStart = "cashCount" | "paste";
+
+export type ChatOpener = {
+  openChat: (start?: ChatStart) => void;
+  /** Questions waiting for an answer, the same number as the chat button's badge. */
+  waiting: number;
+};
 
 /** Lets the page open the chat, for example straight on the cash count. */
 export const ChatOpenerContext = createContext<ChatOpener | null>(null);
@@ -37,18 +44,19 @@ export function ChatLauncher({
   /** The page, which may open the chat through `useChatOpener`. */
   children?: ReactNode;
 }) {
-  const [open, setOpen] = useState<false | { start?: "cashCount" }>(false);
+  const [open, setOpen] = useState<false | { start?: ChatStart }>(false);
+  const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
+  useEffect(() => gateway.watchFollowUps(setFollowUps), [gateway]);
+  const count = openQuestionCount(followUps, nowMs);
   const opener = useMemo<ChatOpener>(
     () => ({
       openChat: (start) => {
         setOpen(start === undefined ? {} : { start });
       },
+      waiting: count,
     }),
-    [],
+    [count],
   );
-  const [followUps, setFollowUps] = useState<FollowUpRow[]>([]);
-  useEffect(() => gateway.watchFollowUps(setFollowUps), [gateway]);
-  const count = openQuestionCount(followUps, nowMs);
 
   return (
     <ChatOpenerContext.Provider value={opener}>
@@ -82,7 +90,7 @@ function ChatPanel({
   gateway: ReadModelGateway;
   commands: ChatCommands;
   nowMs: number;
-  startWith?: "cashCount";
+  startWith?: ChatStart;
   onClose: () => void;
 }) {
   const focus = useModalFocus(onClose);

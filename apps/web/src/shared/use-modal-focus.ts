@@ -3,7 +3,8 @@ import { useEffect, useRef, type KeyboardEvent } from "react";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Keyboard behaviour for a modal dialog: focus moves in on open, Tab stays inside,
+ * Keyboard behaviour for a modal dialog: focus moves in on open (to the first control inside a
+ * `data-autofocus` element if there is one, else the first control), Tab stays inside,
  * Escape closes, and focus returns to whatever opened it.
  */
 export function useModalFocus(onClose: () => void) {
@@ -14,7 +15,9 @@ export function useModalFocus(onClose: () => void) {
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = ref.current;
-    const first = dialog?.querySelector<HTMLElement>(FOCUSABLE);
+    const preferred = dialog?.querySelector<HTMLElement>("[data-autofocus]");
+    const target = preferred?.matches(FOCUSABLE) === true ? preferred : preferred?.querySelector<HTMLElement>(FOCUSABLE);
+    const first = target ?? dialog?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? dialog)?.focus();
     return () => { if (opener?.isConnected === true) opener.focus(); };
   }, []);

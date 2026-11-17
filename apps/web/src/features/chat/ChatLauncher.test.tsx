@@ -8,6 +8,15 @@ import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-mode
 import { FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS } from "../../shared/fixtures/household";
 import { ChatLauncher, openQuestionCount, useChatOpener } from "./ChatLauncher";
 
+function PasteButton() {
+  const opener = useChatOpener();
+  return opener === null ? null : (
+    <button type="button" onClick={() => { opener.openChat("paste"); }}>
+      Paste from the page
+    </button>
+  );
+}
+
 function CountButton() {
   const opener = useChatOpener();
   return opener === null ? null : (
@@ -28,6 +37,34 @@ const open = () =>
   );
 
 describe("ChatLauncher", () => {
+  it("opened to paste, the message box has the focus, and closing returns it to the page", () => {
+    render(
+      <ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={FIXTURE_NOW_MS}>
+        <PasteButton />
+      </ChatLauncher>,
+    );
+    const pageButton = screen.getByRole("button", { name: "Paste from the page" });
+    pageButton.focus();
+    fireEvent.click(pageButton);
+    const dialog = screen.getByRole("dialog", { name: "Chat" });
+    expect(document.activeElement).toBe(within(dialog).getByLabelText("Message MoneyTrace"));
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(document.activeElement).toBe(pageButton);
+  });
+
+  it("tells the page how many questions are waiting", () => {
+    function Waiting() {
+      const opener = useChatOpener();
+      return <p>waiting {String(opener?.waiting)}</p>;
+    }
+    render(
+      <ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={FIXTURE_NOW_MS}>
+        <Waiting />
+      </ChatLauncher>,
+    );
+    expect(screen.getByText(`waiting ${String(openQuestionCount(FIXTURE_FOLLOW_UPS, FIXTURE_NOW_MS))}`)).toBeTruthy();
+  });
+
   it("lets the page open the chat straight on the cash count", () => {
     render(
       <ChatLauncher gateway={createFixtureReadModels()} commands={createFixtureCommands()} nowMs={FIXTURE_NOW_MS}>

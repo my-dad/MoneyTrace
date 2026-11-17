@@ -170,7 +170,7 @@ describe("DashboardScreen", () => {
   it("the unexplained-cash box offers Count my cash, which opens the chat on the count", () => {
     const openChat = vi.fn();
     render(
-      <ChatOpenerContext.Provider value={{ openChat }}>
+      <ChatOpenerContext.Provider value={{ openChat, waiting: 0 }}>
         <DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />
       </ChatOpenerContext.Provider>,
     );
@@ -183,5 +183,36 @@ describe("DashboardScreen", () => {
     open();
     const box = screen.getByRole("note", { name: "Cash not yet explained" });
     expect(within(box).queryByRole("button")).toBeNull();
+  });
+
+  const withChat = (gateway: ReadModelGateway, waiting = 0) => {
+    const openChat = vi.fn();
+    render(
+      <ChatOpenerContext.Provider value={{ openChat, waiting }}>
+        <DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} />
+      </ChatOpenerContext.Provider>,
+    );
+    return openChat;
+  };
+
+  it("a new user gets a Paste button that opens the chat ready to paste, and how to copy an SMS", () => {
+    const openChat = withChat(new InMemoryReadModelGateway());
+    expect(screen.getByText(/press and hold it, then tap Copy/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Paste a bank SMS" }));
+    expect(openChat).toHaveBeenCalledWith("paste");
+  });
+
+  it("says how many questions are waiting, and opens the chat to answer them", () => {
+    const openChat = withChat(createFixtureReadModels(), 2);
+    fireEvent.click(screen.getByRole("button", { name: "2 questions need your answer" }));
+    expect(openChat).toHaveBeenCalledWith();
+  });
+
+  it("one waiting question reads in the singular, and none shows nothing", () => {
+    withChat(createFixtureReadModels(), 1);
+    expect(screen.getByRole("button", { name: "1 question needs your answer" })).toBeTruthy();
+    cleanup();
+    withChat(createFixtureReadModels(), 0);
+    expect(screen.queryByRole("button", { name: /need/ })).toBeNull();
   });
 });
