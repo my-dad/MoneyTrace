@@ -99,8 +99,6 @@ export function CashCountCard({
           <dl className={styles.sum}>
             {(
               [
-                [CHAT_COPY.gapCash, formatBdt(count.cashMinor)],
-                [CHAT_COPY.gapUnexplained, formatBdt(count.unexplainedMinor)],
                 [CHAT_COPY.gapExpected, formatBdt(count.expectedMinor)],
                 [CHAT_COPY.gapCounted, formatBdt(count.countedMinor)],
                 [CHAT_COPY.gapDifference, signedBdt(count.differenceMinor)],
@@ -112,6 +110,10 @@ export function CashCountCard({
               </div>
             ))}
           </dl>
+          {/* Where the expected amount comes from, in one line rather than two more rows. */}
+          <p className={styles.note}>
+            {CHAT_COPY.gapExpectedFrom(formatBdt(count.cashMinor), formatBdt(count.unexplainedMinor))}
+          </p>
           <p className={styles.note}>{CHAT_COPY.gapNote}</p>
           <CashGapActions
             reconciliationId={count.reconciliationId}

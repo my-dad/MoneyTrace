@@ -555,7 +555,7 @@ describe("question card", () => {
     const labels = within(group)
       .getAllByRole("button")
       .map((chip) => chip.textContent);
-    expect(labels).toEqual(["My wallet", "Ammu", "Not sure yet"]);
+    expect(labels).toEqual(["With me · My wallet", "With Ammu", "Not sure yet"]);
   });
 
   it("the wording never implies the cash was spent", () => {
@@ -566,7 +566,7 @@ describe("question card", () => {
 
   it("answering sends the chosen account", async () => {
     const { commands } = setup({ followUps: [followUp()] });
-    fireEvent.click(button("Ammu"));
+    fireEvent.click(button("With Ammu"));
     await waitFor(() => {
       expect(commands.resolveFollowUp).toHaveBeenCalledWith({
         followUpId: "follow-1",
@@ -591,7 +591,7 @@ describe("question card", () => {
   it("a failed answer says it wasn't saved", async () => {
     const { commands } = setup({ followUps: [followUp()] });
     commands.resolveFollowUp.mockRejectedValueOnce({ code: "functions/internal", message: "internal" });
-    fireEvent.click(button("My wallet"));
+    fireEvent.click(button("With me · My wallet"));
     expect((await screen.findByRole("alert")).textContent).toContain("Your answer wasn't saved");
   });
 
@@ -651,7 +651,7 @@ describe("keyboard", () => {
     await waitFor(() => {
       expect(commands.submitEvidence).toHaveBeenCalledOnce();
     });
-    for (const name of ["My wallet", "Ammu", "Not sure yet"]) {
+    for (const name of ["With me · My wallet", "With Ammu", "Not sure yet"]) {
       const chip = button(name);
       expect(chip.tagName).toBe("BUTTON");
       expect(chip.tabIndex).toBe(0);
@@ -692,20 +692,20 @@ describe("count my cash (gate 32)", () => {
     expect(commands.recordReconciliation.mock.calls[0]?.[0]).toMatchObject({ countedMinor: 230_000, currency: "BDT" });
   });
 
-  it("a short count shows the gap and every line of the sum, and says nothing changed", async () => {
+  it("a short count shows three lines, with where the expected amount comes from, and says nothing changed", async () => {
     setup({ startWith: "cashCount" });
     check("2300");
     expect(await screen.findByText("৳700 isn't accounted for")).toBeTruthy();
     const card = screen.getByRole("group", { name: "Cash count" });
+    expect(within(card).getAllByRole("term").map((term) => term.textContent)).toEqual(["The app expected", "You counted", "Difference"]);
     for (const [label, value] of [
-      ["Cash", "৳1,500"],
-      ["Not yet explained", "৳1,500"],
       ["The app expected", "৳3,000"],
       ["You counted", "৳2,300"],
       ["Difference", "−৳700"],
     ] as const) {
       expect(within(card).getByText(label).parentElement?.textContent).toContain(value);
     }
+    expect(card.textContent).toContain("৳1,500 in cash + ৳1,500 withdrawn, not yet explained");
     expect(card.textContent).toContain("Nothing has been changed, and this isn't counted as spending.");
     expect(button("Tell me what it was for")).toBeTruthy();
     expect(button("Adjust to my count…")).toBeTruthy();
