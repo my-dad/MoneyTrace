@@ -1,4 +1,4 @@
-import { DEFAULT_MATCH_CONFIG, matchCandidate, type MatchResult } from "@moneytrace/domain";
+import { DEFAULT_MATCH_CONFIG, isWalletProvider, matchCandidate, providerSlug, type MatchResult } from "@moneytrace/domain";
 import { isIncoming } from "../candidate-to-intent";
 import type { SourceEventRecord } from "../../ports/source-event-repository";
 import { CASH_ACCOUNT_ID, ensureSource } from "../sources";
@@ -69,16 +69,30 @@ async function sourceOf(
   return ensureSource(deps, ownerId, { provider: candidate.provider, mask: candidate.instrumentMask, kind: candidate.kind });
 }
 
+/**
+ * Where a transfer went. By the last digits when the SMS has them; otherwise, when it names a
+ * wallet ("MFS Transfer-bKash"), that wallet, which is kept without digits like its own SMS
+ * (CR-008). Anything else stays unknown, so the user is asked.
+ */
+async function destinationOf(
+  deps: PipelineDeps,
+  ownerId: Parameters<Stage>[1],
+  candidate: NonNullable<SourceEventRecord["candidate"]>,
+): Promise<string | null> {
+  if (candidate.destinationMask !== undefined) return uniqueAccount(deps, ownerId, { mask: candidate.destinationMask });
+  if (candidate.kind !== "transfer" || candidate.counterparty === undefined) return null;
+  const wallet = providerSlug(candidate.counterparty);
+  if (wallet === null || !isWalletProvider(wallet) || wallet === candidate.provider) return null;
+  return ensureSource(deps, ownerId, { provider: wallet, mask: undefined, kind: candidate.kind });
+}
+
 export const matchStage: Stage = async (deps, ownerId, event) => {
   const { candidate } = event;
   if (candidate === null) return { nextStatus: "matched", outputs: [] };
 
   const resolvedAccountId = event.resolvedAccountId ?? (await sourceOf(deps, ownerId, candidate));
   const resolvedDestinationAccountId =
-    event.resolvedDestinationAccountId ??
-    (candidate.destinationMask === undefined
-      ? null
-      : await uniqueAccount(deps, ownerId, { mask: candidate.destinationMask }));
+    event.resolvedDestinationAccountId ?? (await destinationOf(deps, ownerId, candidate));
 
   const result: MatchResult =
     resolvedAccountId === null

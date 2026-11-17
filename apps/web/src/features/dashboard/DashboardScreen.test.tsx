@@ -206,13 +206,13 @@ describe("DashboardScreen", () => {
 
   it("says how many questions are waiting, and opens the chat to answer them", () => {
     const openChat = withChat(createFixtureReadModels(), 2);
-    fireEvent.click(screen.getByRole("button", { name: "2 questions need your answer" }));
+    fireEvent.click(screen.getByRole("button", { name: "2 things need your answer" }));
     expect(openChat).toHaveBeenCalledWith();
   });
 
   it("one waiting question reads in the singular, and none shows nothing", () => {
     withChat(createFixtureReadModels(), 1);
-    expect(screen.getByRole("button", { name: "1 question needs your answer" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "1 thing needs your answer" })).toBeTruthy();
     cleanup();
     withChat(createFixtureReadModels(), 0);
     expect(screen.queryByRole("button", { name: /need/ })).toBeNull();

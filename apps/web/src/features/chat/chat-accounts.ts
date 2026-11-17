@@ -8,8 +8,9 @@ const usable = (accounts: AccountRow[]) =>
 
 export const anyAccount = usable;
 
+/** Accounts a transfer can move between: banks and wallets, and the user's own cash (a withdrawal). */
 export const transferAccounts = (accounts: AccountRow[]) =>
-  usable(accounts).filter((account) => account.kind !== "creditLiability");
+  usable(accounts).filter((account) => account.kind === "bank" || account.kind === "cash");
 
 export const bankAccounts = (accounts: AccountRow[]) =>
   usable(accounts).filter((account) => account.kind === "bank");

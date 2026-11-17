@@ -76,9 +76,9 @@ a.menuItem:focus-visible { outline:3px solid var(--mt-focus); }
 .empty p { margin:0; }
 .pasteButton { margin-top:20px; }
 .howTo { margin-top:12px !important; font-size:13px; }
-.waiting { display:flex; width:100%; min-height:48px; margin:8px 0 4px; padding:10px 16px; align-items:center; justify-content:space-between; gap:10px; border:1.5px solid var(--mt-accent); border-radius:14px; background:var(--mt-surface); color:var(--mt-ink); font:inherit; font-size:14px; font-weight:700; text-align:left; cursor:pointer; }
-.waiting span:last-child { color:var(--mt-accent); font-size:20px; }
-.waiting:focus-visible { outline:2px solid var(--mt-accent); outline-offset:2px; }
+.needsAnswer { display:flex; width:100%; min-height:48px; margin:8px 0 4px; padding:10px 16px; align-items:center; justify-content:space-between; gap:10px; border:1.5px solid var(--mt-accent); border-radius:14px; background:var(--mt-surface); color:var(--mt-ink); font:inherit; font-size:14px; font-weight:700; text-align:left; cursor:pointer; }
+.needsAnswer span:last-child { color:var(--mt-accent); font-size:20px; }
+.needsAnswer:focus-visible { outline:2px solid var(--mt-accent); outline-offset:2px; }
 .emptyTitle { color:var(--mt-ink); font-size:18px; font-weight:700; margin-bottom:8px !important; }
 .net { margin:2px 0 2px; font-size:24px; font-weight:800; }
 .netNote { margin:0 0 8px; font-size:12px; color:var(--mt-caption); }
@@ -109,16 +109,16 @@ a.menuItem:focus-visible { outline:3px solid var(--mt-focus); }
 @keyframes menuIn { from { opacity:0; transform:scale(0.95) translateY(-4px); } }
 @keyframes grow { from { transform:scaleX(0); } }
 .columns, .empty, .emptyMonth { animation:fadeIn var(--mt-motion-slow) var(--mt-ease-out) both; }
-.waiting, .unexplained { animation:rise var(--mt-motion) var(--mt-ease-out) both; }
+.needsAnswer, .unexplained { animation:rise var(--mt-motion) var(--mt-ease-out) both; }
 .menu { transform-origin:top right; animation:menuIn var(--mt-motion) var(--mt-ease-out) both; }
 .fill { transform-origin:left; animation:grow var(--mt-motion-slow) var(--mt-ease-out) both; }
-.menuButton, .nav, .countLink, .waiting, button.menuItem {
+.menuButton, .nav, .countLink, .needsAnswer, button.menuItem {
   transition:background-color var(--mt-motion-fast) ease, border-color var(--mt-motion-fast) ease, transform var(--mt-motion-fast) var(--mt-ease-out);
 }
-.menuButton:active, .nav:not(:disabled):active, .waiting:active { transform:scale(0.95); }
-.waiting:active { transform:scale(0.98); }
+.menuButton:active, .nav:not(:disabled):active, .needsAnswer:active { transform:scale(0.95); }
+.needsAnswer:active { transform:scale(0.98); }
 @media (hover: hover) {
   button.menuItem:not(:disabled):hover { background:var(--mt-surface-soft); }
   .menuButton:hover, .nav:not(:disabled):hover { border-color:var(--mt-border-strong); }
-  .waiting:hover { background:var(--mt-accent-tint); }
+  .needsAnswer:hover { background:var(--mt-accent-tint); }
 }

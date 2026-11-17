@@ -440,6 +440,13 @@ describe("transaction preview", () => {
     });
   });
 
+  it("a transfer offers only accounts it can record: not a family holder's cash", () => {
+    setup({ events: [awaiting({ candidate: candidate({ kind: "unclassifiedDebit" }) })] });
+    fireEvent.click(button("Transfer between my accounts"));
+    expect(screen.queryByRole("button", { name: "Ammu" })).toBeNull();
+    expect(button("BRAC Bank")).toBeTruthy();
+  });
+
   it("an unclassified debit can be called spending", async () => {
     const { commands } = setup({ events: [awaiting({ candidate: candidate({ kind: "unclassifiedDebit" }) })] });
     fireEvent.click(button("Spending"));

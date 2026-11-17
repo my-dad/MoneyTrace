@@ -10,6 +10,8 @@ describe("providerSlug", () => {
     ["Trust Bank", "trustbank"],
     ["City Bank", "city-bank"],
     ["Cash", "cash"],
+    ["EBL", "ebl"],
+    ["Eastern Bank", "ebl"],
   ])("%s → %s", (name, slug) => {
     expect(providerSlug(name)).toBe(slug);
   });
@@ -25,6 +27,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("mtb", "2222", "cardTransaction")).toBe("MTB card ••2222");
     expect(sourceLabel("brac", "8888", "withdrawal")).toBe("BRAC ••8888");
     expect(sourceLabel("city-bank", undefined, "income")).toBe("City Bank");
+    expect(sourceLabel("ebl", "104", "transfer")).toBe("EBL ••104");
     expect(isWalletProvider("upay")).toBe(true);
     expect(isWalletProvider("brac")).toBe(false);
   });

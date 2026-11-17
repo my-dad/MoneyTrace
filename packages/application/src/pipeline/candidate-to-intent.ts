@@ -50,9 +50,12 @@ export function candidateToIntent(
     case "refund":
       return { type: "refund", target: source, category, amount };
     case "transfer":
-      return destination === null
-        ? null
-        : { type: "transfer", from: source, to: destination, amount };
+      if (destination === null) return null;
+      // Bank to the user's own cash is a withdrawal: bank down, cash up, never spending.
+      if (source.kind === "bank" && destination.kind === "cash") {
+        return { type: "withdrawal", bank: source, cash: destination, amount };
+      }
+      return { type: "transfer", from: source, to: destination, amount };
     // CR-008: a debit counts as Spent and a credit as Came in; own transfers are paired later.
     case "unclassifiedCredit":
       return { type: "income", destination: source, category, amount };

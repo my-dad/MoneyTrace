@@ -159,7 +159,7 @@ export function DashboardScreen({
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
       {chat !== null && chat.waiting > 0 && (
-        <button type="button" className={styles.waiting} onClick={() => { chat.openChat(); }}>
+        <button type="button" className={styles.needsAnswer} onClick={() => { chat.openChat(); }}>
           <span>{DASHBOARD_COPY.questionsWaiting(chat.waiting)}</span>
           <span aria-hidden="true">›</span>
         </button>
