@@ -54,3 +54,43 @@ describe("Delete my account (CR-009)", () => {
     expect((await axe.run(container)).violations).toEqual([]);
   });
 });
+
+describe("closing the menu", () => {
+  const show = () => {
+    render(
+      <div>
+        <p>Elsewhere on the page</p>
+        <AccountMenu aiSpend="$0.10 used this month" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  };
+
+  it("a tap anywhere outside closes it", () => {
+    show();
+    fireEvent.pointerDown(screen.getByText("Elsewhere on the page"));
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+
+  it("a tap inside the menu keeps it open", () => {
+    show();
+    fireEvent.pointerDown(screen.getByText("AI budget"));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  });
+
+  it("Escape closes it and puts focus back on the menu button", () => {
+    show();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Sign out" }), { key: "Escape" });
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Menu" }));
+  });
+
+  it("the menu button still toggles it closed", () => {
+    show();
+    const button = screen.getByRole("button", { name: "Menu" });
+    fireEvent.pointerDown(button);
+    fireEvent.click(button);
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+});

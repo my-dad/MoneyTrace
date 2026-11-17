@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ACCOUNT_DELETION_CONFIRMATION } from "@moneytrace/contracts";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import { useAction } from "../../shared/use-action";
@@ -20,9 +20,33 @@ export function AccountMenu({
   const [typed, setTyped] = useState("");
   const action = useAction();
   const removal = useAction();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // While open, a tap anywhere outside the menu (and its button) closes it.
+  useEffect(() => {
+    if (!open) return undefined;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && wrapRef.current?.contains(event.target) !== true) setOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => { document.removeEventListener("pointerdown", outside); };
+  }, [open]);
+
   return (
-    <div className={styles.menuWrap}>
-      <button type="button" className={styles.menuButton} aria-label={DASHBOARD_COPY.menu} aria-expanded={open} aria-controls="account-menu" onClick={() => { setOpen((value) => !value); }}>☰</button>
+    <div
+      ref={wrapRef}
+      className={styles.menuWrap}
+      onKeyDown={(event) => {
+        // Escape also ends an IME composition (Bangla input); that must not close the menu.
+        if (open && event.key === "Escape" && !event.nativeEvent.isComposing) {
+          event.stopPropagation();
+          setOpen(false);
+          buttonRef.current?.focus();
+        }
+      }}
+    >
+      <button ref={buttonRef} type="button" className={styles.menuButton} aria-label={DASHBOARD_COPY.menu} aria-expanded={open} aria-controls="account-menu" onClick={() => { setOpen((value) => !value); }}>☰</button>
       {open && (
         <div id="account-menu" className={styles.menu}>
           <p className={styles.menuItem}>
