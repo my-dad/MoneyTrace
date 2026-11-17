@@ -113,10 +113,10 @@ describe("DashboardScreen", () => {
     expect(screen.getByText("Nothing recorded in September 2026")).toBeTruthy();
   });
 
-  it("recent shows statuses", () => {
+  it("recent marks only what needs attention, not every recorded message", () => {
     open();
     const recent = screen.getByRole("region", { name: "Recent" });
-    expect(within(recent).getAllByText("Recorded").length).toBeGreaterThan(0);
+    expect(within(recent).queryByText("Recorded")).toBeNull();
     expect(within(recent).getAllByText("Waiting for your answer").length).toBeGreaterThan(0);
   });
 
