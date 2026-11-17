@@ -141,6 +141,7 @@ pnpm verify
 pnpm --filter web build
 pnpm test:e2e:fixture
 pnpm test:e2e            # needs Docker: local Supabase
+pnpm dev:local           # needs Docker: the real app on a local Supabase at http://127.0.0.1:5005
 pnpm smoke:supabase
 ```
 

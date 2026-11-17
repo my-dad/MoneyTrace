@@ -8,6 +8,8 @@
   },
   "scripts": {
     "test:e2e": "bash tools/e2e/local-supabase.sh",
+    "dev:local": "bash tools/dev/local-supabase.sh",
+    "dev:local:stop": "pnpm dlx supabase@2.122.0 stop",
     "test": "vitest run --passWithNoTests",
     "test:e2e:fixture": "NEXT_PUBLIC_DATA_SOURCE=fixture pnpm --filter web build && playwright test --config=e2e/fixture/playwright.config.ts",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tools.json",
