@@ -170,7 +170,7 @@ export const postStage: Stage = async (deps, ownerId, event) => {
       idempotencyKey: asIdempotencyKey(event.id),
       transactionId: asTransactionId(transactionId),
       intent,
-      ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant.name }),
+      ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant }),
     });
     if (main.status === "idempotencyConflict") return deadLetter("stageFailed");
     if (candidate.feeMinor !== undefined) {

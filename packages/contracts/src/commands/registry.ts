@@ -37,6 +37,8 @@ import {
   recordReconciliationResponse,
   splitTransferRequest,
   splitTransferResponse,
+  tagMerchantRequest,
+  tagMerchantResponse,
   upsertCashAllocationRequest,
   upsertCashAllocationResponse,
 } from "./ledger";
@@ -128,6 +130,7 @@ export const COMMANDS = {
     response: recordAdjustmentResponse,
   },
   splitTransfer: { phase: 1, request: splitTransferRequest, response: splitTransferResponse },
+  tagMerchant: { phase: 1, request: tagMerchantRequest, response: tagMerchantResponse },
   requestExport: { phase: 4, request: requestExportRequest, response: requestExportResponse },
   requestAccountDeletion: {
     phase: 4,

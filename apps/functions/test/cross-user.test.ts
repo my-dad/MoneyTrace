@@ -71,6 +71,8 @@ const OWN_DATA_ONLY: Case[] = [
   { name: "updateSettings", data: () => ({ timezone: "Asia/Dhaka" }) },
   { name: "submitEvidence", data: () => ({ idempotencyKey: key(), text: "paid 300 for tea" }) },
   { name: "recordReconciliation", data: () => ({ idempotencyKey: key(), countedMinor: 0, currency: "BDT" }) },
+  // A merchant key is Bob's own name for a shop; tagging it touches only Bob's data.
+  { name: "tagMerchant", data: () => ({ merchantKey: "examplesupershop", merchantName: "Example Supershop", sector: "food" }) },
   // Last: Bob erases his own account; Alice's tree must still be untouched (CR-009).
   { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
 ];

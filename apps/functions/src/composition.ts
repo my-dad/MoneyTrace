@@ -35,6 +35,7 @@ import {
   type Logger,
   type PipelineLease,
   type RateLimiter,
+  TagMerchant,
 } from "@moneytrace/application";
 import {
   CryptoIdGenerator,
@@ -88,6 +89,7 @@ export type Deps = {
   recordCashCount: RecordCashCount;
   recordCashAdjustment: RecordCashAdjustment;
   splitTransfer: SplitTransfer;
+  tagMerchant: TagMerchant;
   updateSettings: UpdateSettings;
   advanceSourceEvent: AdvanceSourceEvent;
   recoverExpiredClaims: RecoverExpiredClaims;
@@ -129,6 +131,7 @@ export function composeDeps(
   const providerCalls = new FirestoreProviderCallRepository(db, clock);
   const followUps = new FirestoreFollowUpRepository(db);
   const reconciliations = new FirestoreReconciliationRepository(db);
+  const merchantSectors = new FirestoreMerchantSectorRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
   let advance: AdvanceSourceEvent | undefined;
   const plans = new Map<string, AiPlan>();
@@ -216,7 +219,7 @@ export function composeDeps(
         ledger: reader,
         profiles,
         confidence: DEFAULT_CONFIDENCE_CONFIG,
-        merchantSectors: new FirestoreMerchantSectorRepository(db),
+        merchantSectors,
       });
       return advance;
     },
@@ -244,7 +247,8 @@ export function composeDeps(
     correctTransaction: new CorrectTransaction({ reader, writer, accounts, hasher, clock }),
     recordCashCount: new RecordCashCount({ accounts, reader, reconciliations, followUps, clock }),
     recordCashAdjustment: new RecordCashAdjustment({ reconciliations, followUps, accounts, reader, post, clock }),
-    splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock, merchantSectors: new FirestoreMerchantSectorRepository(db) }),
+    splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock, merchantSectors }),
+    tagMerchant: new TagMerchant({ merchantSectors, reader, writer, accounts, hasher, clock }),
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

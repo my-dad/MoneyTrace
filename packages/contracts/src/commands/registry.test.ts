@@ -57,6 +57,7 @@ const EXAMPLES: Record<CommandName, unknown> = {
   recordReconciliation: { idempotencyKey: "k5", countedMinor: 900, currency: "BDT" },
   recordAdjustment: { reconciliationId: "recon-k5", cause: "lost note" },
   splitTransfer: { sourceEventId: "se1" },
+  tagMerchant: { merchantKey: "foodpanda", merchantName: "Foodpanda", sector: "food" },
   requestExport: {},
   requestAccountDeletion: { confirmation: "DELETE MY ACCOUNT" },
 };
@@ -99,6 +100,7 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   },
   recordAdjustment: { transactionId: "t", status: "recorded", countedMinor: 95, adjustmentMinor: 5 },
   splitTransfer: { spentTransactionId: "a", cameInTransactionId: "b", amountMinor: 170000, status: "recorded" },
+  tagMerchant: { resorted: 3, more: false },
   requestExport: { requestId: "r" },
   requestAccountDeletion: { requestId: "r" },
 };
@@ -121,7 +123,7 @@ const names = Object.keys(COMMANDS);
 describe("COMMANDS", () => {
   it("has an example for every command and none extra", () => {
     expect(Object.keys(EXAMPLES).sort()).toEqual([...names].sort());
-    expect(names.length).toBe(24);
+    expect(names.length).toBe(25);
   });
   it.each(names)("%s accepts its valid example", (name) => {
     const c = COMMANDS[name as CommandName];

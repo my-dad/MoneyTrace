@@ -997,5 +997,17 @@ export function describeLedgerContract(
         category: "groceries",
       });
     });
+
+    it("lists a merchant's transactions by its key, per owner, up to a limit", async () => {
+      const shop = { merchant: "Foodpanda", merchantKey: "foodpanda" };
+      await writer.commit(alice, { ...commitOf("m1", "tx-m1", 100), transaction: record("tx-m1", shop) });
+      await writer.commit(alice, { ...commitOf("m2", "tx-m2", 200), transaction: record("tx-m2", shop) });
+      await writer.commit(alice, { ...commitOf("m3", "tx-m3", 300), transaction: record("tx-m3", { merchant: "Daraz", merchantKey: "daraz" }) });
+      await writer.commit(bob, { ...commitOf("m4", "tx-m4", 400), transaction: record("tx-m4", shop) });
+      const ids = async (limit: number) => (await reader.listByMerchantKey(alice, "foodpanda", limit)).map((t) => t.id).sort();
+      expect(await ids(10)).toEqual(["tx-m1", "tx-m2"]);
+      expect(await ids(1)).toHaveLength(1);
+      expect(await reader.getTransaction(alice, asTransactionId("tx-m1"))).toMatchObject(shop);
+    });
   });
 }

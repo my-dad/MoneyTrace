@@ -30,11 +30,12 @@ const refOf = (e: EntryRecord): AccountRef => ({
   currency: e.currency,
 });
 
-/** The same transaction with a different amount, rebuilt from what the ledger holds. */
+/** The same transaction with a different amount (or category), rebuilt from what the ledger holds. */
 export function rebuildIntent(
   tx: TransactionRecord,
   entries: readonly EntryRecord[],
   amount: Money,
+  newCategory?: string,
 ): PostingIntent {
   const debit = entries.find((e) => e.side === "debit");
   const credit = entries.find((e) => e.side === "credit");
@@ -42,7 +43,7 @@ export function rebuildIntent(
     throw new DomainError("invalidIntent", "this transaction cannot be replaced");
   }
   const [from, to] = [refOf(credit), refOf(debit)];
-  const category = tx.category ?? "uncategorized";
+  const category = newCategory ?? tx.category ?? "uncategorized";
   switch (tx.intentType) {
     case "withdrawal":
       return { type: "withdrawal", bank: from, cash: to, amount };

@@ -98,7 +98,7 @@ export class SplitTransfer {
         intent: intentB,
         occurredAtMs: event.candidate.occurredAtMs ?? event.receivedAtMs,
         sourceEventIds: [event.id],
-        ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant.name }),
+        ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant }),
       },
     });
     if (result.status === "idempotencyConflict") {

@@ -228,6 +228,8 @@ const transactions = z
     rationale: text.optional(),
     /** The merchant the evidence names, tidied (`normalizeMerchant`). */
     merchant: name.optional(),
+    /** `normalizeMerchant` key of `merchant`, so one shop's spellings are found together. */
+    merchantKey: z.string().regex(/^[a-z0-9]{1,64}$/).optional(),
     correctionOf: documentId.optional(),
     reversedBy: documentId.optional(),
     /** Adjustments keep cause and authorization; custody transfers keep the holder's name. */

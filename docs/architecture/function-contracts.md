@@ -283,6 +283,18 @@ Errors: unauthenticated, not-found, failed-precondition (not a paired transfer, 
 
 Use case: SplitTransfer
 
+### tagMerchant
+
+Phase: 1
+
+Request: `{ merchantKey, merchantName, sector }`. The user's sector for a merchant (any sector id except `uncategorized`). It is remembered for later SMS, and up to 20 earlier spends from the merchant in another sector are corrected into it per call (reversal plus replacement, audited). The client calls again while `more` is true.
+
+Response: `{ resorted, more }`
+
+Errors: unauthenticated, invalid-argument (unknown sector)
+
+Use case: TagMerchant
+
 ### requestExport
 
 Phase: 4

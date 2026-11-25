@@ -6,6 +6,7 @@ import {
   nonNegativeMinorAmount,
   positiveMinorAmount,
 } from "../primitives";
+import { sectorSchema } from "../sectors";
 import { accountName, shortText, strictObject } from "./shared";
 
 const postingStatus = z.enum(["recorded", "alreadyRecorded"]);
@@ -86,4 +87,15 @@ export const splitTransferResponse = strictObject({
   cameInTransactionId: documentId,
   amountMinor: positiveMinorAmount,
   status: postingStatus,
+});
+
+/** The user's sector for a merchant; earlier spending from it is re-sorted, a batch per call. */
+export const tagMerchantRequest = strictObject({
+  merchantKey: z.string().regex(/^[a-z0-9]{1,64}$/),
+  merchantName: accountName,
+  sector: sectorSchema.exclude(["uncategorized"]),
+});
+export const tagMerchantResponse = strictObject({
+  resorted: z.number().int().nonnegative(),
+  more: z.boolean(),
 });
