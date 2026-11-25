@@ -2,7 +2,7 @@
 
 All owner data lives under `users/{ownerId}/...`. Schemas are strict Zod objects in `packages/contracts/src/firestore/collections.ts`, so unknown fields are rejected. Money is integer minor units plus a currency code. Retention, export and client-read treatment per collection are in `owner-data-registry.ts`.
 
-The `users/{uid}` document is `userProfileSchema`: baseCurrency, reportingCycle (calendarMonth or salaryCycle with startDay), notifications, retentionPolicyVersion, createdAtMs.
+The `users/{uid}` document is `userProfileSchema`: displayName?, baseCurrency, reportingCycle (calendarMonth or salaryCycle with startDay), notifications, retentionPolicyVersion, createdAtMs, avatar? ({kind: google} or {kind: initials, color}), profileCompletedAtMs? (first profile save), lastSeenAtMs? (latest visit, for the welcome-back overview).
 
 The top-level `deletionLog` collection is server-only and outside `users/`, so it survives account deletion. Entries are `{ ownerIdHash, deletedAtMs }`. It is not an owner collection and is not in the registry.
 

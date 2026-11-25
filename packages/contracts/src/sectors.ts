@@ -54,3 +54,13 @@ export const INCOME_LABELS: Record<IncomeSource, string> = {
   gift: "Gift",
   other: "Other",
 };
+
+/** Colours a user may pick for their initials avatar (no photo uploads: PRD CR-001). */
+export const AVATAR_COLORS = ["orange", "teal", "blue", "violet", "pink", "green"] as const;
+export type AvatarColor = (typeof AVATAR_COLORS)[number];
+/** The profile picture: the Google account's photo, or initials on a chosen colour. */
+export const avatarSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("google") }).strict(),
+  z.object({ kind: z.literal("initials"), color: z.enum(AVATAR_COLORS) }).strict(),
+]);
+export type Avatar = z.output<typeof avatarSchema>;

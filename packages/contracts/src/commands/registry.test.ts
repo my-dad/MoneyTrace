@@ -60,6 +60,8 @@ const EXAMPLES: Record<CommandName, unknown> = {
   tagMerchant: { merchantKey: "foodpanda", merchantName: "Foodpanda", sector: "food" },
   recordCashIncome: { idempotencyKey: "k1", amountMinor: 2000000, from: "rent", occurredOn: "2026-11-25" },
   editManualIncome: { idempotencyKey: "k2", sourceEventId: "se1", amountMinor: 1800000, from: "rent" },
+  updateProfile: { displayName: "Mabrur", avatar: { kind: "initials", color: "teal" } },
+  recordVisit: {},
   requestExport: {},
   requestAccountDeletion: { confirmation: "DELETE MY ACCOUNT" },
 };
@@ -105,6 +107,8 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   tagMerchant: { resorted: 3, more: false },
   recordCashIncome: { sourceEventId: "se1", status: "posted" },
   editManualIncome: { status: "recorded" },
+  updateProfile: { updated: true },
+  recordVisit: { previousSeenAtMs: null },
   requestExport: { requestId: "r" },
   requestAccountDeletion: { requestId: "r" },
 };
@@ -127,7 +131,7 @@ const names = Object.keys(COMMANDS);
 describe("COMMANDS", () => {
   it("has an example for every command and none extra", () => {
     expect(Object.keys(EXAMPLES).sort()).toEqual([...names].sort());
-    expect(names.length).toBe(27);
+    expect(names.length).toBe(29);
   });
   it.each(names)("%s accepts its valid example", (name) => {
     const c = COMMANDS[name as CommandName];

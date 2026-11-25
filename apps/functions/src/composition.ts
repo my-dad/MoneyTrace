@@ -38,6 +38,8 @@ import {
   TagMerchant,
   RecordCashIncome,
   EditManualIncome,
+  UpdateProfile,
+  RecordVisit,
 } from "@moneytrace/application";
 import {
   CryptoIdGenerator,
@@ -94,6 +96,8 @@ export type Deps = {
   tagMerchant: TagMerchant;
   recordCashIncome: RecordCashIncome;
   editManualIncome: EditManualIncome;
+  updateProfile: UpdateProfile;
+  recordVisit: RecordVisit;
   updateSettings: UpdateSettings;
   advanceSourceEvent: AdvanceSourceEvent;
   recoverExpiredClaims: RecoverExpiredClaims;
@@ -255,6 +259,8 @@ export function composeDeps(
     tagMerchant: new TagMerchant({ merchantSectors, reader, writer, accounts, hasher, clock }),
     recordCashIncome: new RecordCashIncome({ sourceEvents, hasher, ids, clock }),
     editManualIncome: new EditManualIncome({ sourceEvents, reader, writer, accounts, hasher, clock }),
+    updateProfile: new UpdateProfile({ profiles, clock }),
+    recordVisit: new RecordVisit({ profiles, clock }),
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

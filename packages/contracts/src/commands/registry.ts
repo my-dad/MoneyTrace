@@ -52,7 +52,7 @@ import {
   requestExportRequest,
   requestExportResponse,
 } from "./lifecycle";
-import { updateSettingsRequest, updateSettingsResponse } from "./settings";
+import { recordVisitRequest, recordVisitResponse, updateProfileRequest, updateProfileResponse, updateSettingsRequest, updateSettingsResponse } from "./settings";
 import {
   createUploadSessionRequest,
   createUploadSessionResponse,
@@ -137,6 +137,8 @@ export const COMMANDS = {
   tagMerchant: { phase: 1, request: tagMerchantRequest, response: tagMerchantResponse },
   recordCashIncome: { phase: 1, request: recordCashIncomeRequest, response: recordCashIncomeResponse },
   editManualIncome: { phase: 1, request: editManualIncomeRequest, response: editManualIncomeResponse },
+  updateProfile: { phase: 1, request: updateProfileRequest, response: updateProfileResponse },
+  recordVisit: { phase: 1, request: recordVisitRequest, response: recordVisitResponse },
   requestExport: { phase: 4, request: requestExportRequest, response: requestExportResponse },
   requestAccountDeletion: {
     phase: 4,

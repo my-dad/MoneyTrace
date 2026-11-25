@@ -12,6 +12,14 @@ export const editManualIncome = command(COMMANDS.editManualIncome, (ctx, data) =
   ctx.deps.editManualIncome.execute({ ownerId: ctx.ownerId, ...data }),
 );
 
+/** The user's name and picture. */
+export const updateProfile = command(COMMANDS.updateProfile, (ctx, data) =>
+  ctx.deps.updateProfile.execute({ ownerId: ctx.ownerId, ...data }),
+);
+
+/** Notes this visit and returns the previous one. */
+export const recordVisit = command(COMMANDS.recordVisit, (ctx) => ctx.deps.recordVisit.execute({ ownerId: ctx.ownerId }));
+
 export const tagMerchant = command(COMMANDS.tagMerchant, (ctx, data) =>
   ctx.deps.tagMerchant.execute({ ownerId: ctx.ownerId, ...data }),
 );
