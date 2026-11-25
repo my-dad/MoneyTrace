@@ -5,11 +5,11 @@ import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import { dhakaDate } from "../../shared/dhaka-date";
-import type { TransactionRow, AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
-import { aiSpendLabel, buildDashboard, merchantsOf, monthRange } from "./dashboard-view-model";
+import { buildDashboard, merchantsOf, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
 import { toRecentItems, type RecentItem } from "./recent-items";
 import { RecentList, type Editable, type Sortable } from "./RecentList";
@@ -60,7 +60,6 @@ export function DashboardScreen({
   const [previous, setPrevious] = useState<LedgerEntryRow[] | null>(null);
   const [sourceEntries, setSourceEntries] = useState<LedgerEntryRow[] | null>(null);
   const [income, setIncome] = useState<LedgerEntryRow[] | null>(null);
-  const [usage, setUsage] = useState<AiUsageRow[] | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRow[]>([]);
   const [sorting, setSorting] = useState<Sortable | null>(null);
   const [recentIncome, setRecentIncome] = useState<LedgerEntryRow[]>([]);
@@ -76,12 +75,10 @@ export function DashboardScreen({
 
   useEffect(() => {
     const onError = () => { setFailed(true); };
-    const thisMonth = monthRange(nowMs, 0);
     const stops = [
       gateway.watchAccounts(setAccounts, onError),
       gateway.watchBalances(setBalances, onError),
       gateway.watchSourceEvents(EVENT_WINDOW, setEvents, onError),
-      gateway.watchAiUsage(thisMonth.fromMs, thisMonth.toMs, setUsage, onError),
       // The spends behind Recent: their sector and shop, so an unsorted one can be sorted.
       gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
       // Income behind Recent, so cash income shows at its amount after any edit.
@@ -257,7 +254,7 @@ export function DashboardScreen({
             <p className={styles.name}>{displayName ?? ""}</p>
           </div>
         </div>
-        <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
+        <AccountMenu onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
       {chat !== null && chat.waiting > 0 && (
