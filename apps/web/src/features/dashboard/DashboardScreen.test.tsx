@@ -9,7 +9,13 @@ import { FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/hou
 
 const createFixtureEvents = () => [...FIXTURE_SOURCE_EVENTS];
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
-import type { ReadModelGateway } from "../../shared/read-model-gateway";
+import type { ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { CashIncomeCommands } from "./CashIncomeForm";
+
+const incomeCommands = (): CashIncomeCommands => ({
+  recordCashIncome: vi.fn(() => Promise.resolve({ sourceEventId: "se1", status: "posted" as const })),
+  editManualIncome: vi.fn(() => Promise.resolve({ status: "recorded" as const })),
+});
 import { DashboardScreen } from "./DashboardScreen";
 import { ChatOpenerContext } from "../chat/ChatLauncher";
 
@@ -95,6 +101,43 @@ describe("DashboardScreen", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Shopping" }));
     await screen.findByText("Sorted 1 spend from Daraz as Shopping.");
     expect(tagMerchant).toHaveBeenCalledWith({ merchantKey: "daraz", merchantName: "Daraz", sector: "shopping" });
+  });
+
+  it("adds cash income from the dashboard", () => {
+    render(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} cashIncome={incomeCommands()} />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Add cash income" }));
+    expect(screen.getByRole("dialog", { name: "Add cash income" })).toBeTruthy();
+  });
+
+  it("shows cash income at its edited amount, and Edit opens it prefilled", () => {
+    const gateway = createFixtureReadModels();
+    const at = Date.parse("2026-11-03T12:00:00+06:00");
+    gateway.setSourceEvents([
+      {
+        ...(FIXTURE_SOURCE_EVENTS[0] as SourceEventRow),
+        id: "se-m",
+        sourceType: "chat",
+        status: "posted",
+        matchKind: "none",
+        matchedTransactionId: null,
+        receivedAtMs: at,
+        retainedText: "Cash income · House rent",
+        extraction: { source: "deterministicParser", parser: { name: "manualEntry", version: "1" }, confidenceBp: 10_000 },
+        candidate: { kind: "income", amountMinor: 2_000_000, currency: "BDT", occurredAtMs: at, dateOnly: true, provider: "cash", counterparty: "House rent", category: "rent" },
+        resolvedAccountId: "cash-wallet",
+        resolvedDestinationAccountId: null,
+      },
+    ]);
+    const tx = (id: string, state: "posted" | "reversed") => ({ id, state, intentType: "income" as const, occurredAtMs: at, currency: "BDT" as const, sourceEventIds: ["se-m"], actor: "u", category: "rent", committedAtMs: at });
+    gateway.setTransactions([tx("txn-se-m", "reversed"), tx("txn-se-m:repl", "posted")]);
+    gateway.setIncomeEntries([
+      { id: "txn-se-m:repl:2", transactionId: "txn-se-m:repl", accountId: "nominal:income:rent:BDT", accountKind: "income", side: "credit", amountMinor: 1_800_000, currency: "BDT", occurredAtMs: at },
+    ]);
+    render(<DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} cashIncome={incomeCommands()} />);
+    const recent = screen.getByRole("region", { name: "Recent" });
+    expect(within(recent).getByText("৳18,000")).toBeTruthy();
+    fireEvent.click(within(recent).getByRole("button", { name: "Edit House rent" }));
+    expect(screen.getByLabelText<HTMLInputElement>("Amount (৳)").value).toBe("18000");
   });
 
   it("offers no Sort without a way to save it", () => {

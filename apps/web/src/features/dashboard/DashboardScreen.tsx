@@ -11,7 +11,9 @@ import { CategoryChart } from "./CategoryChart";
 import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
 import { toRecentItems, type RecentItem } from "./recent-items";
-import { RecentList, type Sortable } from "./RecentList";
+import { RecentList, type Editable, type Sortable } from "./RecentList";
+import { CashIncomeForm, type CashIncomeCommands, type CashIncomeMode } from "./CashIncomeForm";
+import { manualIncomes } from "./manual-income";
 import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
 import styles from "./dashboard.module.css";
@@ -30,6 +32,7 @@ export function DashboardScreen({
   onSignOut,
   onDeleteAccount = () => Promise.reject(new Error("account deletion is not available here")),
   tagMerchant,
+  cashIncome,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
@@ -38,6 +41,8 @@ export function DashboardScreen({
   onDeleteAccount?: (confirmation: string) => Promise<void>;
   /** Sorts a shop into a sector; without it, nothing offers to sort. */
   tagMerchant?: TagMerchant;
+  /** Adds and fixes cash income; without it, nothing offers to. */
+  cashIncome?: CashIncomeCommands;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -52,6 +57,8 @@ export function DashboardScreen({
   const [usage, setUsage] = useState<AiUsageRow[] | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<TransactionRow[]>([]);
   const [sorting, setSorting] = useState<Sortable | null>(null);
+  const [recentIncome, setRecentIncome] = useState<LedgerEntryRow[]>([]);
+  const [incomeForm, setIncomeForm] = useState<CashIncomeMode | null>(null);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
@@ -66,6 +73,8 @@ export function DashboardScreen({
       gateway.watchAiUsage(thisMonth.fromMs, thisMonth.toMs, setUsage, onError),
       // The spends behind Recent: their sector and shop, so an unsorted one can be sorted.
       gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
+      // Income behind Recent, so cash income shows at its amount after any edit.
+      gateway.watchIncomeEntries(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentIncome, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -97,6 +106,12 @@ export function DashboardScreen({
       .map((t): [string, Sortable] => [t.id, { key: t.merchantKey ?? "", name: t.merchant ?? "" }]),
   );
   const sortOf = (item: RecentItem): Sortable | null => unsorted.get(`txn-${item.id}`) ?? null;
+  const manual = manualIncomes(events ?? [], recentTransactions, recentIncome);
+  const recentShown = recent.map((item) => {
+    const income = manual.get(item.id);
+    return income === undefined ? item : { ...item, amountMinor: income.amountMinor };
+  });
+  const editOf = (item: RecentItem): Editable | null => manual.get(item.id) ?? null;
 
   let body;
   if (newUser) {
@@ -178,7 +193,13 @@ export function DashboardScreen({
         <div>
           <SourcesList netMoneyMinor={view.netMoneyMinor} sources={view.sources} />
           {recent.length > 0 && (
-            <RecentList items={recent} sortOf={sortOf} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
+            <RecentList
+              items={recentShown}
+              sortOf={sortOf}
+              editOf={editOf}
+              {...(tagMerchant === undefined ? {} : { onSort: setSorting })}
+              {...(cashIncome === undefined ? {} : { onEdit: (income: Editable) => { setIncomeForm({ kind: "edit", sourceEventId: income.sourceEventId, amountMinor: income.amountMinor, from: income.from }); } })}
+            />
           )}
         </div>
       </div>
@@ -207,10 +228,18 @@ export function DashboardScreen({
           <span aria-hidden="true">›</span>
         </button>
       )}
+      {cashIncome !== undefined && (
+        <button type="button" className={styles.addIncome} onClick={() => { setIncomeForm({ kind: "add" }); }}>
+          {DASHBOARD_COPY.addIncomeButton}
+        </button>
+      )}
       {!newUser && (
         <MonthSwitch label={month.label} canGoNext={offset < 0} onPrevious={() => { setOffset((n) => n - 1); }} onNext={() => { setOffset((n) => Math.min(0, n + 1)); }} />
       )}
       {body}
+      {incomeForm !== null && cashIncome !== undefined && (
+        <CashIncomeForm mode={incomeForm} nowMs={nowMs} commands={cashIncome} onClose={() => { setIncomeForm(null); }} />
+      )}
       {sorting !== null && tagMerchant !== undefined && (
         <SectorPicker merchantName={sorting.name} merchantKey={sorting.key} tagMerchant={tagMerchant} onClose={() => { setSorting(null); }} />
       )}

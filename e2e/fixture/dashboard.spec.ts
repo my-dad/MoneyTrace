@@ -57,3 +57,13 @@ test("sorting a shop in the demo says nothing was saved", async ({ page }) => {
   await page.getByRole("dialog", { name: "Sort Daraz" }).getByRole("button", { name: "Shopping" }).click();
   await expect(page.getByRole("status").filter({ hasText: "demo" })).toBeVisible();
 });
+
+test("adding cash income in the demo says nothing was saved", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "+ Add cash income" }).click();
+  const form = page.getByRole("dialog", { name: "Add cash income" });
+  await form.getByLabel("Amount (৳)").fill("20000");
+  await form.getByRole("radio", { name: "House rent" }).check();
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(form.getByRole("status").filter({ hasText: "demo" })).toBeVisible();
+});

@@ -188,3 +188,28 @@ a.menuItem:focus-visible { outline:3px solid var(--mt-focus); }
   .sectorChoice:not(:disabled):hover { border-color:var(--sector, var(--mt-border-strong)); background:var(--mt-surface-soft); }
   .sortButton:hover { border-color:var(--mt-accent); }
 }
+
+/* Cash income form. */
+.incomeForm { display:flex; flex-direction:column; gap:14px; }
+.field { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:700; color:var(--mt-ink); }
+.field input { min-height:48px; box-sizing:border-box; padding:0 14px; border:1.5px solid var(--mt-border-strong); border-radius:14px; background:var(--mt-surface); color:var(--mt-ink); font:inherit; font-size:16px; font-weight:600; }
+.field input:focus-visible { outline:3px solid var(--mt-focus); outline-offset:1px; }
+.fieldError { margin:-6px 0 0; font-size:13px; font-weight:700; color:var(--mt-failed-text); }
+.sourceChoices { margin:0; padding:0; border:0; display:flex; flex-wrap:wrap; gap:8px; }
+.sourceChoices legend { padding:0 0 8px; font-size:14px; font-weight:700; color:var(--mt-ink); }
+.sourceChoice { position:relative; }
+.sourceChoice input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+.sourceChoice span { display:inline-flex; align-items:center; min-height:44px; padding:0 16px; border:1.5px solid var(--mt-border-strong); border-radius:999px; background:var(--mt-surface); font-size:14px; font-weight:700; color:var(--mt-ink); transition:background-color var(--mt-motion-fast) ease, border-color var(--mt-motion-fast) ease, color var(--mt-motion-fast) ease; }
+.sourceChoice input:checked + span { background:var(--mt-grad-income); border-color:transparent; color:#fff; }
+.sourceChoice input:focus-visible + span { outline:3px solid var(--mt-focus); outline-offset:2px; }
+.sheetActions { display:flex; gap:10px; margin-top:4px; }
+.sheetActions > * { flex:1; }
+.sheetPrimary { min-height:48px; border:0; border-radius:14px; background:var(--mt-grad-income); color:#fff; font:inherit; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(4,120,87,.25); }
+.sheetPrimary:disabled { background:var(--mt-disabled); color:var(--mt-disabled-text); box-shadow:none; cursor:default; }
+.sheetSecondary { min-height:48px; border:1.5px solid var(--mt-border-strong); border-radius:14px; background:var(--mt-surface); color:var(--mt-ink); font:inherit; font-weight:700; cursor:pointer; }
+.sheetPrimary:focus-visible, .sheetSecondary:focus-visible { outline:3px solid var(--mt-focus); outline-offset:2px; }
+
+.addIncome { display:inline-flex; align-items:center; min-height:44px; margin:6px 0 2px; padding:0 18px; border:0; border-radius:999px; background:var(--mt-grad-income); color:#fff; font:inherit; font-size:14px; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(4,120,87,.22); transition:transform var(--mt-motion-fast) var(--mt-ease-out), box-shadow var(--mt-motion-fast) ease; }
+.addIncome:active { transform:scale(0.96); }
+.addIncome:focus-visible { outline:3px solid var(--mt-focus); outline-offset:2px; }
+@media (hover: hover) { .addIncome:hover { box-shadow:0 10px 22px rgba(4,120,87,.32); transform:translateY(-1px); } }
