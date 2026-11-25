@@ -5,7 +5,7 @@ Spec: `docs/superpowers/specs/2026-11-25-income-spending-clarity-design.md`
 
 | Task | Piece | State |
 |------|-------|-------|
-| 1 Cash pocket draw | 1 | not started |
+| 1 Cash pocket draw | 1 | done |
 | 2 Sectors + merchant normalization | 2 | not started |
 | 3 Sector at posting | 2 | not started |
 | 4 tagMerchant | 2 | not started |

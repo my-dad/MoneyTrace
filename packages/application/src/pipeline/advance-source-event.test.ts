@@ -1047,3 +1047,78 @@ describe("transfer destinations the SMS names without a number (go-live 2026-11-
     expect((await entriesOf(id)).some((e) => e.accountKind === "expense")).toBe(false);
   });
 });
+
+describe("cash pocket", () => {
+  const POCKET = SYSTEM_CASH_ACCOUNT_ID;
+  let notes = 0;
+
+  beforeEach(async () => {
+    await accounts.ensure(alice, { id: asAccountId("cash-main"), kind: "cash", name: "Cash", currency: "BDT", status: "active", createdAtMs: 1 });
+  });
+
+  /** A cash note read by AI and confirmed by the user, so it posts. */
+  async function cashSpend(minor: number) {
+    notes += 1;
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: minor, currency: "BDT", occurredAtMs: NOW, provider: "cash" } });
+    const { id } = await run(`paid ${String(minor)} for rickshaw, note ${String(notes)}`);
+    const pending = await w.sourceEvents.get(alice, id);
+    if (pending?.status === "pending") {
+      await confirm.execute({ ownerId: alice, sourceEventId: id, decision: "confirm" });
+    }
+    return { id, event: await settle(alice, id) };
+  }
+
+  it("withdraw 4,000 then spend 300 cash: the pocket falls to 3,700 and Spent is 300", async () => {
+    await run(WITHDRAWAL_SMS);
+    const { id, event } = await cashSpend(30_000);
+    expect(event?.status).toBe("posted");
+    expect(await balance(POCKET)).toBe(400_000 - 30_000);
+    expect(await balance("cash-main")).toBe(0);
+    expect(await balance("nominal:expense:uncategorized:BDT")).toBe(30_000);
+    const move = await ledger.getEntries(alice, asTransactionId(`txn-${id}-pocket`));
+    expect(move.some((e) => e.accountKind === "expense" || e.accountKind === "income")).toBe(false);
+  });
+
+  it("a spend larger than the pocket empties it and takes the rest from cash in hand", async () => {
+    await run(WITHDRAWAL_SMS);
+    await cashSpend(350_000);
+    await cashSpend(100_000);
+    expect(await balance(POCKET)).toBe(0);
+    expect(await balance("cash-main")).toBe(-50_000);
+  });
+
+  it("an empty pocket makes no move", async () => {
+    const { id, event } = await cashSpend(30_000);
+    expect(event?.status).toBe("posted");
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}-pocket`))).toBeNull();
+    expect(await balance("cash-main")).toBe(-30_000);
+  });
+
+  it("a crash after the move replays without drawing twice", async () => {
+    await run(WITHDRAWAL_SMS);
+    const original = w.sourceEvents.commitStage.bind(w.sourceEvents);
+    let failOnce = true;
+    w.sourceEvents.commitStage = (owner, claim, commit) => {
+      if (claim.stage === "post" && failOnce) {
+        failOnce = false;
+        return Promise.reject(new Error("crash"));
+      }
+      return original(owner, claim, commit);
+    };
+    const id = await cashSpend(30_000).then(
+      (r) => r.id,
+      async () => {
+        const [only] = (await w.sourceEvents.listExpiredClaims(NOW + 10_000_000, 10)).map((r) => r.sourceEventId);
+        if (only === undefined) throw new Error("no claim left");
+        return only;
+      },
+    );
+    const parked = await w.sourceEvents.get(alice, id);
+    if (parked?.status !== "posted") {
+      await w.sourceEvents.reopen(alice, id, parked?.version ?? -1, NOW + 10_000_000);
+      expect((await settle(alice, id))?.status).toBe("posted");
+    }
+    expect(await balance(POCKET)).toBe(400_000 - 30_000);
+    expect(await balance("cash-main")).toBe(0);
+  });
+});

@@ -10,6 +10,7 @@ import {
 import type { StageCommit, StageOutput } from "../../ports/source-event-repository";
 import { stageOutputId } from "../../source-event-guards";
 import { candidateToIntent, isIncoming } from "../candidate-to-intent";
+import { pocketDraw } from "../pocket";
 import { resolveAccounts } from "./decide";
 import { accountRef, type PipelineDeps, type Stage } from "./deps";
 
@@ -157,6 +158,11 @@ export const postStage: Stage = async (deps, ownerId, event) => {
       intent: posting,
     });
   try {
+    const draw = await pocketDraw(deps, ownerId, intent, transactionId);
+    if (draw !== null) {
+      const moved = await post(`${transactionId}-pocket`, `${event.id}-pocket`, draw);
+      if (moved.status === "idempotencyConflict") return deadLetter("stageFailed");
+    }
     const main = await post(transactionId, event.id, intent);
     if (main.status === "idempotencyConflict") return deadLetter("stageFailed");
     if (candidate.feeMinor !== undefined) {
