@@ -35,10 +35,11 @@ test("old routes land on the dashboard", async ({ page }) => {
   }
 });
 
-test("the menu shows AI spend", async ({ page }) => {
+test("the menu has no AI spend", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.getByText("$1.43 used")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+  await expect(page.getByText("AI help this month")).toHaveCount(0);
 });
 
 test("Count my cash opens the chat on the count, and the demo saves nothing", async ({ page }) => {

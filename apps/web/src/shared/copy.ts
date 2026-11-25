@@ -144,7 +144,6 @@ export const DASHBOARD_COPY = {
   appName: "MoneyTrace",
   greeting: "Good to see you",
   menu: "Menu",
-  aiBudget: "AI help this month",
   signOut: "Sign out",
   yourData: "Your data",
   privacyPolicy: "Privacy policy",

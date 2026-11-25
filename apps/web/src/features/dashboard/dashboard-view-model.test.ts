@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  FIXTURE_AI_USAGE,
   FIXTURE_BALANCES,
   FIXTURE_EXPENSE_ENTRIES,
   FIXTURE_INCOME_ENTRIES,
@@ -8,8 +7,8 @@ import {
   FIXTURE_NOW_MS,
   FIXTURE_SOURCE_ENTRIES,
 } from "../../shared/fixtures/household";
-import type { AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
-import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
+import type { BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
+import { buildDashboard, monthRange } from "./dashboard-view-model";
 
 const NOW = FIXTURE_NOW_MS;
 const inRange = (rows: LedgerEntryRow[], range: { fromMs: number; toMs: number }) =>
@@ -147,15 +146,5 @@ describe("buildDashboard", () => {
 
   it("hasActivity is false with no entries", () => {
     expect(view(0, { expenses: [], income: [] }).hasActivity).toBe(false);
-  });
-});
-
-describe("aiSpendLabel", () => {
-  it("sums actual, falling back to estimate", () => {
-    const base = FIXTURE_AI_USAGE[0] as AiUsageRow;
-    const estimateOnly: AiUsageRow = { ...base, estimatedMicroUsd: 430_000 };
-    delete estimateOnly.actualMicroUsd;
-    expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, estimateOnly])).toBe("$1.43 used");
-    expect(aiSpendLabel(FIXTURE_AI_USAGE)).toBe("$1.43 used");
   });
 });

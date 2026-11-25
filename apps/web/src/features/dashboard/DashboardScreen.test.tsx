@@ -120,11 +120,10 @@ describe("DashboardScreen", () => {
     expect(within(recent).getAllByText("Waiting for your answer").length).toBeGreaterThan(0);
   });
 
-  it("menu shows AI spend and signs out", () => {
+  it("menu signs out", () => {
     const onSignOut = vi.fn(() => Promise.resolve());
     open(createFixtureReadModels(), onSignOut);
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-    expect(screen.getByText("$1.43 used")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(onSignOut).toHaveBeenCalled();
   });
