@@ -417,3 +417,19 @@
 .bubble {
   transform-origin: bottom right;
 }
+
+/* Colour: the user's messages wear the brand gradient; replies and questions sit on white cards. */
+.screen { background: transparent; }
+.bubble { background: var(--mt-grad-brand); color: #fff; box-shadow: 0 6px 16px rgba(190, 24, 93, 0.22); }
+.bubbleLabel, .bubbleTime { color: rgba(255, 255, 255, 0.92); }
+.question { border-color: transparent; box-shadow: var(--mt-shadow-lift); border-top: 4px solid var(--mt-cat-2); }
+.askBubble { box-shadow: 0 2px 8px rgba(30, 35, 32, 0.06); border-left: 3px solid var(--mt-cat-2); }
+.answerBubble { background: #EDE9FE; border-color: #DDD6FE; color: #3B0764; }
+.welcome { padding: 14px 16px; border-radius: 18px; background: var(--mt-surface); box-shadow: 0 2px 10px rgba(30, 35, 32, 0.06); border-left: 4px solid var(--mt-cat-1); }
+.recorded { border-left: 4px solid var(--mt-cat-4); }
+.waiting { border-left: 4px solid var(--mt-cat-6); }
+.failed { border-left: 4px solid #BE185D; }
+.dots span { background: var(--mt-cat-2); }
+.dots span:nth-child(2) { background: var(--mt-cat-5); }
+.dots span:nth-child(3) { background: var(--mt-cat-1); }
+.composer, .header { border-color: rgba(30, 35, 32, 0.08); background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); }
