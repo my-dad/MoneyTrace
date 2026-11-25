@@ -7,9 +7,17 @@ type AuthClient = Pick<SupabaseClient["auth"], "onAuthStateChange" | "signInWith
 
 function toAuthUser(user: User | null | undefined): AuthUser | null {
   if (user === null || user === undefined) return null;
-  const meta = user.user_metadata as { full_name?: unknown; name?: unknown };
+  const meta = user.user_metadata as { full_name?: unknown; name?: unknown; avatar_url?: unknown; picture?: unknown };
   const name = typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : undefined;
-  return { uid: user.id, ...(name === undefined ? {} : { displayName: name }) };
+  const photo = typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : undefined;
+  // Only an https image is shown; anything else (a data: or javascript: URL) is ignored.
+  const photoUrl = photo !== undefined && /^https:\/\//.test(photo) ? photo : undefined;
+  return {
+    uid: user.id,
+    ...(name === undefined ? {} : { displayName: name }),
+    ...(typeof user.email === "string" && user.email !== "" ? { email: user.email } : {}),
+    ...(photoUrl === undefined ? {} : { photoUrl }),
+  };
 }
 
 /**

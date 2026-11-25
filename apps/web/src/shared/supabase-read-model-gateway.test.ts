@@ -9,7 +9,7 @@ import {
 import { applyQuery, createDocsReadModelGateway, type DocsQuery, type DocsSource } from "./supabase-read-model-gateway";
 
 /** A source that ignores every filter, so the gateway's own filtering is what's tested. */
-function memorySource(collections: Record<string, unknown[]>, uid: string | null = "alice") {
+function memorySource(collections: Record<string, unknown[]>, uid: string | null = "alice", profile: unknown = null) {
   const listeners = new Set<() => void>();
   const asked: DocsQuery[] = [];
   const source: DocsSource = {
@@ -18,6 +18,7 @@ function memorySource(collections: Record<string, unknown[]>, uid: string | null
       asked.push(q);
       return Promise.resolve([...(collections[q.collection] ?? [])]);
     },
+    getProfile: () => Promise.resolve(profile),
     onChange: (_owner, cb) => {
       listeners.add(cb);
       return () => listeners.delete(cb);
@@ -50,6 +51,18 @@ describe("Supabase read models", () => {
     expect(seen).toEqual([FIXTURE_ACCOUNTS.length, FIXTURE_ACCOUNTS.length - 1]);
     stop();
     expect(m.listeners.size).toBe(0);
+  });
+
+  it("profile: the parsed users/{uid} document, or null before sign-up finishes", async () => {
+    const profile = { baseCurrency: "BDT", timezone: "Asia/Dhaka", reportingCycle: { kind: "calendarMonth" }, notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 }, retentionPolicyVersion: 1, createdAtMs: 1, displayName: "Mabrur", avatar: { kind: "initials", color: "teal" }, profileCompletedAtMs: 2 };
+    let got: unknown = "unset";
+    createDocsReadModelGateway(memorySource({}, "alice", profile).source).watchProfile((p) => (got = p));
+    await flush();
+    expect(got).toEqual(profile);
+    let none: unknown = "unset";
+    createDocsReadModelGateway(memorySource({}).source).watchProfile((p) => (none = p));
+    await flush();
+    expect(none).toBeNull();
   });
 
   it("source events: newest first, limited", async () => {

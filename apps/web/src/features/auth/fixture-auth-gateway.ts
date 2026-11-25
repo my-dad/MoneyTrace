@@ -4,7 +4,7 @@ import type { AuthGateway } from "./auth-gateway";
 export function createFixtureAuthGateway(): AuthGateway {
   return {
     onChange(callback) {
-      callback({ uid: "demo-user", displayName: "Demo" });
+      callback({ uid: "demo-user", displayName: "Demo", email: "demo@example.com" });
       return () => undefined;
     },
     signIn: () => Promise.resolve(),
