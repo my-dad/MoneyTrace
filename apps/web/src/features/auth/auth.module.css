@@ -1,9 +1,15 @@
-.gate { min-height:80dvh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:4px; padding:0 24px; color:var(--mt-ink); }
-.gate h1 { margin:0 0 6px; font-size:28px; font-weight:800; }
+.gate { position:relative; min-height:80dvh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:4px; padding:0 24px; color:var(--mt-ink); }
+.gate h1 { margin:0 0 6px; font-size:34px; font-weight:800; background:var(--mt-grad-money); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .gate :global(.mt-button) { width:100%; max-width:320px; min-height:52px; }
-.logo { width:64px; height:64px; border-radius:20px; background:var(--mt-ink); color:#F3B585; display:grid; place-items:center; font-weight:800; font-size:26px; margin-bottom:14px; }
+.logo { width:72px; height:72px; border-radius:22px; background:var(--mt-grad-brand); color:#fff; box-shadow:0 12px 28px rgba(190,24,93,.3); animation:float 4s ease-in-out infinite; display:grid; place-items:center; font-weight:800; font-size:26px; margin-bottom:14px; }
 .lead { margin:0 0 24px; max-width:320px; color:var(--mt-body); font-size:15px; line-height:1.55; }
 .error { margin:0 0 12px; color:var(--mt-failed-text); font-size:14px; font-weight:600; }
 .fine { margin:14px 0 0; max-width:300px; font-size:12px; color:var(--mt-caption); line-height:1.5; }
 
 .notice { max-width:360px; margin:0 0 20px; font-size:13px; line-height:1.5; color:var(--mt-caption); text-align:center; }
+
+/* Colour: the sign-in sits on a white card with a rainbow edge, floating on the page's colour wash. */
+.card { position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; width:100%; max-width:440px; box-sizing:border-box; padding:36px 24px 28px; background:var(--mt-surface); border-radius:28px; box-shadow:var(--mt-shadow-lift); }
+.card::before { content:""; position:absolute; inset:0 0 auto; height:6px; background:linear-gradient(90deg,var(--mt-cat-1),var(--mt-cat-5),var(--mt-cat-2),var(--mt-cat-3),var(--mt-cat-4)); }
+.notice { padding:12px 14px; border-radius:14px; background:#F5F3FF; color:#4C1D95; text-align:left; }
+@keyframes float { 50% { transform:translateY(-6px) rotate(-3deg); } }

@@ -85,11 +85,28 @@ export function DashboardScreen({
   if (newUser) {
     body = (
       <div className={styles.empty}>
+        <div className={styles.welcomeArt} aria-hidden="true">
+          <span className={styles.coin}>৳</span>
+          <span className={styles.coin}>৳</span>
+          <span className={styles.coin}>৳</span>
+        </div>
         <p className={styles.emptyTitle}>{DASHBOARD_COPY.newUserTitle}</p>
         <p>{DASHBOARD_COPY.newUserBody}</p>
+        <ol className={styles.steps}>
+          {DASHBOARD_COPY.newUserSteps.map((step, index) => (
+            <li key={step.title} className={styles.step}>
+              <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
+              <b>{step.title}</b>
+              <span>{step.body}</span>
+            </li>
+          ))}
+        </ol>
         {chat !== null && (
           <>
-            <Button className={styles.pasteButton} onClick={() => { chat.openChat("paste"); }}>{DASHBOARD_COPY.pasteSms}</Button>
+            <div className={styles.emptyActions}>
+              <Button className={styles.pasteButton} onClick={() => { chat.openChat("paste"); }}>{DASHBOARD_COPY.pasteSms}</Button>
+              <Button variant="secondary" className={styles.pasteButton} onClick={() => { chat.openChat(); }}>{DASHBOARD_COPY.tellPurchase}</Button>
+            </div>
             <p className={styles.howTo}>{DASHBOARD_COPY.howToCopy}</p>
           </>
         )}
@@ -105,11 +122,13 @@ export function DashboardScreen({
         <div>
           {view.hasActivity ? (
             <div className={styles.tiles}>
-              <div role="group" aria-label={DASHBOARD_COPY.spent} className={styles.tile}>
+              <div role="group" aria-label={DASHBOARD_COPY.spent} className={`${styles.tile ?? ""} ${styles.tileSpent ?? ""}`}>
+                <span className={styles.tileIcon} aria-hidden="true">↗</span>
                 <span className={styles.tileLabel}>{DASHBOARD_COPY.spent}</span>
                 <span className={styles.tileValue}>{formatBdt(view.spentMinor)}</span>
               </div>
-              <div role="group" aria-label={DASHBOARD_COPY.cameIn} className={styles.tile}>
+              <div role="group" aria-label={DASHBOARD_COPY.cameIn} className={`${styles.tile ?? ""} ${styles.tileIncome ?? ""}`}>
+                <span className={styles.tileIcon} aria-hidden="true">↙</span>
                 <span className={styles.tileLabel}>{DASHBOARD_COPY.cameIn}</span>
                 <span className={styles.tileValue}>{formatBdt(view.incomeMinor)}</span>
               </div>
@@ -151,9 +170,14 @@ export function DashboardScreen({
     <main className={styles.page}>
       <h1 className="mt-sr-only">{DASHBOARD_COPY.appName}</h1>
       <div className={styles.bar}>
-        <div>
-          <p className={styles.greeting}>{DASHBOARD_COPY.greeting}</p>
-          <p className={styles.name}>{displayName ?? ""}</p>
+        <div className={styles.who}>
+          {displayName !== undefined && displayName !== "" && (
+            <span className={styles.avatar} aria-hidden="true">{displayName.trim().charAt(0).toUpperCase()}</span>
+          )}
+          <div>
+            <p className={styles.greeting}>{DASHBOARD_COPY.greeting}</p>
+            <p className={styles.name}>{displayName ?? ""}</p>
+          </div>
         </div>
         <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
       </div>

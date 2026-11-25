@@ -24,6 +24,19 @@
   --mt-needs-answer-tint: #FBEFD2;
   --mt-failed-text: #8E3A2B;
   --mt-failed-tint: #F7E5E0;
+  /* Colour. Each gradient keeps white text at 4.5:1 or better along its whole length. */
+  --mt-grad-brand: linear-gradient(135deg, #C2410C 0%, #BE185D 100%);
+  --mt-grad-spent: linear-gradient(135deg, #C2410C 0%, #BE185D 100%);
+  --mt-grad-income: linear-gradient(135deg, #047857 0%, #0E7490 100%);
+  --mt-grad-money: linear-gradient(135deg, #4338CA 0%, #7C3AED 100%);
+  --mt-cat-1: #EA580C;
+  --mt-cat-2: #7C3AED;
+  --mt-cat-3: #0284C7;
+  --mt-cat-4: #059669;
+  --mt-cat-5: #DB2777;
+  --mt-cat-6: #CA8A04;
+  --mt-cat-none: #A8A29E;
+  --mt-shadow-lift: 0 10px 28px rgba(67, 56, 202, 0.12), 0 2px 6px rgba(30, 35, 32, 0.06);
   --mt-font: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, sans-serif;
   /* Motion: quick and quiet. Things arrive with ease-out and leave with ease-in. */
   --mt-motion-fast: 120ms;
@@ -46,9 +59,18 @@
   }
 }
 
+/* The colour wash sits on the page root so it fills the whole screen, however short the page. */
+html {
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(251, 146, 60, 0.16), transparent 60%),
+    radial-gradient(800px 500px at 100% 10%, rgba(167, 139, 250, 0.16), transparent 60%),
+    radial-gradient(900px 600px at 50% 100%, rgba(52, 211, 153, 0.12), transparent 60%),
+    var(--mt-ground);
+  background-attachment: fixed;
+}
+
 body {
   margin: 0;
-  background: var(--mt-ground);
   color: var(--mt-ink);
   font-family: var(--mt-font);
   font-variant-numeric: tabular-nums;
@@ -128,8 +150,9 @@ a.mt-button {
 }
 
 .mt-button--primary {
-  background: var(--mt-accent);
+  background: var(--mt-grad-brand);
   color: var(--mt-surface);
+  box-shadow: 0 6px 16px rgba(190, 24, 93, 0.25);
 }
 
 .mt-button--secondary {
@@ -149,6 +172,7 @@ a.mt-button {
 
 .mt-button:disabled {
   border: 0;
+  box-shadow: none;
   background: var(--mt-disabled);
   color: var(--mt-disabled-text);
   cursor: not-allowed;

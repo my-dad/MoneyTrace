@@ -80,3 +80,8 @@ next: go-live checks with Mabrur (runbook §4): sign-in on phone, a real SMS per
   Needs `pnpm deploy:supabase` (Mabrur). Then reject the stuck ৳430 message and paste it again
   (a rejected message frees its text). Not yet fixed: a confirm the rules refuse still goes back to
   "Waiting" without saying why.
+- 2026-11-18 Live data wiped at Mabrur's request ("yes, all mine, wipe it"; all 3 sign-ins were his
+  test accounts): `delete from docs`, `auth.identities`, `auth.users` in one transaction; verified 0/0/0.
+  The 2026-11-17 backup still holds the old data until it expires.
+- 2026-11-18 `pnpm deploy:supabase` run by Claude at Mabrur's request, from master 779f1bd (PR #16):
+  secrets all set, no new migrations, /api deployed; probe answered 400 (up).

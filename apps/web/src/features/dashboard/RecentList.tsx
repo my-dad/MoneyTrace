@@ -10,6 +10,7 @@ export function RecentList({ items }: { items: RecentItem[] }) {
       <ul className={styles.recent}>
         {items.map((item) => (
           <li key={item.id}>
+            <span className={`${styles.recentIcon ?? ""} ${styles[`icon_${item.status}`] ?? ""}`} aria-hidden="true" data-letter={item.title.trim().charAt(0).toUpperCase() || "৳"} />
             <span className={styles.recentText}>
               <span className={styles.recentTitle}>{item.title}</span>
               <span className={styles.recentDetail}>{item.detail}</span>
