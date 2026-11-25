@@ -29,6 +29,7 @@ const silent: ReadModelGateway = {
   watchIncomeEntries: () => () => undefined,
   watchAiUsage: () => () => undefined,
   watchSourceEntries: () => () => undefined,
+  watchTransactions: () => () => undefined,
 };
 
 describe("DashboardScreen", () => {
@@ -79,10 +80,26 @@ describe("DashboardScreen", () => {
     const chart = screen.getByRole("region", { name: "Where it went" });
     expect(within(chart).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "Groceries৳6,820",
-      "Other৳5,730",
+      "Other৳3,230",
       "Transport৳3,150",
-      "Eating out৳2,940",
+      "Food৳2,940",
+      "Not sorted yet৳2,500",
     ]);
+  });
+
+  it("a Not sorted yet spend in Recent can be sorted, and says what moved", async () => {
+    const tagMerchant = vi.fn(() => Promise.resolve({ resorted: 1, more: false }));
+    render(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} tagMerchant={tagMerchant} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sort Daraz into a sector" }));
+    const dialog = screen.getByRole("dialog", { name: "Sort Daraz" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Shopping" }));
+    await screen.findByText("Sorted 1 spend from Daraz as Shopping.");
+    expect(tagMerchant).toHaveBeenCalledWith({ merchantKey: "daraz", merchantName: "Daraz", sector: "shopping" });
+  });
+
+  it("offers no Sort without a way to save it", () => {
+    open();
+    expect(screen.queryByRole("button", { name: "Sort Daraz into a sector" })).toBeNull();
   });
 
   it("shows Loading and never ৳0 before the first snapshot", () => {

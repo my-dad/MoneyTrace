@@ -8,6 +8,7 @@ import {
   FIXTURE_INCOME_ENTRIES,
   FIXTURE_SOURCE_ENTRIES,
   FIXTURE_SOURCE_EVENTS,
+  FIXTURE_TRANSACTIONS,
 } from "./household";
 
 /** The in-memory gateway, seeded with the demo household. */
@@ -21,5 +22,6 @@ export function createFixtureReadModels(): InMemoryReadModelGateway {
   gateway.setIncomeEntries(FIXTURE_INCOME_ENTRIES);
   gateway.setAiUsage(FIXTURE_AI_USAGE);
   gateway.setSourceEntries(FIXTURE_SOURCE_ENTRIES);
+  gateway.setTransactions(FIXTURE_TRANSACTIONS);
   return gateway;
 }

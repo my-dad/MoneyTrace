@@ -3,7 +3,18 @@ import { DASHBOARD_COPY } from "../../shared/copy";
 import type { RecentItem } from "./recent-items";
 import styles from "./dashboard.module.css";
 
-export function RecentList({ items }: { items: RecentItem[] }) {
+export type Sortable = { key: string; name: string };
+
+/** `sortOf` names the shop of a spend still Not sorted yet, so the row offers to sort it. */
+export function RecentList({
+  items,
+  sortOf,
+  onSort,
+}: {
+  items: RecentItem[];
+  sortOf?: (item: RecentItem) => Sortable | null;
+  onSort?: (shop: Sortable) => void;
+}) {
   return (
     <section aria-labelledby="recent" className={styles.card}>
       <h3 id="recent">{DASHBOARD_COPY.recent}</h3>
@@ -21,6 +32,15 @@ export function RecentList({ items }: { items: RecentItem[] }) {
                   ))}
                 </span>
               )}
+              {onSort !== undefined &&
+                (() => {
+                  const shop = sortOf?.(item) ?? null;
+                  return shop === null ? null : (
+                    <button type="button" className={styles.sortButton} aria-label={DASHBOARD_COPY.sortAria(shop.name)} onClick={() => { onSort(shop); }}>
+                      {DASHBOARD_COPY.sort}
+                    </button>
+                  );
+                })()}
               {/* Recorded is the normal case; only what needs attention is marked. */}
               {item.status !== "recorded" && (
                 <span className={`${styles.status ?? ""} ${styles[item.status] ?? ""}`}>{item.statusLabel}</span>

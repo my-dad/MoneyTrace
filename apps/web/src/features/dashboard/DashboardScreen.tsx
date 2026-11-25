@@ -1,21 +1,25 @@
 "use client";
 
-import { formatBdt } from "@moneytrace/contracts";
+import { foldSector, formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
-import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { TransactionRow, AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
 import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
-import { toRecentItems } from "./recent-items";
-import { RecentList } from "./RecentList";
+import { toRecentItems, type RecentItem } from "./recent-items";
+import { RecentList, type Sortable } from "./RecentList";
+import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
 import styles from "./dashboard.module.css";
 
 const RECENT_LIMIT = 10;
+const DAY_MS = 86_400_000;
+/** How far back Recent's spends are read for their sector: well past its ten rows. */
+const RECENT_WINDOW_MS = 120 * DAY_MS;
 const EVENT_WINDOW = 50;
 
 /** The only screen after sign-in. Every figure waits for its first snapshot, so loading never reads as ৳0. */
@@ -25,12 +29,15 @@ export function DashboardScreen({
   displayName,
   onSignOut,
   onDeleteAccount = () => Promise.reject(new Error("account deletion is not available here")),
+  tagMerchant,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
   displayName?: string;
   onSignOut: () => Promise<void>;
   onDeleteAccount?: (confirmation: string) => Promise<void>;
+  /** Sorts a shop into a sector; without it, nothing offers to sort. */
+  tagMerchant?: TagMerchant;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -43,6 +50,8 @@ export function DashboardScreen({
   const [sourceEntries, setSourceEntries] = useState<LedgerEntryRow[] | null>(null);
   const [income, setIncome] = useState<LedgerEntryRow[] | null>(null);
   const [usage, setUsage] = useState<AiUsageRow[] | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionRow[]>([]);
+  const [sorting, setSorting] = useState<Sortable | null>(null);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
@@ -55,6 +64,8 @@ export function DashboardScreen({
       gateway.watchBalances(setBalances, onError),
       gateway.watchSourceEvents(EVENT_WINDOW, setEvents, onError),
       gateway.watchAiUsage(thisMonth.fromMs, thisMonth.toMs, setUsage, onError),
+      // The spends behind Recent: their sector and shop, so an unsorted one can be sorted.
+      gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -80,6 +91,12 @@ export function DashboardScreen({
     : buildDashboard({ balances, expenses, income, previousExpenses: previous, nowMs, offset, previousLabel: prior.label.split(" ")[0] ?? "", accounts, sourceEntries });
   const newUser = events !== null && events.length === 0;
   const recent = events === null ? [] : toRecentItems(events, accounts, RECENT_LIMIT);
+  const unsorted = new Map(
+    recentTransactions
+      .filter((t) => t.state === "posted" && t.merchantKey !== undefined && t.merchant !== undefined && foldSector(t.category ?? "uncategorized") === "uncategorized")
+      .map((t): [string, Sortable] => [t.id, { key: t.merchantKey ?? "", name: t.merchant ?? "" }]),
+  );
+  const sortOf = (item: RecentItem): Sortable | null => unsorted.get(`txn-${item.id}`) ?? null;
 
   let body;
   if (newUser) {
@@ -160,7 +177,9 @@ export function DashboardScreen({
         </div>
         <div>
           <SourcesList netMoneyMinor={view.netMoneyMinor} sources={view.sources} />
-          {recent.length > 0 && <RecentList items={recent} />}
+          {recent.length > 0 && (
+            <RecentList items={recent} sortOf={sortOf} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
+          )}
         </div>
       </div>
     );
@@ -192,6 +211,9 @@ export function DashboardScreen({
         <MonthSwitch label={month.label} canGoNext={offset < 0} onPrevious={() => { setOffset((n) => n - 1); }} onNext={() => { setOffset((n) => Math.min(0, n + 1)); }} />
       )}
       {body}
+      {sorting !== null && tagMerchant !== undefined && (
+        <SectorPicker merchantName={sorting.name} merchantKey={sorting.key} tagMerchant={tagMerchant} onClose={() => { setSorting(null); }} />
+      )}
       {/* Piece 3 puts tips here. */}
       <section aria-hidden="true" className={styles.tips} />
     </main>

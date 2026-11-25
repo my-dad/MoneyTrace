@@ -17,6 +17,7 @@ export default function HomePage() {
       nowMs={now}
       {...(user?.displayName === undefined ? {} : { displayName: user.displayName })}
       // The demo can't sign out: say so rather than doing nothing.
+      tagMerchant={(request) => commands.tagMerchant(request)}
       onSignOut={fixture ? () => Promise.reject(new DemoUnavailableError()) : () => auth.signOut()}
       // Deleting also ends the session: the sign-in is gone on the server (CR-009).
       onDeleteAccount={

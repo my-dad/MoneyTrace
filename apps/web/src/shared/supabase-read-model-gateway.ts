@@ -92,6 +92,13 @@ export function createDocsReadModelGateway(source: DocsSource, timers: Pick<type
         onValue,
         onError,
       ),
+    watchTransactions: (fromMs, toMs, onValue, onError) =>
+      watch(
+        { collection: "transactions", range: { field: "occurredAtMs", fromMs, toMs }, order: { field: "occurredAtMs", desc: false } },
+        (v) => OWNER_COLLECTIONS.transactions.parse(v),
+        onValue,
+        onError,
+      ),
     watchAiUsage: (fromMs, toMs, onValue, onError) =>
       watch(
         { collection: "aiUsage", range: { field: "createdAtMs", fromMs, toMs }, order: { field: "createdAtMs", desc: false } },

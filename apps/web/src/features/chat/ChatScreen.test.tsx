@@ -312,6 +312,7 @@ describe("reads", () => {
       watchIncomeEntries: () => () => undefined,
       watchAiUsage: () => () => undefined,
       watchSourceEntries: () => () => undefined,
+      watchTransactions: () => () => undefined,
       watchSourceEvents: (_limit, _onValue, onError) => {
         onError?.(new Error("denied"));
         return () => undefined;
@@ -332,6 +333,7 @@ describe("reads", () => {
       watchIncomeEntries: () => () => undefined,
       watchAiUsage: () => () => undefined,
       watchSourceEntries: () => () => undefined,
+      watchTransactions: () => () => undefined,
       watchSourceEvents: () => unsubscribe,
     };
     const { unmount } = render(<ChatScreen gateway={gateway} commands={fakeCommands()} />);

@@ -8,8 +8,8 @@ import {
   FIXTURE_NOW_MS,
   FIXTURE_SOURCE_ENTRIES,
 } from "../../shared/fixtures/household";
-import type { AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
-import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
+import type { AiUsageRow, BalanceRow, LedgerEntryRow, TransactionRow } from "../../shared/read-model-gateway";
+import { aiSpendLabel, buildDashboard, merchantsOf, monthRange } from "./dashboard-view-model";
 
 const NOW = FIXTURE_NOW_MS;
 const inRange = (rows: LedgerEntryRow[], range: { fromMs: number; toMs: number }) =>
@@ -74,8 +74,8 @@ describe("buildDashboard", () => {
     expect(v.spentMinor).toBe(1_864_000);
     expect(v.incomeMinor).toBe(8_500_000);
     expect(v.unexplainedCashMinor).toBe(500_000);
-    expect(v.categories.map((c) => c.category)).toEqual(["groceries", "other", "transport", "eating-out"]);
-    expect(v.categories.map((c) => c.percent)).toEqual([100, 84, 46, 43]);
+    expect(v.categories.map((c) => c.category)).toEqual(["groceries", "other", "transport", "food", "uncategorized"]);
+    expect(v.categories.map((c) => c.percent)).toEqual([100, 47, 46, 43, 37]);
     expect(v.comparison).toBe("৳1,740 more than this time last month");
     expect(v.hasActivity).toBe(true);
   });
@@ -157,5 +157,56 @@ describe("aiSpendLabel", () => {
     delete estimateOnly.actualMicroUsd;
     expect(aiSpendLabel([{ ...base, actualMicroUsd: 1_000_000 }, estimateOnly])).toBe("$1.43 used");
     expect(aiSpendLabel(FIXTURE_AI_USAGE)).toBe("$1.43 used");
+  });
+});
+
+describe("merchantsOf", () => {
+  const spend = (tx: string, side: "debit" | "credit", minor: number, sector = "food"): LedgerEntryRow => ({
+    id: `${tx}:${side}`,
+    transactionId: tx,
+    accountId: `nominal:expense:${sector}:BDT`,
+    accountKind: "expense",
+    side,
+    amountMinor: minor,
+    currency: "BDT",
+    occurredAtMs: NOW,
+  });
+  const tx = (id: string, merchant?: { name: string; key: string }, category = "food"): TransactionRow => ({
+    id,
+    state: "posted",
+    intentType: "purchase",
+    occurredAtMs: NOW,
+    currency: "BDT",
+    sourceEventIds: [],
+    actor: "pipeline",
+    category,
+    ...(merchant === undefined ? {} : { merchant: merchant.name, merchantKey: merchant.key }),
+    committedAtMs: NOW,
+  });
+  const fp = { name: "Foodpanda", key: "foodpanda" };
+
+  it("sums each merchant's spending, biggest first, with its sector", () => {
+    const rows = merchantsOf(
+      [spend("a", "debit", 50_000), spend("b", "debit", 30_000), spend("c", "debit", 90_000, "shopping")],
+      [tx("a", fp), tx("b", fp), tx("c", { name: "Daraz", key: "daraz" }, "shopping")],
+    );
+    expect(rows).toEqual([
+      { key: "daraz", name: "Daraz", sector: "shopping", amountMinor: 90_000 },
+      { key: "foodpanda", name: "Foodpanda", sector: "food", amountMinor: 80_000 },
+    ]);
+  });
+
+  it("drops a merchant whose refunds cover its spending", () => {
+    expect(merchantsOf([spend("a", "debit", 50_000), spend("r", "credit", 50_000)], [tx("a", fp), tx("r", fp)])).toEqual([]);
+  });
+
+  it("groups spending with no merchant as No shop named, which can't be sorted", () => {
+    expect(merchantsOf([spend("a", "debit", 10_000, "uncategorized")], [tx("a", undefined, "uncategorized")])).toEqual([
+      { key: "", name: "No shop named", sector: "uncategorized", amountMinor: 10_000 },
+    ]);
+  });
+
+  it("folds older category names into sectors", () => {
+    expect(merchantsOf([spend("a", "debit", 10_000, "eating-out")], [tx("a", fp, "eating-out")])[0]?.sector).toBe("food");
   });
 });

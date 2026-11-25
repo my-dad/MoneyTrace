@@ -166,3 +166,25 @@ a.menuItem:focus-visible { outline:3px solid var(--mt-focus); }
   .avatar { transition:transform var(--mt-motion) var(--mt-ease-out); }
   .avatar:hover { transform:rotate(-6deg) scale(1.05); }
 }
+
+/* Sector picker: a sheet from the bottom on phones, a centred card on desktop. */
+.backdrop { position:fixed; inset:0; z-index:60; background:rgba(30,35,32,.42); display:flex; align-items:flex-end; justify-content:center; animation:fadeIn var(--mt-motion) var(--mt-ease-out) both; }
+.sheet { width:100%; max-width:480px; box-sizing:border-box; max-height:90dvh; overflow:auto; background:var(--mt-surface); border-radius:24px 24px 0 0; padding:20px 18px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -12px 32px rgba(30,35,32,.18); animation:rise var(--mt-motion-slow) var(--mt-ease-out) both; outline:none; }
+.sheetTitle { margin:0 0 4px; font-size:18px; font-weight:800; color:var(--mt-ink); }
+.sheetHint { margin:0 0 14px; font-size:13px; line-height:1.5; color:var(--mt-caption); }
+.sheetDone { margin:12px 0 0; padding:10px 12px; border-radius:12px; background:var(--mt-verified-tint); color:var(--mt-verified-text); font-size:13px; font-weight:700; }
+.sectorGrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sectorChoice { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 12px; border:1.5px solid var(--mt-border); border-radius:14px; background:var(--mt-surface); color:var(--mt-ink); font:inherit; font-size:14px; font-weight:700; text-align:left; cursor:pointer; }
+.sectorChoice::before { content:""; width:12px; height:12px; flex:none; border-radius:50%; background:var(--sector, var(--mt-cat-none)); }
+.sectorChoice:disabled { opacity:.6; cursor:default; }
+.sectorChoice:focus-visible, .sheetClose:focus-visible, .sortButton:focus-visible { outline:3px solid var(--mt-focus); outline-offset:2px; }
+.sheetClose { display:block; width:100%; min-height:48px; margin-top:14px; border:0; border-radius:14px; background:var(--mt-surface-soft); color:var(--mt-ink); font:inherit; font-weight:700; cursor:pointer; }
+.sortButton { align-self:flex-start; min-height:32px; margin-top:4px; padding:0 12px; border:1.5px dashed var(--mt-border-dashed); border-radius:999px; background:var(--mt-surface); color:var(--mt-accent-text); font:inherit; font-size:12px; font-weight:800; cursor:pointer; }
+@media (min-width: 640px) {
+  .backdrop { align-items:center; }
+  .sheet { border-radius:24px; }
+}
+@media (hover: hover) {
+  .sectorChoice:not(:disabled):hover { border-color:var(--sector, var(--mt-border-strong)); background:var(--mt-surface-soft); }
+  .sortButton:hover { border-color:var(--mt-accent); }
+}

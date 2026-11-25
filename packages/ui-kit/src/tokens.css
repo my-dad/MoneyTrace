@@ -36,6 +36,18 @@
   --mt-cat-5: #DB2777;
   --mt-cat-6: #CA8A04;
   --mt-cat-none: #A8A29E;
+  /* Each sector keeps one colour on every chart. */
+  --mt-sector-food: var(--mt-cat-1);
+  --mt-sector-transport: var(--mt-cat-3);
+  --mt-sector-groceries: var(--mt-cat-4);
+  --mt-sector-shopping: var(--mt-cat-5);
+  --mt-sector-bills: var(--mt-cat-6);
+  --mt-sector-health: #0F766E;
+  --mt-sector-education: #4338CA;
+  --mt-sector-family: #BE185D;
+  --mt-sector-rent: #92400E;
+  --mt-sector-other: var(--mt-cat-2);
+  --mt-sector-uncategorized: var(--mt-cat-none);
   --mt-shadow-lift: 0 10px 28px rgba(67, 56, 202, 0.12), 0 2px 6px rgba(30, 35, 32, 0.06);
   --mt-font: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, sans-serif;
   /* Motion: quick and quiet. Things arrive with ease-out and leave with ease-in. */

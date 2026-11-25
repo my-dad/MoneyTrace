@@ -186,6 +186,15 @@ export const DASHBOARD_COPY = {
   questionsWaiting: (n: number) => (n === 1 ? "1 thing needs your answer" : `${String(n)} things need your answer`),
   emptyMonth: (label: string) => `Nothing recorded in ${label}`,
   emptyMonthHint: "Use › to go to a later month.",
-  categories: { uncategorized: "Not sorted yet", groceries: "Groceries", "eating-out": "Eating out", transport: "Transport", other: "Other" } as Record<string, string>,
   countCash: "Count my cash",
+  sortTitle: (merchant: string) => `Sort ${merchant}`,
+  sortHint: "Pick where spending at this shop goes. Earlier spending moves too, and later SMS follow.",
+  sorting: "Sorting…",
+  sorted: (count: number, merchant: string, sector: string) =>
+    count === 0
+      ? `${merchant} will be sorted as ${sector} from now on.`
+      : `Sorted ${String(count)} ${count === 1 ? "spend" : "spends"} from ${merchant} as ${sector}.`,
+  sort: "Sort",
+  sortAria: (merchant: string) => `Sort ${merchant} into a sector`,
+  close: "Close",
 } as const;

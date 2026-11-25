@@ -1,5 +1,5 @@
-import { formatBdt } from "@moneytrace/contracts";
-import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
+import { foldSector, formatBdt, type SectorId } from "@moneytrace/contracts";
+import type { TransactionRow, AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
 
 /** The system wallet for withdrawn cash with no known place yet. Its balance is never spending. */
 export const SYSTEM_CASH_ACCOUNT_ID = "cash-unassigned";
@@ -39,7 +39,7 @@ function oneMonthEarlier(nowMs: number): number {
   return Date.UTC(now.year, now.month - 1, Math.min(now.day, lastDay)) - DHAKA_OFFSET_MS + now.timeOfDayMs;
 }
 
-export type CategoryRow = { category: string; amountMinor: number; percent: number };
+export type CategoryRow = { category: SectorId; amountMinor: number; percent: number };
 
 export type SourceRow = { accountId: string; label: string; inMinor: number; outMinor: number };
 
@@ -59,12 +59,12 @@ export type DashboardView = {
 const net = (rows: LedgerEntryRow[], positive: "debit" | "credit"): number =>
   rows.reduce((sum, row) => sum + (row.side === positive ? row.amountMinor : -row.amountMinor), 0);
 
-/** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo. */
-const categoryOf = (accountId: string): string =>
-  /^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, "");
+/** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo, as a sector. */
+const categoryOf = (accountId: string): SectorId =>
+  foldSector(/^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, ""));
 
 function categoriesOf(expenses: LedgerEntryRow[]): CategoryRow[] {
-  const totals = new Map<string, number>();
+  const totals = new Map<SectorId, number>();
   for (const row of expenses) {
     const category = categoryOf(row.accountId);
     totals.set(category, (totals.get(category) ?? 0) + (row.side === "debit" ? row.amountMinor : -row.amountMinor));
@@ -141,4 +141,33 @@ export function aiSpendLabel(rows: AiUsageRow[]): string {
   const spent = rows.reduce((sum, row) => sum + (row.actualMicroUsd ?? row.estimatedMicroUsd), 0);
   // Limits differ by person (CR-009), so the label states only what was used.
   return `${usd(spent)} used`;
+}
+
+export type MerchantRow = { key: string; name: string; sector: SectorId; amountMinor: number };
+
+/** Spending without a named shop: shown, but it can't be sorted by merchant. */
+export const NO_SHOP = "No shop named";
+
+/**
+ * Spending per merchant, biggest first. Refunds and reversals net out; a merchant at zero or
+ * below is left out. A merchant's sector is that of its latest spend.
+ */
+export function merchantsOf(expenses: LedgerEntryRow[], transactions: TransactionRow[]): MerchantRow[] {
+  const byId = new Map(transactions.map((t) => [t.id, t]));
+  const rows = new Map<string, MerchantRow & { latestMs: number }>();
+  for (const entry of expenses) {
+    const tx = byId.get(entry.transactionId);
+    const key = tx?.merchantKey ?? "";
+    const row = rows.get(key) ?? { key, name: tx?.merchant ?? NO_SHOP, sector: categoryOf(entry.accountId), amountMinor: 0, latestMs: 0 };
+    row.amountMinor += entry.side === "debit" ? entry.amountMinor : -entry.amountMinor;
+    if (entry.side === "debit" && entry.occurredAtMs >= row.latestMs) {
+      row.latestMs = entry.occurredAtMs;
+      row.sector = categoryOf(entry.accountId);
+    }
+    rows.set(key, row);
+  }
+  return [...rows.values()]
+    .filter((r) => r.amountMinor > 0)
+    .sort((a, b) => b.amountMinor - a.amountMinor || a.name.localeCompare(b.name))
+    .map(({ key, name, sector, amountMinor }) => ({ key, name, sector, amountMinor }));
 }
