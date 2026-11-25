@@ -43,6 +43,8 @@ export class PostTransaction {
     sourceEventIds: readonly SourceEventId[];
     actor: string;
     reference?: string;
+    /** The merchant the evidence names; not part of the payload hash, as it follows from the evidence. */
+    merchant?: string;
   }): Promise<LedgerCommitResult> {
     const { ownerId, intent } = input;
     if (intent.type === "openingBalance") {
@@ -67,6 +69,7 @@ export class PostTransaction {
       actor: input.actor,
       ...("category" in intent ? { category: intent.category } : {}),
       ...(input.reference !== undefined ? { reference: input.reference } : {}),
+      ...(input.merchant !== undefined ? { merchant: input.merchant } : {}),
       ...(audit ? { auditDetails: audit } : {}),
       committedAtMs: this.deps.clock.nowMs(),
     };

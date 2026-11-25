@@ -11,6 +11,7 @@ import type { StageCommit, StageOutput } from "../../ports/source-event-reposito
 import { stageOutputId } from "../../source-event-guards";
 import { candidateToIntent, isIncoming } from "../candidate-to-intent";
 import { pocketDraw } from "../pocket";
+import { chooseSector, isSpending } from "../sector";
 import { resolveAccounts } from "./decide";
 import { accountRef, type PipelineDeps, type Stage } from "./deps";
 
@@ -136,7 +137,8 @@ export const postStage: Stage = async (deps, ownerId, event) => {
   if (candidate?.occurredAtMs === null || candidate === null) return deadLetter("stageFailed");
   const occurredAtMs = candidate.occurredAtMs;
   const resolved = await resolveAccounts(deps, ownerId, event);
-  const intent = candidateToIntent(candidate, resolved);
+  const chosen = isSpending(candidate) ? await chooseSector(deps, ownerId, candidate, event.retainedText) : null;
+  const intent = candidateToIntent(candidate, resolved, chosen?.sector);
   if (intent === null || resolved.source === null) return deadLetter("stageFailed");
 
   const transactionId =
@@ -163,7 +165,13 @@ export const postStage: Stage = async (deps, ownerId, event) => {
       const moved = await post(`${transactionId}-pocket`, `${event.id}-pocket`, draw);
       if (moved.status === "idempotencyConflict") return deadLetter("stageFailed");
     }
-    const main = await post(transactionId, event.id, intent);
+    const main = await deps.post.execute({
+      ...common,
+      idempotencyKey: asIdempotencyKey(event.id),
+      transactionId: asTransactionId(transactionId),
+      intent,
+      ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant.name }),
+    });
     if (main.status === "idempotencyConflict") return deadLetter("stageFailed");
     if (candidate.feeMinor !== undefined) {
       const fee = await post(`${transactionId}-fee`, `${event.id}-fee`, {

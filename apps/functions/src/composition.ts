@@ -41,6 +41,7 @@ import {
   FirestoreAccountRepository,
   FirestoreFollowUpRepository,
   FirestoreReconciliationRepository,
+  FirestoreMerchantSectorRepository,
   FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
   FirestoreQuotaLedger,
@@ -215,6 +216,7 @@ export function composeDeps(
         ledger: reader,
         profiles,
         confidence: DEFAULT_CONFIDENCE_CONFIG,
+        merchantSectors: new FirestoreMerchantSectorRepository(db),
       });
       return advance;
     },
@@ -242,7 +244,7 @@ export function composeDeps(
     correctTransaction: new CorrectTransaction({ reader, writer, accounts, hasher, clock }),
     recordCashCount: new RecordCashCount({ accounts, reader, reconciliations, followUps, clock }),
     recordCashAdjustment: new RecordCashAdjustment({ reconciliations, followUps, accounts, reader, post, clock }),
-    splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock }),
+    splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock, merchantSectors: new FirestoreMerchantSectorRepository(db) }),
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

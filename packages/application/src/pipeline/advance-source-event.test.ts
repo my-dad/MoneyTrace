@@ -1,5 +1,6 @@
-import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
+import { DEFAULT_CONFIDENCE_CONFIG, SECTOR_IDS } from "@moneytrace/contracts";
 import {
+  MERCHANT_SECTOR_IDS,
   Money,
   asAccountId,
   asIdempotencyKey,
@@ -16,6 +17,7 @@ import { createProviderWorld } from "../testing/fake-provider";
 import { TestHasher } from "../testing/fakes";
 import { InMemoryAccountRepository, InMemoryLedger } from "../testing/in-memory-ledger";
 import { InMemoryPaymentInstruments } from "../testing/in-memory-payment-instruments";
+import { InMemoryMerchantSectors } from "../testing/in-memory-merchant-sectors";
 import { ScriptedAiProvider } from "../testing/scripted-ai-provider";
 import { SYSTEM_CASH_ACCOUNT_ID } from "../use-cases/bootstrap-user";
 import { ConfirmCandidate } from "../use-cases/confirm-candidate";
@@ -57,6 +59,7 @@ let w: ReturnType<typeof createProviderWorld>;
 let ledger: InMemoryLedger;
 let accounts: InMemoryAccountRepository;
 let instruments: InMemoryPaymentInstruments;
+let merchantSectors: InMemoryMerchantSectors;
 let ai: ScriptedAiProvider;
 let intake: IntakeEvidence;
 let advance: AdvanceSourceEvent;
@@ -145,6 +148,7 @@ beforeEach(async () => {
   ledger = new InMemoryLedger();
   accounts = new InMemoryAccountRepository();
   instruments = new InMemoryPaymentInstruments();
+  merchantSectors = new InMemoryMerchantSectors();
   ai = new ScriptedAiProvider();
   const { clock, sourceEvents, logger } = w;
   const hasher = new TestHasher();
@@ -163,6 +167,7 @@ beforeEach(async () => {
     ledger,
     profiles: { get: () => Promise.resolve(null) },
     confidence: DEFAULT_CONFIDENCE_CONFIG,
+    merchantSectors,
   });
   await accounts.ensure(alice, {
     id: SYSTEM_CASH_ACCOUNT_ID,
@@ -216,7 +221,7 @@ describe("posting from SMS", () => {
     expect(await balance("card")).toBe(-190_000);
     expect((await entriesOf(id)).filter((e) => e.accountKind === "expense")).toHaveLength(1);
     expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}`))).toMatchObject({
-      category: "uncategorized",
+      category: "health",
     });
     const payment = await run(CARD_PAYMENT_SMS);
     expect(payment.event).toMatchObject({
@@ -534,6 +539,7 @@ describe("AI fallback", () => {
       ledger,
       profiles: { get: () => Promise.resolve(null) },
       confidence: DEFAULT_CONFIDENCE_CONFIG,
+      merchantSectors,
     });
     advance = noQuota;
     expect((await run("spent 500 on rickshaw")).event).toMatchObject({
@@ -700,14 +706,14 @@ describe("own transfers are paired, not counted (CR-008)", () => {
 
   describe("not a transfer: counted separately again (CR-008 §9)", () => {
     const splitter = () =>
-      new SplitTransfer({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+      new SplitTransfer({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock, merchantSectors });
     const split = (id: SourceEventId) => splitter().execute({ ownerId: bob, sourceEventId: id });
     const expectSeparate = async (debitTx: string, creditTx: string) => {
-      expect(await ledger.getTransaction(bob, asTransactionId(debitTx))).toMatchObject({ state: "posted", intentType: "purchase", category: "uncategorized" });
+      expect(await ledger.getTransaction(bob, asTransactionId(debitTx))).toMatchObject({ state: "posted", intentType: "purchase", category: "groceries" });
       expect(await ledger.getTransaction(bob, asTransactionId(creditTx))).toMatchObject({ state: "posted", intentType: "income" });
       expect(await bobBalance("src-ucb-7777")).toBe(-170_000);
       expect(await bobBalance("src-bkash-main")).toBe(170_000);
-      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+      expect(await bobBalance("nominal:expense:groceries:BDT")).toBe(170_000);
       expect(await bobBalance("nominal:income:uncategorized:BDT")).toBe(-170_000);
     };
 
@@ -749,7 +755,7 @@ describe("own transfers are paired, not counted (CR-008)", () => {
       const credit = await run(BKASH_DEPOSIT, bob);
       const first = await split(credit.id);
       expect(await split(credit.id)).toEqual({ ...first, status: "alreadyRecorded" });
-      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+      expect(await bobBalance("nominal:expense:groceries:BDT")).toBe(170_000);
     });
 
     it("a split interrupted after the ledger write finishes on retry", async () => {
@@ -1120,5 +1126,52 @@ describe("cash pocket", () => {
     }
     expect(await balance(POCKET)).toBe(400_000 - 30_000);
     expect(await balance("cash-main")).toBe(0);
+  });
+});
+
+describe("sector at posting", () => {
+  const SHOP_SMS = DEBIT_PURCHASE_SMS;
+  const at = (merchant: string) => SHOP_SMS.replace("EXAMPLE SUPERSHOP", merchant);
+  const txOf = (id: SourceEventId) => ledger.getTransaction(alice, asTransactionId(`txn-${id}`));
+
+  it("a known merchant posts to its sector and the transaction keeps the merchant", async () => {
+    const { id, event } = await run(at("FOODPANDA BD DHAKA"));
+    expect(event?.status).toBe("posted");
+    expect(await balance("nominal:expense:food:BDT")).toBe(25_025);
+    expect(await txOf(id)).toMatchObject({ category: "food", merchant: "Foodpanda" });
+  });
+
+  it("an unknown merchant stays Not sorted yet, with its name kept", async () => {
+    const { id } = await run(at("RAHIM STORE"));
+    expect(await txOf(id)).toMatchObject({ category: "uncategorized", merchant: "Rahim Store" });
+  });
+
+  it("the user's tag wins for later SMS from that merchant", async () => {
+    await merchantSectors.upsert(alice, { id: "rahimstore", merchantName: "Rahim Store", sector: "health", updatedAtMs: 1 });
+    const { id } = await run(at("RAHIM STORE"));
+    expect(await txOf(id)).toMatchObject({ category: "health" });
+  });
+
+  it("a correction keeps the merchant on both halves", async () => {
+    const { id } = await run(at("FOODPANDA BD DHAKA"));
+    const correct = new ReverseAndReplace({ writer: ledger, reader: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+    const original = asTransactionId(`txn-${id}`);
+    const entries = await ledger.getEntries(alice, original);
+    const funding = entries.find((e) => e.side === "credit");
+    if (funding === undefined) throw new Error("no funding entry");
+    await correct.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("fix-1"),
+      originalTransactionId: original,
+      replacement: { type: "purchase", funding: { id: asAccountId(funding.accountId), kind: funding.accountKind, currency: "BDT" }, category: "food", amount: Money.ofMinor(20_000, "BDT") },
+      actor: "alice",
+      rationale: "wrong amount",
+    });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}:repl`))).toMatchObject({ merchant: "Foodpanda" });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}:rev`))).toMatchObject({ merchant: "Foodpanda" });
+  });
+
+  it("the domain and contracts sector lists stay the same", () => {
+    expect([...MERCHANT_SECTOR_IDS]).toEqual([...SECTOR_IDS]);
   });
 });

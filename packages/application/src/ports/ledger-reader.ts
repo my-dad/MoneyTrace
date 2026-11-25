@@ -24,6 +24,8 @@ export type TransactionRecord = {
   /** The provider's own transaction ID, when the evidence gives one. */
   reference?: string;
   rationale?: string;
+  /** The merchant the evidence names, tidied. */
+  merchant?: string;
   correctionOf?: TransactionId;
   reversedBy?: TransactionId;
   auditDetails?: { cause?: string; authorizedBy?: string; holderName?: string };

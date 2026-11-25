@@ -36,4 +36,5 @@ export const OWNER_DATA_REGISTRY: Record<OwnerCollectionName, OwnerDataEntry> = 
   temporaryUploads: { ...keep(), retentionClass: "temporaryUpload" },
   consents: keep(),
   deletionJobs: keep(false),
+  merchantSectors: keep(false),
 };

@@ -7,7 +7,7 @@ Spec: `docs/superpowers/specs/2026-11-25-income-spending-clarity-design.md`
 |------|-------|-------|
 | 1 Cash pocket draw | 1 | done |
 | 2 Sectors + merchant normalization | 2 | done |
-| 3 Sector at posting | 2 | not started |
+| 3 Sector at posting | 2 | done |
 | 4 tagMerchant | 2 | not started |
 | 5 Dashboard merchants + sorting | 2 | not started |
 | 6 Cash income commands | 3 | not started |

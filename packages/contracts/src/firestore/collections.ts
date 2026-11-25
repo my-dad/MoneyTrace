@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sectorSchema } from "../sectors";
 import {
   basisPoints,
   currencyCode,
@@ -225,6 +226,8 @@ const transactions = z
       .max(64)
       .optional(),
     rationale: text.optional(),
+    /** The merchant the evidence names, tidied (`normalizeMerchant`). */
+    merchant: name.optional(),
     correctionOf: documentId.optional(),
     reversedBy: documentId.optional(),
     /** Adjustments keep cause and authorization; custody transfers keep the holder's name. */
@@ -456,6 +459,16 @@ const consents = z
   })
   .strict();
 
+/** The user's sector for a merchant; id is the merchant key. Written only by `/api`. */
+const merchantSectors = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]{1,64}$/),
+    merchantName: name,
+    sector: sectorSchema,
+    updatedAtMs: epochMs,
+  })
+  .strict();
+
 const deletionJobs = z
   .object({
     id: documentId,
@@ -489,6 +502,7 @@ export const OWNER_COLLECTIONS = {
   temporaryUploads,
   consents,
   deletionJobs,
+  merchantSectors,
 } as const;
 
 export type OwnerCollectionName = keyof typeof OWNER_COLLECTIONS;

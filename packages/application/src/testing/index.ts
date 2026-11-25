@@ -18,3 +18,5 @@ export * from "./in-memory-rate-limiter";
 export * from "./rate-limiter-contract";
 export * from "./in-memory-reconciliations";
 export * from "./reconciliation-contract";
+export * from "./in-memory-merchant-sectors";
+export * from "./merchant-sector-contract";

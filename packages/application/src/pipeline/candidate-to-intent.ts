@@ -21,10 +21,10 @@ const DEFAULT_CATEGORY = "uncategorized";
 export function candidateToIntent(
   candidate: CandidateTransaction,
   { source, destination, systemCash }: ResolvedAccounts,
+  category: string = candidate.category ?? DEFAULT_CATEGORY,
 ): PostingIntent | null {
   if (source === null) return null;
   const amount = Money.ofMinor(candidate.amountMinor, candidate.currency as CurrencyCode);
-  const category = candidate.category ?? DEFAULT_CATEGORY;
   switch (candidate.kind) {
     case "withdrawal":
       return { type: "withdrawal", bank: source, cash: destination ?? systemCash, amount };

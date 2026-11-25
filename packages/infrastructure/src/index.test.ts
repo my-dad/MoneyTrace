@@ -15,6 +15,7 @@ describe("@moneytrace/infrastructure", () => {
       "FirestoreFollowUpRepository",
       "FirestoreLedgerReader",
       "FirestoreLedgerWriter",
+      "FirestoreMerchantSectorRepository",
       "FirestorePaymentInstrumentRepository",
       "FirestorePipelineLease",
       "FirestoreProviderCallRepository",

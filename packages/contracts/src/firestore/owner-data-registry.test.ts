@@ -32,6 +32,7 @@ describe("OWNER_DATA_REGISTRY", () => {
     expect(hidden).toEqual([
       "deletionJobs",
       "idempotencyRecords",
+      "merchantSectors",
       "providerCalls",
       "quotaCounters",
     ]);

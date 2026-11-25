@@ -36,7 +36,7 @@ Fields: id, sourceEventId, stage, providerId, retrySafety (idempotentKey|localPu
 
 Path: `users/{ownerId}/transactions/{docId}`
 
-Fields: id, state (pending|posted|rejected|reversed), intentType, occurredAtMs, currency, sourceEventIds, actor, rationale?, correctionOf?, reversedBy?, auditDetails? {cause?, authorizedBy?, holderName?}, committedAtMs. auditDetails keeps the cause and authorization of adjustments and the holder's name for custody transfers.
+Fields: id, state (pending|posted|rejected|reversed), intentType, occurredAtMs, currency, sourceEventIds, actor, rationale?, merchant? (the merchant the evidence names, tidied), correctionOf?, reversedBy?, auditDetails? {cause?, authorizedBy?, holderName?}, committedAtMs. auditDetails keeps the cause and authorization of adjustments and the holder's name for custody transfers.
 
 ### ledgerEntries
 
@@ -127,6 +127,12 @@ Fields: id, kind (aiProcessing|ocrProcessing|retentionPolicy), policyVersion, gr
 Path: `users/{ownerId}/deletionJobs/{docId}`
 
 Fields: id, state (requested|running|completed|failed), attemptCount, failureCode?, requestedAtMs, updatedAtMs, completedAtMs or null. Server-only.
+
+### merchantSectors
+
+Path: `users/{ownerId}/merchantSectors/{merchantKey}`
+
+Fields: id (the merchant key: lowercase letters and digits, from `normalizeMerchant`), merchantName, sector (a sector id from `SECTOR_IDS`), updatedAtMs. The user's own sector for a merchant, read when spending posts and written by `tagMerchant`. Server-only.
 
 ## Balance projection
 
