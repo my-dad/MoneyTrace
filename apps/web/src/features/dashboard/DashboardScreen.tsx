@@ -2,7 +2,7 @@
 
 import { foldSector, formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import { dhakaDate } from "../../shared/dhaka-date";
 import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
@@ -39,6 +39,8 @@ export function DashboardScreen({
   onDeleteAccount = () => Promise.reject(new Error("account deletion is not available here")),
   tagMerchant,
   cashIncome,
+  avatar,
+  onEditProfile,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
@@ -49,6 +51,9 @@ export function DashboardScreen({
   tagMerchant?: TagMerchant;
   /** Adds and fixes cash income; without it, nothing offers to. */
   cashIncome?: CashIncomeCommands;
+  /** The user's picture beside their name. */
+  avatar?: ReactNode;
+  onEditProfile?: () => void;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -246,15 +251,16 @@ export function DashboardScreen({
       <h1 className="mt-sr-only">{DASHBOARD_COPY.appName}</h1>
       <div className={styles.bar}>
         <div className={styles.who}>
-          {displayName !== undefined && displayName !== "" && (
-            <span className={styles.avatar} aria-hidden="true">{displayName.trim().charAt(0).toUpperCase()}</span>
-          )}
+          {avatar ??
+            (displayName !== undefined && displayName !== "" && (
+              <span className={styles.avatar} aria-hidden="true">{displayName.trim().charAt(0).toUpperCase()}</span>
+            ))}
           <div>
             <p className={styles.greeting}>{DASHBOARD_COPY.greeting}</p>
             <p className={styles.name}>{displayName ?? ""}</p>
           </div>
         </div>
-        <AccountMenu onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
+        <AccountMenu onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} {...(onEditProfile === undefined ? {} : { onEditProfile })} />
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
       {chat !== null && chat.waiting > 0 && (

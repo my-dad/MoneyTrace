@@ -9,6 +9,7 @@ import {
   FIXTURE_SOURCE_ENTRIES,
   FIXTURE_SOURCE_EVENTS,
   FIXTURE_TRANSACTIONS,
+  FIXTURE_PROFILE,
 } from "./household";
 
 /** The in-memory gateway, seeded with the demo household. */
@@ -23,5 +24,6 @@ export function createFixtureReadModels(): InMemoryReadModelGateway {
   gateway.setAiUsage(FIXTURE_AI_USAGE);
   gateway.setSourceEntries(FIXTURE_SOURCE_ENTRIES);
   gateway.setTransactions(FIXTURE_TRANSACTIONS);
+  gateway.setProfile(FIXTURE_PROFILE);
   return gateway;
 }

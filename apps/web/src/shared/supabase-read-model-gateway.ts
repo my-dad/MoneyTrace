@@ -1,4 +1,4 @@
-import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
+import { OWNER_COLLECTIONS, userProfileSchema } from "@moneytrace/contracts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ReadModelGateway } from "./read-model-gateway";
 
@@ -16,6 +16,8 @@ export type DocsQuery = {
 export type DocsSource = {
   uid(): string | null;
   list(uid: string, query: DocsQuery): Promise<unknown[]>;
+  /** The `users/{uid}` document, or null when it doesn't exist yet. */
+  getProfile(uid: string): Promise<unknown>;
   /** Calls back whenever any of the user's documents changes; returns the unsubscribe. */
   onChange(uid: string, callback: () => void): () => void;
 };
@@ -92,6 +94,33 @@ export function createDocsReadModelGateway(source: DocsSource, timers: Pick<type
         onValue,
         onError,
       ),
+    watchProfile: (onValue, onError) => {
+      const uid = source.uid();
+      if (uid === null) {
+        onError?.(new Error("a signed-in user is required"));
+        return () => undefined;
+      }
+      let stopped = false;
+      let settle: ReturnType<typeof setTimeout> | undefined;
+      const load = async () => {
+        try {
+          const doc = await source.getProfile(uid);
+          if (!stopped) onValue(doc === null || doc === undefined ? null : userProfileSchema.parse(doc));
+        } catch (e) {
+          if (!stopped) onError?.(e instanceof Error ? e : new Error("read failed"));
+        }
+      };
+      void load();
+      const off = source.onChange(uid, () => {
+        if (settle !== undefined) timers.clearTimeout(settle);
+        settle = timers.setTimeout(() => void load(), SETTLE_MS);
+      });
+      return () => {
+        stopped = true;
+        off();
+        if (settle !== undefined) timers.clearTimeout(settle);
+      };
+    },
     watchTransactions: (fromMs, toMs, onValue, onError) =>
       watch(
         { collection: "transactions", range: { field: "occurredAtMs", fromMs, toMs }, order: { field: "occurredAtMs", desc: false } },
@@ -125,6 +154,12 @@ export function createSupabaseDocsSource(client: SupabaseClient, uid: () => stri
       const { data, error } = await b;
       if (error !== null) throw new Error(error.message);
       return (data as { data: unknown }[]).map((r) => r.data);
+    },
+    async getProfile(owner) {
+      const { data, error } = await client.from("docs").select("data").eq("path", `users/${owner}`).maybeSingle();
+      if (error !== null) throw new Error(error.message);
+      const row: { data: unknown } | null = data;
+      return row?.data ?? null;
     },
     onChange(owner, callback) {
       let set = listeners.get(owner);

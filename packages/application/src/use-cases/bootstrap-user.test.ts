@@ -14,6 +14,9 @@ class MemoryProfiles implements UserProfileRepository {
   get(ownerId: OwnerId): Promise<UserProfileDefaults | null> {
     return Promise.resolve(this.docs.get(ownerId) ?? null);
   }
+  recordVisit(): Promise<number | null> {
+    return Promise.resolve(null);
+  }
   createIfAbsent(ownerId: OwnerId, defaults: UserProfileDefaults): Promise<boolean> {
     if (this.docs.has(ownerId)) return Promise.resolve(false);
     this.docs.set(ownerId, defaults);

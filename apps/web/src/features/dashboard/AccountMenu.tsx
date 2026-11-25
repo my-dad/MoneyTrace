@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCOUNT_DELETION_CONFIRMATION } from "@moneytrace/contracts";
-import { DASHBOARD_COPY } from "../../shared/copy";
+import { DASHBOARD_COPY, PROFILE_COPY } from "../../shared/copy";
 import { useAction } from "../../shared/use-action";
 import { ActionStatus } from "../shell/ActionStatus";
 import styles from "./dashboard.module.css";
@@ -8,10 +8,13 @@ import styles from "./dashboard.module.css";
 export function AccountMenu({
   onSignOut,
   onDeleteAccount,
+  onEditProfile,
 }: {
   onSignOut: () => Promise<void>;
   /** Erases the account (CR-009). Resolves only once the server confirmed it. */
   onDeleteAccount: (confirmation: string) => Promise<void>;
+  /** Opens the profile; without it the menu doesn't offer it. */
+  onEditProfile?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -47,6 +50,9 @@ export function AccountMenu({
       <button ref={buttonRef} type="button" className={styles.menuButton} aria-label={DASHBOARD_COPY.menu} aria-expanded={open} aria-controls="account-menu" onClick={() => { setOpen((value) => !value); }}>☰</button>
       {open && (
         <div id="account-menu" className={styles.menu}>
+          {onEditProfile !== undefined && (
+            <button type="button" className={styles.menuItem} onClick={() => { setOpen(false); onEditProfile(); }}>{PROFILE_COPY.editProfile}</button>
+          )}
           <button type="button" className={styles.menuItem} disabled={action.busy} onClick={() => { void action.run(onSignOut); }}>{DASHBOARD_COPY.signOut}</button>
           <ActionStatus busy={action.busy} failed={action.failed} unavailable={action.unavailable} />
           {/* Rare and serious things sit apart, below a line, so Delete is never a slip from Sign out. */}

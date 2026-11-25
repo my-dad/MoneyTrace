@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sectorSchema } from "../sectors";
+import { avatarSchema, sectorSchema } from "../sectors";
 import {
   basisPoints,
   currencyCode,
@@ -537,6 +537,11 @@ export const userProfileSchema = z
       .strict(),
     retentionPolicyVersion: z.number().int().positive(),
     createdAtMs: epochMs,
+    avatar: avatarSchema.optional(),
+    /** When the user first saved their profile; absent means they haven't seen the profile page yet. */
+    profileCompletedAtMs: epochMs.optional(),
+    /** The user's latest visit, for the welcome-back overview. */
+    lastSeenAtMs: epochMs.optional(),
   })
   .strict();
 

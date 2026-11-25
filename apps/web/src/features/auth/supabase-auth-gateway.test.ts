@@ -40,6 +40,18 @@ describe("Supabase auth gateway", () => {
     expect(f.unsubscribed()).toBe(true);
   });
 
+  it("passes on the email and the Google photo, but only an https photo", () => {
+    const f = fakeAuth();
+    const seen: unknown[] = [];
+    const gw = createSupabaseAuthGateway(f.auth as never, () => Promise.resolve({}), () => "https://app.example");
+    const stop = gw.onChange((u) => seen.push(u));
+    f.emit({ user: { id: "u1", email: "m@example.com", user_metadata: { full_name: "M", avatar_url: "https://lh3.googleusercontent.com/a/x" } } });
+    f.emit({ user: { id: "u2", user_metadata: { picture: "javascript:alert(1)" } } });
+    expect(seen).toEqual([{ uid: "u1", displayName: "M", email: "m@example.com", photoUrl: "https://lh3.googleusercontent.com/a/x" }, { uid: "u2" }]);
+    stop();
+    expect(f.unsubscribed()).toBe(true);
+  });
+
   it("signs in with Google by redirect back to the app", async () => {
     const f = fakeAuth();
     await createSupabaseAuthGateway(f.auth as never, () => Promise.resolve({}), () => "https://app.example").signIn();

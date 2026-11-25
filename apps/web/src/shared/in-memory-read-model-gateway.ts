@@ -8,6 +8,7 @@ import type {
   ReadModelGateway,
   SourceEventRow,
   TransactionRow,
+  ProfileRow,
 } from "./read-model-gateway";
 
 type Listener<T> = (rows: T[]) => void;
@@ -29,6 +30,8 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
   private readonly aiUsage = new RangeStore<AiUsageRow>((row) => row.createdAtMs);
   private readonly sourceEntries = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
   private readonly transactions = new RangeStore<TransactionRow>((row) => row.occurredAtMs);
+  private profile: ProfileRow | null = null;
+  private readonly profileListeners = new Set<(profile: ProfileRow | null) => void>();
 
   private watchError(kind: string, onError?: ErrorListener): void {
     if (onError === undefined) return;
@@ -127,6 +130,20 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
 
   setTransactions(rows: TransactionRow[]): void {
     this.transactions.set(rows);
+  }
+
+  watchProfile(onValue: (profile: ProfileRow | null) => void, onError?: ErrorListener): () => void {
+    this.watchError("profile", onError);
+    this.profileListeners.add(onValue);
+    onValue(this.profile);
+    return () => {
+      this.profileListeners.delete(onValue);
+    };
+  }
+
+  setProfile(profile: ProfileRow | null): void {
+    this.profile = profile;
+    this.profileListeners.forEach((listener) => { listener(profile); });
   }
 
   setAiUsage(rows: AiUsageRow[]): void {

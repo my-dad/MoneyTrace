@@ -108,3 +108,20 @@ describe("Your data", () => {
     expect(within(group).queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 });
+
+describe("Edit profile", () => {
+  it("opens the profile and closes the menu", () => {
+    const onEditProfile = vi.fn();
+    render(<AccountMenu onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} onEditProfile={onEditProfile} />);
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit profile" }));
+    expect(onEditProfile).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+
+  it("isn't offered without somewhere to edit", () => {
+    render(<AccountMenu onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    expect(screen.queryByRole("button", { name: "Edit profile" })).toBeNull();
+  });
+});

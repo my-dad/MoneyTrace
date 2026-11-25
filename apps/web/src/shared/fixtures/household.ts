@@ -7,6 +7,7 @@ import type {
   LedgerEntryRow,
   SourceEventRow,
   TransactionRow,
+  ProfileRow,
 } from "../read-model-gateway";
 
 /**
@@ -443,3 +444,17 @@ export const FIXTURE_TRANSACTIONS: TransactionRow[] = [
     return spendTx(`txn-${seed.id}`, c.category ?? "uncategorized", c.occurredAtMs ?? at(seed.receivedIso), c.counterparty ?? null);
   }),
 ];
+
+/** The demo's profile: set up already, initials on teal (the demo has no Google photo). */
+export const FIXTURE_PROFILE: ProfileRow = {
+  displayName: "Demo",
+  baseCurrency: "BDT",
+  timezone: "Asia/Dhaka",
+  reportingCycle: { kind: "calendarMonth" },
+  notifications: { digestLocalTime: "20:00", frequency: "daily", minThresholdMinor: 0 },
+  retentionPolicyVersion: 1,
+  createdAtMs: at("2026-10-01T09:00:00"),
+  avatar: { kind: "initials", color: "teal" },
+  profileCompletedAtMs: at("2026-10-01T09:05:00"),
+  lastSeenAtMs: at("2026-11-03T21:00:00"),
+};

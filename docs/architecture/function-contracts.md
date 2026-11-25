@@ -319,6 +319,30 @@ Errors: unauthenticated, not-found, invalid-argument (not a manual income), fail
 
 Use case: EditManualIncome
 
+### updateProfile
+
+Phase: 1
+
+Request: `{ displayName, avatar: { kind: google } | { kind: initials, color } }`. The user's name (trimmed, inner spaces collapsed, 1–60 characters) and picture: the Google account's photo, or initials on one of `AVATAR_COLORS`. No uploads (PRD CR-001). The first save sets `profileCompletedAtMs`. The email comes from sign-in and isn't editable.
+
+Response: `{ updated: true }`
+
+Errors: unauthenticated, invalid-argument, not-found (no profile yet)
+
+Use case: UpdateProfile
+
+### recordVisit
+
+Phase: 1
+
+Request: `{}`. Stores this visit in `lastSeenAtMs` (never moving it back in time) and returns the previous one, for the welcome-back overview.
+
+Response: `{ previousSeenAtMs: number | null }`
+
+Errors: unauthenticated, not-found (no profile yet)
+
+Use case: RecordVisit
+
 ### requestExport
 
 Phase: 4
