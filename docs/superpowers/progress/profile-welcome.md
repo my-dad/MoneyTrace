@@ -6,6 +6,6 @@ Requested 2026-11-26 (Mabrur: "Dive in"). Calls made: picture = Google photo or 
 |------|-------|
 | 1 Backend: profile fields, updateProfile, recordVisit | done |
 | 2 Web: auth email/photo, watchProfile | done |
-| 3 Web: profile page, first-sign-in routing, menu, header avatar | in progress |
-| 4 Web: welcome back pop-up | not started |
-| 5 e2e, screenshots, PR | not started |
+| 3 Web: profile page, first-sign-in routing, menu, header avatar | done |
+| 4 Web: welcome back pop-up | done |
+| 5 e2e, screenshots, PR | in progress |

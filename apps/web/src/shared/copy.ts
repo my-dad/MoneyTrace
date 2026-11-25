@@ -224,3 +224,36 @@ export const DASHBOARD_COPY = {
   month: "Month",
   topShops: "Top shops",
 } as const;
+
+export const PROFILE_COPY = {
+  setupTitle: "Set up your profile",
+  setupLead: "This is how MoneyTrace greets you. You can change it any time from the menu.",
+  editTitle: "Edit profile",
+  editProfile: "Edit profile",
+  picture: "Picture",
+  googlePhoto: "Photo from Google",
+  initialsOn: (color: string) => `Initials on ${color}`,
+  name: "Name",
+  email: "Email",
+  emailNote: "From your Google sign-in. It can't be changed here.",
+  save: "Save",
+  saveContinue: "Save and continue",
+  saved: "Saved.",
+  close: "Close",
+  settingUp: "Setting up your account",
+} as const;
+
+export const WELCOME_COPY = {
+  title: (firstName: string) => (firstName === "" ? "Welcome back" : `Welcome back, ${firstName}`),
+  away: (days: number, lastLabel: string) => (days <= 1 ? "Last here yesterday" : `Last here ${String(days)} days ago, on ${lastLabel}`),
+  moneySince: (spent: string, cameIn: string) => `${spent} spent and ${cameIn} came in since then`,
+  nothingNew: "Nothing new recorded since then",
+  waiting: (n: number) => (n === 1 ? "1 thing needs your answer" : `${String(n)} things need your answer`),
+  answerNow: "Answer now",
+  // Never says the cash was spent or lost (PRD section 11).
+  unexplained: (amount: string) => `${amount} cash not yet explained`,
+  countCash: "Count my cash",
+  pasteMissed: (lastLabel: string) => `Paste the bank SMS you got since ${lastLabel} so nothing is missed`,
+  paste: "Paste",
+  gotIt: "Got it",
+} as const;

@@ -26,11 +26,21 @@ async function paste(page: Page, text: string, nth: number) {
   await page.keyboard.press("Escape");
 }
 
+
+/** A new account: sign in, then the profile page it lands on first (name, picture; email read-only). */
+async function signUp(page: Page) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Sign in with Google" }).click();
+  await expect(page.getByRole("heading", { name: "Set up your profile" })).toBeVisible();
+  await page.getByLabel("Name").fill("Test Person");
+  await page.getByRole("radio", { name: "Initials on violet" }).check();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+}
+
 test("SMS are read for their source: Came in, Spent, and an own transfer counted in neither", async ({ page }) => {
   // Four SMS through the emulated pipeline, then the split: longer than the 30 s default.
   test.setTimeout(120_000);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Sign in with Google" }).click();
+  await signUp(page);
   await expect(page.getByText("Paste a bank SMS or tell me about a purchase to get started.")).toBeVisible();
 
   await paste(page, salary(dhaka(60)), 1);
@@ -61,8 +71,7 @@ test("SMS are read for their source: Came in, Spent, and an own transfer counted
 });
 
 test("a cash count shows the gap without changing anything, and Adjust needs a reason (gate 32)", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Sign in with Google" }).click();
+  await signUp(page);
   await page.getByRole("button", { name: /Open chat/ }).click();
   const chat = page.getByRole("dialog", { name: "Chat" });
   await chat.getByRole("button", { name: "Count my cash" }).click();
