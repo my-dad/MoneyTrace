@@ -4,11 +4,11 @@ import { formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
-import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
-import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
+import { buildDashboard, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
 import { toRecentItems } from "./recent-items";
 import { RecentList } from "./RecentList";
@@ -42,19 +42,16 @@ export function DashboardScreen({
   const [previous, setPrevious] = useState<LedgerEntryRow[] | null>(null);
   const [sourceEntries, setSourceEntries] = useState<LedgerEntryRow[] | null>(null);
   const [income, setIncome] = useState<LedgerEntryRow[] | null>(null);
-  const [usage, setUsage] = useState<AiUsageRow[] | null>(null);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
 
   useEffect(() => {
     const onError = () => { setFailed(true); };
-    const thisMonth = monthRange(nowMs, 0);
     const stops = [
       gateway.watchAccounts(setAccounts, onError),
       gateway.watchBalances(setBalances, onError),
       gateway.watchSourceEvents(EVENT_WINDOW, setEvents, onError),
-      gateway.watchAiUsage(thisMonth.fromMs, thisMonth.toMs, setUsage, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -179,7 +176,7 @@ export function DashboardScreen({
             <p className={styles.name}>{displayName ?? ""}</p>
           </div>
         </div>
-        <AccountMenu aiSpend={usage === null ? null : aiSpendLabel(usage)} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
+        <AccountMenu onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
       </div>
       {failed && <p role="alert" className={styles.alert}>{DASHBOARD_COPY.readFailed}</p>}
       {chat !== null && chat.waiting > 0 && (

@@ -1,5 +1,5 @@
 import { formatBdt } from "@moneytrace/contracts";
-import type { AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
+import type { AccountRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
 
 /** The system wallet for withdrawn cash with no known place yet. Its balance is never spending. */
 export const SYSTEM_CASH_ACCOUNT_ID = "cash-unassigned";
@@ -128,17 +128,4 @@ function sourcesOf(entries: LedgerEntryRow[], accounts: AccountRow[]): SourceRow
     rows.set(entry.accountId, row);
   }
   return [...rows.values()].sort((a, b) => b.outMinor - a.outMinor || a.label.localeCompare(b.label));
-}
-
-/** "$1.43": exact integer cents from micro-USD, truncated. */
-function usd(micro: number): string {
-  const cents = (micro - (micro % 10_000)) / 10_000;
-  const dollars = (cents - (cents % 100)) / 100;
-  return `$${String(dollars)}.${String(cents % 100).padStart(2, "0")}`;
-}
-
-export function aiSpendLabel(rows: AiUsageRow[]): string {
-  const spent = rows.reduce((sum, row) => sum + (row.actualMicroUsd ?? row.estimatedMicroUsd), 0);
-  // Limits differ by person (CR-009), so the label states only what was used.
-  return `${usd(spent)} used`;
 }

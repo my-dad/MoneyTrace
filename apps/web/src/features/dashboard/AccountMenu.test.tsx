@@ -8,7 +8,7 @@ import { AccountMenu } from "./AccountMenu";
 afterEach(cleanup);
 
 const openMenu = (onDeleteAccount = vi.fn<(confirmation: string) => Promise<void>>(() => Promise.resolve())) => {
-  const view = render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
+  const view = render(<AccountMenu onSignOut={() => Promise.resolve()} onDeleteAccount={onDeleteAccount} />);
   fireEvent.click(screen.getByRole("button", { name: "Menu" }));
   fireEvent.click(screen.getByRole("button", { name: "Delete my account" }));
   return { ...view, onDeleteAccount };
@@ -60,7 +60,7 @@ describe("closing the menu", () => {
     render(
       <div>
         <p>Elsewhere on the page</p>
-        <AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
+        <AccountMenu onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />
       </div>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
@@ -75,7 +75,7 @@ describe("closing the menu", () => {
 
   it("a tap inside the menu keeps it open", () => {
     show();
-    fireEvent.pointerDown(screen.getByText("AI help this month"));
+    fireEvent.pointerDown(screen.getByText("Your data"));
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
 
@@ -97,7 +97,7 @@ describe("closing the menu", () => {
 
 describe("Your data", () => {
   it("keeps Delete my account apart from Sign out, under Your data, with the privacy policy", () => {
-    render(<AccountMenu aiSpend="$0.10 used" onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />);
+    render(<AccountMenu onSignOut={() => Promise.resolve()} onDeleteAccount={() => Promise.resolve()} />);
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     const group = screen.getByRole("group", { name: "Your data" });
     const policy = within(group).getByRole("link", { name: /Privacy policy/ });
