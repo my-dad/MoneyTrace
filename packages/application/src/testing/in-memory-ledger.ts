@@ -253,6 +253,15 @@ export class InMemoryLedger implements LedgerWriter, LedgerReader {
     });
   }
 
+  listByMerchantKey(ownerId: OwnerId, merchantKey: string, limit: number): Promise<TransactionRecord[]> {
+    return atomically(() =>
+      [...this.of(ownerId).transactions.values()]
+        .filter((t) => t.merchantKey === merchantKey)
+        .slice(0, limit)
+        .map(cloneTx),
+    );
+  }
+
   getEntries(ownerId: OwnerId, txId: TransactionId): Promise<EntryRecord[]> {
     return atomically(() => (this.of(ownerId).entries.get(txId) ?? []).map((e) => ({ ...e })));
   }

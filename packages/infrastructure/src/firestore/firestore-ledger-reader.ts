@@ -32,6 +32,15 @@ export class FirestoreLedgerReader implements LedgerReader {
     return s.exists ? toTransactionRecord(s.data()) : null;
   }
 
+  async listByMerchantKey(ownerId: OwnerId, merchantKey: string, limit: number): Promise<TransactionRecord[]> {
+    const snap = await this.db
+      .collection(ownerPath(ownerId, "transactions"))
+      .where("merchantKey", "==", merchantKey)
+      .limit(limit)
+      .get();
+    return snap.docs.map((d) => toTransactionRecord(d.data()));
+  }
+
   async getEntries(ownerId: OwnerId, txId: TransactionId): Promise<EntryRecord[]> {
     const snap = await this.db
       .collection(ownerPath(ownerId, "ledgerEntries"))

@@ -1,5 +1,6 @@
-import { DEFAULT_CONFIDENCE_CONFIG } from "@moneytrace/contracts";
+import { DEFAULT_CONFIDENCE_CONFIG, SECTOR_IDS } from "@moneytrace/contracts";
 import {
+  MERCHANT_SECTOR_IDS,
   Money,
   asAccountId,
   asIdempotencyKey,
@@ -16,6 +17,7 @@ import { createProviderWorld } from "../testing/fake-provider";
 import { TestHasher } from "../testing/fakes";
 import { InMemoryAccountRepository, InMemoryLedger } from "../testing/in-memory-ledger";
 import { InMemoryPaymentInstruments } from "../testing/in-memory-payment-instruments";
+import { InMemoryMerchantSectors } from "../testing/in-memory-merchant-sectors";
 import { ScriptedAiProvider } from "../testing/scripted-ai-provider";
 import { SYSTEM_CASH_ACCOUNT_ID } from "../use-cases/bootstrap-user";
 import { ConfirmCandidate } from "../use-cases/confirm-candidate";
@@ -25,6 +27,8 @@ import { AnswerQuestion } from "../use-cases/answer-question";
 import { RetrySourceEvent } from "../use-cases/retry-source-event";
 import { ReverseAndReplace } from "../use-cases/reverse-and-replace";
 import { SplitTransfer } from "../use-cases/split-transfer";
+import { RecordCashIncome } from "../use-cases/record-cash-income";
+import { EditManualIncome } from "../use-cases/edit-manual-income";
 import { PostTransaction } from "../use-cases/post-transaction";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "./ai-gateway";
 import { AdvanceSourceEvent } from "./advance-source-event";
@@ -57,6 +61,7 @@ let w: ReturnType<typeof createProviderWorld>;
 let ledger: InMemoryLedger;
 let accounts: InMemoryAccountRepository;
 let instruments: InMemoryPaymentInstruments;
+let merchantSectors: InMemoryMerchantSectors;
 let ai: ScriptedAiProvider;
 let intake: IntakeEvidence;
 let advance: AdvanceSourceEvent;
@@ -145,6 +150,7 @@ beforeEach(async () => {
   ledger = new InMemoryLedger();
   accounts = new InMemoryAccountRepository();
   instruments = new InMemoryPaymentInstruments();
+  merchantSectors = new InMemoryMerchantSectors();
   ai = new ScriptedAiProvider();
   const { clock, sourceEvents, logger } = w;
   const hasher = new TestHasher();
@@ -163,6 +169,7 @@ beforeEach(async () => {
     ledger,
     profiles: { get: () => Promise.resolve(null) },
     confidence: DEFAULT_CONFIDENCE_CONFIG,
+    merchantSectors,
   });
   await accounts.ensure(alice, {
     id: SYSTEM_CASH_ACCOUNT_ID,
@@ -216,7 +223,7 @@ describe("posting from SMS", () => {
     expect(await balance("card")).toBe(-190_000);
     expect((await entriesOf(id)).filter((e) => e.accountKind === "expense")).toHaveLength(1);
     expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}`))).toMatchObject({
-      category: "uncategorized",
+      category: "health",
     });
     const payment = await run(CARD_PAYMENT_SMS);
     expect(payment.event).toMatchObject({
@@ -534,6 +541,7 @@ describe("AI fallback", () => {
       ledger,
       profiles: { get: () => Promise.resolve(null) },
       confidence: DEFAULT_CONFIDENCE_CONFIG,
+      merchantSectors,
     });
     advance = noQuota;
     expect((await run("spent 500 on rickshaw")).event).toMatchObject({
@@ -700,14 +708,14 @@ describe("own transfers are paired, not counted (CR-008)", () => {
 
   describe("not a transfer: counted separately again (CR-008 §9)", () => {
     const splitter = () =>
-      new SplitTransfer({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+      new SplitTransfer({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock, merchantSectors });
     const split = (id: SourceEventId) => splitter().execute({ ownerId: bob, sourceEventId: id });
     const expectSeparate = async (debitTx: string, creditTx: string) => {
-      expect(await ledger.getTransaction(bob, asTransactionId(debitTx))).toMatchObject({ state: "posted", intentType: "purchase", category: "uncategorized" });
+      expect(await ledger.getTransaction(bob, asTransactionId(debitTx))).toMatchObject({ state: "posted", intentType: "purchase", category: "groceries" });
       expect(await ledger.getTransaction(bob, asTransactionId(creditTx))).toMatchObject({ state: "posted", intentType: "income" });
       expect(await bobBalance("src-ucb-7777")).toBe(-170_000);
       expect(await bobBalance("src-bkash-main")).toBe(170_000);
-      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+      expect(await bobBalance("nominal:expense:groceries:BDT")).toBe(170_000);
       expect(await bobBalance("nominal:income:uncategorized:BDT")).toBe(-170_000);
     };
 
@@ -749,7 +757,7 @@ describe("own transfers are paired, not counted (CR-008)", () => {
       const credit = await run(BKASH_DEPOSIT, bob);
       const first = await split(credit.id);
       expect(await split(credit.id)).toEqual({ ...first, status: "alreadyRecorded" });
-      expect(await bobBalance("nominal:expense:uncategorized:BDT")).toBe(170_000);
+      expect(await bobBalance("nominal:expense:groceries:BDT")).toBe(170_000);
     });
 
     it("a split interrupted after the ledger write finishes on retry", async () => {
@@ -1045,5 +1053,203 @@ describe("transfer destinations the SMS names without a number (go-live 2026-11-
     expect(await balance("ucb-bank")).toBe(10_000_000 - 800_000);
     expect(await balance("wallet")).toBe(800_000);
     expect((await entriesOf(id)).some((e) => e.accountKind === "expense")).toBe(false);
+  });
+});
+
+describe("cash pocket", () => {
+  const POCKET = SYSTEM_CASH_ACCOUNT_ID;
+  let notes = 0;
+
+  beforeEach(async () => {
+    await accounts.ensure(alice, { id: asAccountId("cash-main"), kind: "cash", name: "Cash", currency: "BDT", status: "active", createdAtMs: 1 });
+  });
+
+  /** A cash note read by AI and confirmed by the user, so it posts. */
+  async function cashSpend(minor: number) {
+    notes += 1;
+    ai.scriptValue({ kind: "transaction", confidenceBp: 9000, candidate: { kind: "purchase", amountMinor: minor, currency: "BDT", occurredAtMs: NOW, provider: "cash" } });
+    const { id } = await run(`paid ${String(minor)} for rickshaw, note ${String(notes)}`);
+    const pending = await w.sourceEvents.get(alice, id);
+    if (pending?.status === "pending") {
+      await confirm.execute({ ownerId: alice, sourceEventId: id, decision: "confirm" });
+    }
+    return { id, event: await settle(alice, id) };
+  }
+
+  it("withdraw 4,000 then spend 300 cash: the pocket falls to 3,700 and Spent is 300", async () => {
+    await run(WITHDRAWAL_SMS);
+    const { id, event } = await cashSpend(30_000);
+    expect(event?.status).toBe("posted");
+    expect(await balance(POCKET)).toBe(400_000 - 30_000);
+    expect(await balance("cash-main")).toBe(0);
+    expect(await balance("nominal:expense:uncategorized:BDT")).toBe(30_000);
+    const move = await ledger.getEntries(alice, asTransactionId(`txn-${id}-pocket`));
+    expect(move.some((e) => e.accountKind === "expense" || e.accountKind === "income")).toBe(false);
+  });
+
+  it("a spend larger than the pocket empties it and takes the rest from cash in hand", async () => {
+    await run(WITHDRAWAL_SMS);
+    await cashSpend(350_000);
+    await cashSpend(100_000);
+    expect(await balance(POCKET)).toBe(0);
+    expect(await balance("cash-main")).toBe(-50_000);
+  });
+
+  it("an empty pocket makes no move", async () => {
+    const { id, event } = await cashSpend(30_000);
+    expect(event?.status).toBe("posted");
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}-pocket`))).toBeNull();
+    expect(await balance("cash-main")).toBe(-30_000);
+  });
+
+  it("a crash after the move replays without drawing twice", async () => {
+    await run(WITHDRAWAL_SMS);
+    const original = w.sourceEvents.commitStage.bind(w.sourceEvents);
+    let failOnce = true;
+    w.sourceEvents.commitStage = (owner, claim, commit) => {
+      if (claim.stage === "post" && failOnce) {
+        failOnce = false;
+        return Promise.reject(new Error("crash"));
+      }
+      return original(owner, claim, commit);
+    };
+    const id = await cashSpend(30_000).then(
+      (r) => r.id,
+      async () => {
+        const [only] = (await w.sourceEvents.listExpiredClaims(NOW + 10_000_000, 10)).map((r) => r.sourceEventId);
+        if (only === undefined) throw new Error("no claim left");
+        return only;
+      },
+    );
+    const parked = await w.sourceEvents.get(alice, id);
+    if (parked?.status !== "posted") {
+      await w.sourceEvents.reopen(alice, id, parked?.version ?? -1, NOW + 10_000_000);
+      expect((await settle(alice, id))?.status).toBe("posted");
+    }
+    expect(await balance(POCKET)).toBe(400_000 - 30_000);
+    expect(await balance("cash-main")).toBe(0);
+  });
+});
+
+describe("sector at posting", () => {
+  const SHOP_SMS = DEBIT_PURCHASE_SMS;
+  const at = (merchant: string) => SHOP_SMS.replace("EXAMPLE SUPERSHOP", merchant);
+  const txOf = (id: SourceEventId) => ledger.getTransaction(alice, asTransactionId(`txn-${id}`));
+
+  it("a known merchant posts to its sector and the transaction keeps the merchant", async () => {
+    const { id, event } = await run(at("FOODPANDA BD DHAKA"));
+    expect(event?.status).toBe("posted");
+    expect(await balance("nominal:expense:food:BDT")).toBe(25_025);
+    expect(await txOf(id)).toMatchObject({ category: "food", merchant: "Foodpanda" });
+  });
+
+  it("an unknown merchant stays Not sorted yet, with its name kept", async () => {
+    const { id } = await run(at("RAHIM STORE"));
+    expect(await txOf(id)).toMatchObject({ category: "uncategorized", merchant: "Rahim Store" });
+  });
+
+  it("the user's tag wins for later SMS from that merchant", async () => {
+    await merchantSectors.upsert(alice, { id: "rahimstore", merchantName: "Rahim Store", sector: "health", updatedAtMs: 1 });
+    const { id } = await run(at("RAHIM STORE"));
+    expect(await txOf(id)).toMatchObject({ category: "health" });
+  });
+
+  it("a correction keeps the merchant on both halves", async () => {
+    const { id } = await run(at("FOODPANDA BD DHAKA"));
+    const correct = new ReverseAndReplace({ writer: ledger, reader: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+    const original = asTransactionId(`txn-${id}`);
+    const entries = await ledger.getEntries(alice, original);
+    const funding = entries.find((e) => e.side === "credit");
+    if (funding === undefined) throw new Error("no funding entry");
+    await correct.execute({
+      ownerId: alice,
+      idempotencyKey: asIdempotencyKey("fix-1"),
+      originalTransactionId: original,
+      replacement: { type: "purchase", funding: { id: asAccountId(funding.accountId), kind: funding.accountKind, currency: "BDT" }, category: "food", amount: Money.ofMinor(20_000, "BDT") },
+      actor: "alice",
+      rationale: "wrong amount",
+    });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}:repl`))).toMatchObject({ merchant: "Foodpanda" });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}:rev`))).toMatchObject({ merchant: "Foodpanda" });
+  });
+
+  it("the domain and contracts sector lists stay the same", () => {
+    expect([...MERCHANT_SECTOR_IDS]).toEqual([...SECTOR_IDS]);
+  });
+});
+
+describe("cash income added by hand", () => {
+  let recordIncome: RecordCashIncome;
+  let editIncome: EditManualIncome;
+  const TODAY = "2026-04-01";
+
+  beforeEach(async () => {
+    await accounts.ensure(alice, { id: asAccountId("cash-main"), kind: "cash", name: "Cash", currency: "BDT", status: "active", createdAtMs: 1 });
+    recordIncome = new RecordCashIncome({ sourceEvents: w.sourceEvents, hasher: new TestHasher(), ids: w.ids, clock: w.clock });
+    editIncome = new EditManualIncome({ sourceEvents: w.sourceEvents, reader: ledger, writer: ledger, accounts, hasher: new TestHasher(), clock: w.clock });
+  });
+
+  async function addIncome(key: string, amountMinor: number, from: "rent" | "salary" = "rent", occurredOn = TODAY) {
+    const { sourceEventId } = await recordIncome.execute({ ownerId: alice, idempotencyKey: key, amountMinor, from, occurredOn });
+    const id = asSourceEventId(sourceEventId);
+    return { id, event: await settle(alice, id) };
+  }
+
+  it("records rent into cash in hand as Came in, with no AI", async () => {
+    const { id, event } = await addIncome("rent-1", 2_000_000);
+    expect(event).toMatchObject({ status: "posted", sourceType: "chat", retainedText: "Cash income · House rent" });
+    expect(await balance("cash-main")).toBe(2_000_000);
+    expect(await balance("nominal:income:rent:BDT")).toBe(-2_000_000);
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}`))).toMatchObject({ intentType: "income", category: "rent" });
+    expect(ai.calls).toBe(0);
+  });
+
+  it("keeps the note in the message", async () => {
+    const { sourceEventId } = await recordIncome.execute({ ownerId: alice, idempotencyKey: "n-1", amountMinor: 50_000, from: "other", note: "sold old phone", occurredOn: TODAY });
+    expect((await w.sourceEvents.get(alice, asSourceEventId(sourceEventId)))?.retainedText).toBe("Cash income · Other · sold old phone");
+  });
+
+  it("the same key twice is one income", async () => {
+    const first = await addIncome("rent-1", 2_000_000);
+    const again = await addIncome("rent-1", 2_000_000);
+    expect(again.id).toBe(first.id);
+    expect(await balance("cash-main")).toBe(2_000_000);
+  });
+
+  it("two equal incomes on the same day are both kept", async () => {
+    await addIncome("gift-1", 50_000);
+    const second = await addIncome("gift-2", 50_000);
+    expect(second.event?.status).toBe("posted");
+    expect(await balance("cash-main")).toBe(100_000);
+  });
+
+  it("refuses a day after today in Dhaka, and accepts today at 23:59 Dhaka", async () => {
+    w.clock.advance(Date.parse("2026-04-01T17:59:00Z") - w.clock.nowMs());
+    await expect(recordIncome.execute({ ownerId: alice, idempotencyKey: "f-1", amountMinor: 100, from: "gift", occurredOn: "2026-04-02" })).rejects.toMatchObject({ code: "invalidIntent" });
+    expect((await addIncome("t-1", 100, "rent", "2026-04-01")).event?.status).toBe("posted");
+  });
+
+  it("an edit corrects the amount, and a second edit corrects the correction", async () => {
+    const { id } = await addIncome("rent-1", 2_000_000);
+    expect(await editIncome.execute({ ownerId: alice, idempotencyKey: "e-1", sourceEventId: id, amountMinor: 1_800_000, from: "rent" })).toEqual({ status: "recorded" });
+    expect(await balance("cash-main")).toBe(1_800_000);
+    expect((await ledger.getTransaction(alice, asTransactionId(`txn-${id}`)))?.state).toBe("reversed");
+    await editIncome.execute({ ownerId: alice, idempotencyKey: "e-2", sourceEventId: id, amountMinor: 1_850_000, from: "salary" });
+    expect(await ledger.getTransaction(alice, asTransactionId(`txn-${id}:repl:repl`))).toMatchObject({ state: "posted", category: "salary" });
+    expect(await balance("cash-main")).toBe(1_850_000);
+    expect(await balance("nominal:income:rent:BDT")).toBe(0);
+    expect(await balance("nominal:income:salary:BDT")).toBe(-1_850_000);
+  });
+
+  it("an edit replayed with its key changes nothing more", async () => {
+    const { id } = await addIncome("rent-1", 2_000_000);
+    await editIncome.execute({ ownerId: alice, idempotencyKey: "e-1", sourceEventId: id, amountMinor: 1_800_000, from: "rent" });
+    expect(await editIncome.execute({ ownerId: alice, idempotencyKey: "e-1", sourceEventId: id, amountMinor: 1_800_000, from: "rent" })).toEqual({ status: "alreadyRecorded" });
+    expect(await balance("cash-main")).toBe(1_800_000);
+  });
+
+  it("refuses to edit a bank SMS", async () => {
+    const { id } = await run(CARD_PURCHASE_SMS);
+    await expect(editIncome.execute({ ownerId: alice, idempotencyKey: "e-9", sourceEventId: id, amountMinor: 100, from: "rent" })).rejects.toMatchObject({ code: "invalidIntent" });
   });
 });

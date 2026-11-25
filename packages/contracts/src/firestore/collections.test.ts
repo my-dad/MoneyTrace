@@ -184,6 +184,7 @@ const valid = {
     updatedAtMs: 1,
     completedAtMs: null,
   },
+  merchantSectors: { id: "foodpanda", merchantName: "Foodpanda", sector: "food", updatedAtMs: 1 },
 } as const;
 
 describe("owner collection schemas", () => {

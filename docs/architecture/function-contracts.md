@@ -283,6 +283,42 @@ Errors: unauthenticated, not-found, failed-precondition (not a paired transfer, 
 
 Use case: SplitTransfer
 
+### tagMerchant
+
+Phase: 1
+
+Request: `{ merchantKey, merchantName, sector }`. The user's sector for a merchant (any sector id except `uncategorized`). It is remembered for later SMS, and up to 20 earlier spends from the merchant in another sector are corrected into it per call (reversal plus replacement, audited). The client calls again while `more` is true.
+
+Response: `{ resorted, more }`
+
+Errors: unauthenticated, invalid-argument (unknown sector)
+
+Use case: TagMerchant
+
+### recordCashIncome
+
+Phase: 1
+
+Request: `{ idempotencyKey, amountMinor, from: rent|salary|business|gift|other, note?, occurredOn: YYYY-MM-DD }`. Cash income the user typed in, recorded into cash in hand as income (category = `from`). It is stored as a chat source event already read and confirmed (`extraction.parser` = `manualEntry`), so the pipeline posts it without parsing, AI or duplicate matching; two equal incomes with different keys are both kept. `occurredOn` is a Dhaka day, today or earlier.
+
+Response: `{ sourceEventId, status }`
+
+Errors: unauthenticated, invalid-argument (bad or future date), already-exists (key reused for a different entry)
+
+Use case: RecordCashIncome
+
+### editManualIncome
+
+Phase: 1
+
+Request: `{ idempotencyKey, sourceEventId, amountMinor, from }`. Fixes income added by `recordCashIncome`: the record that counts now (following earlier edits) is reversed and replaced, audited. Bank evidence can't be edited this way.
+
+Response: `{ status: recorded|alreadyRecorded }`
+
+Errors: unauthenticated, not-found, invalid-argument (not a manual income), failed-precondition (not recorded yet)
+
+Use case: EditManualIncome
+
 ### requestExport
 
 Phase: 4

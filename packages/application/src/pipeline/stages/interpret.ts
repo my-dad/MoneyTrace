@@ -1,3 +1,4 @@
+import { isManualEntry } from "../../source-event-guards";
 import { defaultParsers, evaluateParsers } from "@moneytrace/domain";
 import type { StageCommit } from "../../ports/source-event-repository";
 import { MAX_AI_QUESTIONS, SKIPPED_ANSWER } from "../../source-event-guards";
@@ -19,6 +20,8 @@ const interpreted = (eventPatch: StageCommit["eventPatch"]): StageCommit => ({
 
 /** Deterministic parsers first. AI runs only when none recognizes the text. */
 export const interpretStage: Stage = async (deps, ownerId, event) => {
+  // A form entry is already what the user said; there is nothing to read.
+  if (isManualEntry(event)) return interpreted(undefined);
   const evaluation = evaluateParsers(defaultParsers, event.retainedText);
   if (evaluation.outcome === "conflict") {
     const reading = evaluation.transaction;

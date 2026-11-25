@@ -67,6 +67,7 @@ export class ReverseAndReplace {
       intent: PostingIntent;
       occurredAtMs: number;
       sourceEventIds: readonly SourceEventId[];
+      merchant?: { name: string; key: string };
     };
   }): Promise<LedgerCommitResult> {
     const { ownerId } = input;
@@ -174,6 +175,7 @@ export class ReverseAndReplace {
           rationale: input.rationale,
           committedAtMs: this.deps.clock.nowMs(),
           ...(category !== undefined ? { category } : {}),
+          ...(a.merchant !== undefined ? { merchant: a.merchant.name, merchantKey: a.merchant.key } : {}),
           ...(extraAudit ? { auditDetails: extraAudit } : {}),
         },
       };
@@ -190,6 +192,9 @@ export class ReverseAndReplace {
       committedAtMs,
       // The provider reference is evidence about the original; both halves keep it for matching.
       ...(original.reference !== undefined ? { reference: original.reference } : {}),
+      // Where the money went doesn't change when the amount or sector is corrected.
+      ...(original.merchant !== undefined ? { merchant: original.merchant } : {}),
+      ...(original.merchantKey !== undefined ? { merchantKey: original.merchantKey } : {}),
     } as const;
     const reversal: TransactionRecord = {
       ...base,

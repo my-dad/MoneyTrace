@@ -6,6 +6,7 @@ import { requestAccountDeletion } from "./delete-account";
 import { correctTransaction, recordCustodyTransfer, resolveFollowUp, snoozeFollowUp, updateSettings } from "./follow-up-commands";
 import { recordOpeningBalance } from "./record-opening-balance";
 import { answerQuestion, cancelSourceEvent, confirmCandidate, retrySourceEvent, submitEvidence } from "./source-event-commands";
+import { editManualIncome, recordCashIncome, tagMerchant } from "./spending-commands";
 
 /** Every command a client can call, by its contract name. `/api` serves this map. */
 export const COMMAND_HANDLERS = {
@@ -26,6 +27,9 @@ export const COMMAND_HANDLERS = {
   recordReconciliation,
   recordAdjustment,
   splitTransfer,
+  tagMerchant,
+  recordCashIncome,
+  editManualIncome,
   requestAccountDeletion,
 } as const;
 

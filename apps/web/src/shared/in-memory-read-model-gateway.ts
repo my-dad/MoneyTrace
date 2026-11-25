@@ -7,6 +7,7 @@ import type {
   FollowUpRow,
   ReadModelGateway,
   SourceEventRow,
+  TransactionRow,
 } from "./read-model-gateway";
 
 type Listener<T> = (rows: T[]) => void;
@@ -27,6 +28,7 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
   private readonly income = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
   private readonly aiUsage = new RangeStore<AiUsageRow>((row) => row.createdAtMs);
   private readonly sourceEntries = new RangeStore<LedgerEntryRow>((row) => row.occurredAtMs);
+  private readonly transactions = new RangeStore<TransactionRow>((row) => row.occurredAtMs);
 
   private watchError(kind: string, onError?: ErrorListener): void {
     if (onError === undefined) return;
@@ -116,6 +118,15 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
 
   setSourceEntries(rows: LedgerEntryRow[]): void {
     this.sourceEntries.set(rows);
+  }
+
+  watchTransactions(fromMs: number, toMs: number, onValue: Listener<TransactionRow>, onError?: ErrorListener): () => void {
+    this.watchError("transactions", onError);
+    return this.transactions.watch(fromMs, toMs, onValue);
+  }
+
+  setTransactions(rows: TransactionRow[]): void {
+    this.transactions.set(rows);
   }
 
   setAiUsage(rows: AiUsageRow[]): void {

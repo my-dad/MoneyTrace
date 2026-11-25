@@ -14,4 +14,5 @@ export * from "./commands/registry";
 export * from "./triggers";
 export * from "./ai-interpretation";
 export * from "./format-money";
+export * from "./sectors";
 export * from "./zoned-time";

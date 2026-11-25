@@ -1,9 +1,26 @@
-import { formatBdt } from "@moneytrace/contracts";
+import { formatBdt, type IncomeSource } from "@moneytrace/contracts";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import type { RecentItem } from "./recent-items";
 import styles from "./dashboard.module.css";
 
-export function RecentList({ items }: { items: RecentItem[] }) {
+export type Sortable = { key: string; name: string };
+export type Editable = { sourceEventId: string; amountMinor: number; from: IncomeSource; label: string };
+
+/** `sortOf` names the shop of a spend still Not sorted yet, so the row offers to sort it. */
+export function RecentList({
+  items,
+  sortOf,
+  onSort,
+  editOf,
+  onEdit,
+}: {
+  items: RecentItem[];
+  sortOf?: (item: RecentItem) => Sortable | null;
+  onSort?: (shop: Sortable) => void;
+  /** Cash income the user added: it can be edited. */
+  editOf?: (item: RecentItem) => Editable | null;
+  onEdit?: (income: Editable) => void;
+}) {
   return (
     <section aria-labelledby="recent" className={styles.card}>
       <h3 id="recent">{DASHBOARD_COPY.recent}</h3>
@@ -21,6 +38,24 @@ export function RecentList({ items }: { items: RecentItem[] }) {
                   ))}
                 </span>
               )}
+              {onSort !== undefined &&
+                (() => {
+                  const shop = sortOf?.(item) ?? null;
+                  return shop === null ? null : (
+                    <button type="button" className={styles.sortButton} aria-label={DASHBOARD_COPY.sortAria(shop.name)} onClick={() => { onSort(shop); }}>
+                      {DASHBOARD_COPY.sort}
+                    </button>
+                  );
+                })()}
+              {onEdit !== undefined &&
+                (() => {
+                  const income = editOf?.(item) ?? null;
+                  return income === null ? null : (
+                    <button type="button" className={styles.sortButton} aria-label={DASHBOARD_COPY.editIncomeAria(income.label)} onClick={() => { onEdit(income); }}>
+                      {DASHBOARD_COPY.edit}
+                    </button>
+                  );
+                })()}
               {/* Recorded is the normal case; only what needs attention is marked. */}
               {item.status !== "recorded" && (
                 <span className={`${styles.status ?? ""} ${styles[item.status] ?? ""}`}>{item.statusLabel}</span>

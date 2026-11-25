@@ -15,6 +15,8 @@ export function transactionToDoc(t: TransactionRecord): Record<string, unknown> 
     ...(t.category !== undefined ? { category: t.category } : {}),
     ...(t.reference !== undefined ? { reference: t.reference } : {}),
     ...(t.rationale !== undefined ? { rationale: t.rationale } : {}),
+    ...(t.merchant !== undefined ? { merchant: t.merchant } : {}),
+    ...(t.merchantKey !== undefined ? { merchantKey: t.merchantKey } : {}),
     ...(t.correctionOf !== undefined ? { correctionOf: t.correctionOf } : {}),
     ...(t.reversedBy !== undefined ? { reversedBy: t.reversedBy } : {}),
     ...(t.auditDetails !== undefined ? { auditDetails: { ...t.auditDetails } } : {}),
@@ -35,6 +37,8 @@ export function toTransactionRecord(data: unknown): TransactionRecord {
     ...(d.category !== undefined ? { category: d.category } : {}),
     ...(d.reference !== undefined ? { reference: d.reference } : {}),
     ...(d.rationale !== undefined ? { rationale: d.rationale } : {}),
+    ...(d.merchant !== undefined ? { merchant: d.merchant } : {}),
+    ...(d.merchantKey !== undefined ? { merchantKey: d.merchantKey } : {}),
     ...(d.correctionOf !== undefined ? { correctionOf: asTransactionId(d.correctionOf) } : {}),
     ...(d.reversedBy !== undefined ? { reversedBy: asTransactionId(d.reversedBy) } : {}),
     ...(d.auditDetails !== undefined

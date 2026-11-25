@@ -1,3 +1,4 @@
+import { isManualEntry } from "../../source-event-guards";
 import { DEFAULT_MATCH_CONFIG, isWalletProvider, matchCandidate, providerSlug, type MatchResult } from "@moneytrace/domain";
 import { isIncoming } from "../candidate-to-intent";
 import type { SourceEventRecord } from "../../ports/source-event-repository";
@@ -89,6 +90,8 @@ async function destinationOf(
 export const matchStage: Stage = async (deps, ownerId, event) => {
   const { candidate } = event;
   if (candidate === null) return { nextStatus: "matched", outputs: [] };
+  // Two equal incomes entered by hand are two incomes: never matched as duplicates.
+  if (isManualEntry(event)) return { nextStatus: "matched", outputs: [], eventPatch: { matchKind: "none", matchedTransactionId: null } };
 
   const resolvedAccountId = event.resolvedAccountId ?? (await sourceOf(deps, ownerId, candidate));
   const resolvedDestinationAccountId =

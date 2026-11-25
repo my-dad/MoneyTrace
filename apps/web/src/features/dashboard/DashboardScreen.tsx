@@ -1,21 +1,33 @@
 "use client";
 
-import { formatBdt } from "@moneytrace/contracts";
+import { foldSector, formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
-import type { AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import { dhakaDate } from "../../shared/dhaka-date";
+import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
-import { buildDashboard, monthRange } from "./dashboard-view-model";
+import { buildDashboard, merchantsOf, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
-import { toRecentItems } from "./recent-items";
-import { RecentList } from "./RecentList";
+import { toRecentItems, type RecentItem } from "./recent-items";
+import { RecentList, type Editable, type Sortable } from "./RecentList";
+import { CashIncomeForm, type CashIncomeCommands, type CashIncomeMode } from "./CashIncomeForm";
+import { manualIncomes } from "./manual-income";
+import { dailyCumulative, monthlyTotals, sectorSlices, topMerchants, type DayPoint } from "./chart-models";
+import { shortMonth } from "./chart-format";
+import { DailyLine } from "./DailyLine";
+import { MonthlyBars } from "./MonthlyBars";
+import { TopMerchants } from "./TopMerchants";
+import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
 import styles from "./dashboard.module.css";
 
 const RECENT_LIMIT = 10;
+const DAY_MS = 86_400_000;
+/** How far back Recent's spends are read for their sector: well past its ten rows. */
+const RECENT_WINDOW_MS = 120 * DAY_MS;
 const EVENT_WINDOW = 50;
 
 /** The only screen after sign-in. Every figure waits for its first snapshot, so loading never reads as ৳0. */
@@ -25,12 +37,18 @@ export function DashboardScreen({
   displayName,
   onSignOut,
   onDeleteAccount = () => Promise.reject(new Error("account deletion is not available here")),
+  tagMerchant,
+  cashIncome,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
   displayName?: string;
   onSignOut: () => Promise<void>;
   onDeleteAccount?: (confirmation: string) => Promise<void>;
+  /** Sorts a shop into a sector; without it, nothing offers to sort. */
+  tagMerchant?: TagMerchant;
+  /** Adds and fixes cash income; without it, nothing offers to. */
+  cashIncome?: CashIncomeCommands;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -42,9 +60,18 @@ export function DashboardScreen({
   const [previous, setPrevious] = useState<LedgerEntryRow[] | null>(null);
   const [sourceEntries, setSourceEntries] = useState<LedgerEntryRow[] | null>(null);
   const [income, setIncome] = useState<LedgerEntryRow[] | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionRow[]>([]);
+  const [sorting, setSorting] = useState<Sortable | null>(null);
+  const [recentIncome, setRecentIncome] = useState<LedgerEntryRow[]>([]);
+  const [incomeForm, setIncomeForm] = useState<CashIncomeMode | null>(null);
+  const [sixExpenses, setSixExpenses] = useState<LedgerEntryRow[]>([]);
+  const [sixIncome, setSixIncome] = useState<LedgerEntryRow[]>([]);
+  const [monthTransactions, setMonthTransactions] = useState<TransactionRow[]>([]);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
+  /** The six months ending with the one shown, oldest first, for Came in vs Spent. */
+  const sixMonths = useMemo(() => [5, 4, 3, 2, 1, 0].map((back) => monthRange(nowMs, offset - back)), [nowMs, offset]);
 
   useEffect(() => {
     const onError = () => { setFailed(true); };
@@ -52,6 +79,10 @@ export function DashboardScreen({
       gateway.watchAccounts(setAccounts, onError),
       gateway.watchBalances(setBalances, onError),
       gateway.watchSourceEvents(EVENT_WINDOW, setEvents, onError),
+      // The spends behind Recent: their sector and shop, so an unsorted one can be sorted.
+      gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
+      // Income behind Recent, so cash income shows at its amount after any edit.
+      gateway.watchIncomeEntries(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentIncome, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -67,9 +98,21 @@ export function DashboardScreen({
       gateway.watchExpenseEntries(month.fromMs, month.toMs, setExpenses, onError),
       gateway.watchExpenseEntries(prior.fromMs, prior.toMs, setPrevious, onError),
       gateway.watchIncomeEntries(month.fromMs, month.toMs, setIncome, onError),
+      // Each spend's shop, for Top shops.
+      gateway.watchTransactions(month.fromMs, month.toMs, setMonthTransactions, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, month, prior]);
+
+  useEffect(() => {
+    const onError = () => { setFailed(true); };
+    const from = sixMonths[0]?.fromMs ?? month.fromMs;
+    const stops = [
+      gateway.watchExpenseEntries(from, month.toMs, setSixExpenses, onError),
+      gateway.watchIncomeEntries(from, month.toMs, setSixIncome, onError),
+    ];
+    return () => { stops.forEach((stop) => { stop(); }); };
+  }, [gateway, month, sixMonths]);
 
   const loading = balances === null || events === null || expenses === null || previous === null || income === null || sourceEntries === null;
   const view = loading
@@ -77,6 +120,18 @@ export function DashboardScreen({
     : buildDashboard({ balances, expenses, income, previousExpenses: previous, nowMs, offset, previousLabel: prior.label.split(" ")[0] ?? "", accounts, sourceEntries });
   const newUser = events !== null && events.length === 0;
   const recent = events === null ? [] : toRecentItems(events, accounts, RECENT_LIMIT);
+  const unsorted = new Map(
+    recentTransactions
+      .filter((t) => t.state === "posted" && t.merchantKey !== undefined && t.merchant !== undefined && foldSector(t.category ?? "uncategorized") === "uncategorized")
+      .map((t): [string, Sortable] => [t.id, { key: t.merchantKey ?? "", name: t.merchant ?? "" }]),
+  );
+  const sortOf = (item: RecentItem): Sortable | null => unsorted.get(`txn-${item.id}`) ?? null;
+  const manual = manualIncomes(events ?? [], recentTransactions, recentIncome);
+  const recentShown = recent.map((item) => {
+    const income = manual.get(item.id);
+    return income === undefined ? item : { ...item, amountMinor: income.amountMinor };
+  });
+  const editOf = (item: RecentItem): Editable | null => manual.get(item.id) ?? null;
 
   let body;
   if (newUser) {
@@ -153,11 +208,34 @@ export function DashboardScreen({
               )}
             </div>
           )}
-          {view.hasActivity && view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
+          {view.hasActivity && (
+            <>
+              <CategoryChart rows={view.categories} slices={sectorSlices(expenses ?? [])} comparison={null} />
+              <DailyLine
+                points={dailyCumulative(expenses ?? [], month, nowMs)}
+                previous={dailyCumulative(previous ?? [], prior, nowMs)}
+                monthShort={shortMonth(month.label)}
+                daysInMonth={Number(dhakaDate(month.toMs).slice(8, 10))}
+                summary={dailySummary(dailyCumulative(expenses ?? [], month, nowMs), month.label, view.comparison, offset === 0)}
+              />
+            </>
+          )}
+          <MonthlyBars rows={monthlyTotals(sixExpenses, sixIncome, sixMonths)} />
         </div>
         <div>
+          {view.hasActivity && (
+            <TopMerchants rows={topMerchants(merchantsOf(expenses ?? [], monthTransactions))} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
+          )}
           <SourcesList netMoneyMinor={view.netMoneyMinor} sources={view.sources} />
-          {recent.length > 0 && <RecentList items={recent} />}
+          {recent.length > 0 && (
+            <RecentList
+              items={recentShown}
+              sortOf={sortOf}
+              editOf={editOf}
+              {...(tagMerchant === undefined ? {} : { onSort: setSorting })}
+              {...(cashIncome === undefined ? {} : { onEdit: (income: Editable) => { setIncomeForm({ kind: "edit", sourceEventId: income.sourceEventId, amountMinor: income.amountMinor, from: income.from }); } })}
+            />
+          )}
         </div>
       </div>
     );
@@ -185,12 +263,31 @@ export function DashboardScreen({
           <span aria-hidden="true">›</span>
         </button>
       )}
+      {cashIncome !== undefined && (
+        <button type="button" className={styles.addIncome} onClick={() => { setIncomeForm({ kind: "add" }); }}>
+          {DASHBOARD_COPY.addIncomeButton}
+        </button>
+      )}
       {!newUser && (
         <MonthSwitch label={month.label} canGoNext={offset < 0} onPrevious={() => { setOffset((n) => n - 1); }} onNext={() => { setOffset((n) => Math.min(0, n + 1)); }} />
       )}
       {body}
+      {incomeForm !== null && cashIncome !== undefined && (
+        <CashIncomeForm mode={incomeForm} nowMs={nowMs} commands={cashIncome} onClose={() => { setIncomeForm(null); }} />
+      )}
+      {sorting !== null && tagMerchant !== undefined && (
+        <SectorPicker merchantName={sorting.name} merchantKey={sorting.key} tagMerchant={tagMerchant} onClose={() => { setSorting(null); }} />
+      )}
       {/* Piece 3 puts tips here. */}
       <section aria-hidden="true" className={styles.tips} />
     </main>
   );
+}
+
+/** "৳18,640 by 6 Nov · ৳1,740 more than this time last month", or "৳52,300 in October 2026". */
+function dailySummary(points: DayPoint[], monthLabel: string, comparison: string | null, current: boolean): string {
+  const last = points[points.length - 1];
+  const total = formatBdt(last?.minor ?? 0);
+  const head = current ? `${total} by ${String(last?.day ?? 1)} ${shortMonth(monthLabel)}` : `${total} in ${monthLabel}`;
+  return comparison === null ? head : `${head} · ${comparison}`;
 }

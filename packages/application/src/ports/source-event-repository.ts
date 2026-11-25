@@ -89,6 +89,11 @@ export type SourceEventInput = {
   receivedAtMs: number;
   /** Evidence with identifiers already masked. */
   retainedText?: string;
+  /**
+   * What the user entered in a form (cash income): stored as already read and confirmed, so the
+   * pipeline posts it without parsing, AI or matching.
+   */
+  preset?: { candidate: CandidateTransaction; resolvedAccountId: string };
 };
 
 export type StageClaim = {

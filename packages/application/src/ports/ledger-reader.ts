@@ -24,6 +24,10 @@ export type TransactionRecord = {
   /** The provider's own transaction ID, when the evidence gives one. */
   reference?: string;
   rationale?: string;
+  /** The merchant the evidence names, tidied. */
+  merchant?: string;
+  /** The merchant's normalized key, the same for every spelling of one shop. */
+  merchantKey?: string;
   correctionOf?: TransactionId;
   reversedBy?: TransactionId;
   auditDetails?: { cause?: string; authorizedBy?: string; holderName?: string };
@@ -53,6 +57,8 @@ export type LedgerReader = {
   getBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
   /** The same figure summed from entries; used to prove the projection. */
   recomputeBalance(ownerId: OwnerId, accountId: AccountId): Promise<number>;
+  /** Up to `limit` transactions whose merchant has this key, in any state. */
+  listByMerchantKey(ownerId: OwnerId, merchantKey: string, limit: number): Promise<TransactionRecord[]>;
   /** Every entry dated in the inclusive range, across the owner's accounts. */
   listEntriesInRange(ownerId: OwnerId, fromMs: number, toMs: number): Promise<EntryRecord[]>;
   /** The stored cutover markers for the given accounts; accounts without one are omitted. */

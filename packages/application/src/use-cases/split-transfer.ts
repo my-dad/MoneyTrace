@@ -18,6 +18,8 @@ import type { LedgerReader } from "../ports/ledger-reader";
 import type { LedgerWriter } from "../ports/ledger-writer";
 import type { SourceEventRepository } from "../ports/source-event-repository";
 import { candidateToIntent } from "../pipeline/candidate-to-intent";
+import { chooseSector, isSpending, type ChosenSector } from "../pipeline/sector";
+import type { MerchantSectorRepository } from "../ports/merchant-sector-repository";
 import { SYSTEM_CASH_ACCOUNT_ID } from "./bootstrap-user";
 import { rebuildIntent } from "./correct-transaction";
 import { ReverseAndReplace } from "./reverse-and-replace";
@@ -29,6 +31,8 @@ type Deps = {
   accounts: AccountRepository;
   hasher: Hasher;
   clock: Clock;
+  /** The user's sectors for merchants, so spending counted again is sorted as when it first posts. */
+  merchantSectors: Pick<MerchantSectorRepository, "get">;
 };
 
 export type SplitTransferResult = {
@@ -80,7 +84,8 @@ export class SplitTransfer {
     if (amountA === undefined) throw new DomainError("invalidTransition", "the first message's record is empty");
     const intentA = rebuildIntent(txA, entriesA, Money.ofMinor(amountA.amountMinor, amountA.currency));
 
-    const intentB = await this.ownIntent(ownerId, event.candidate, event.resolvedAccountId);
+    const chosen = isSpending(event.candidate) ? await chooseSector(this.deps, ownerId, event.candidate, event.retainedText) : null;
+    const intentB = await this.ownIntent(ownerId, event.candidate, event.resolvedAccountId, chosen);
     const result = await new ReverseAndReplace(this.deps).execute({
       ownerId,
       idempotencyKey: asIdempotencyKey(`split-${event.id}`),
@@ -93,6 +98,7 @@ export class SplitTransfer {
         intent: intentB,
         occurredAtMs: event.candidate.occurredAtMs ?? event.receivedAtMs,
         sourceEventIds: [event.id],
+        ...(chosen?.merchant === undefined ? {} : { merchant: chosen.merchant }),
       },
     });
     if (result.status === "idempotencyConflict") {
@@ -109,6 +115,7 @@ export class SplitTransfer {
     ownerId: OwnerId,
     candidate: CandidateTransaction,
     accountId: string,
+    chosen: ChosenSector | null,
   ): Promise<PostingIntent> {
     const found = await this.deps.accounts.getMany(ownerId, [
       asAccountId(accountId),
@@ -123,7 +130,7 @@ export class SplitTransfer {
     const intent =
       source === null || systemCash === null
         ? null
-        : candidateToIntent(candidate, { source, destination: null, systemCash });
+        : candidateToIntent(candidate, { source, destination: null, systemCash }, chosen?.sector);
     if (intent === null) throw new DomainError("invalidTransition", "this message can't be recorded on its own");
     return intent;
   }

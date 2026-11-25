@@ -6,6 +6,7 @@ import type {
   FollowUpRow,
   LedgerEntryRow,
   SourceEventRow,
+  TransactionRow,
 } from "../read-model-gateway";
 
 /**
@@ -52,33 +53,53 @@ export const FIXTURE_BALANCES: BalanceRow[] = ACCOUNT_SEEDS.map(({ id, kind, bal
   updatedAtMs: FIXTURE_NOW_MS,
 }));
 
-/** 1–6 Nov spending: groceries 6,820 + transport 3,150 + eating out 2,940 + other 5,730 = 18,640. */
-const EXPENSES: [string, string, number][] = [
-  ["groceries", "2026-11-01T11:20:00", 2_150],
-  ["groceries", "2026-11-03T18:05:00", 1_870],
-  ["groceries", "2026-11-04T19:40:00", 1_600],
-  ["groceries", "2026-11-06T10:15:00", 1_200],
-  ["transport", "2026-11-01T08:30:00", 950],
-  ["transport", "2026-11-02T09:10:00", 800],
-  ["transport", "2026-11-04T08:45:00", 750],
-  ["transport", "2026-11-05T18:20:00", 650],
-  ["eating-out", "2026-11-02T13:30:00", 1_100],
-  ["eating-out", "2026-11-03T21:00:00", 720],
-  ["eating-out", "2026-11-05T13:15:00", 620],
-  ["eating-out", "2026-11-06T16:40:00", 500],
-  ["other", "2026-11-02T20:10:00", 2_500],
-  ["other", "2026-11-03T12:00:00", 1_480],
-  ["other", "2026-11-04T15:30:00", 1_000],
-  ["other", "2026-11-06T12:25:00", 750],
+/**
+ * 1–6 Nov spending: groceries 6,820 + other 3,230 + transport 3,150 + eating out 2,940 + not
+ * sorted yet 2,500 (Daraz) = 18,640. Each spend names its shop, as its SMS would.
+ */
+const EXPENSES: [category: string, iso: string, amountTaka: number, merchant: string | null][] = [
+  ["groceries", "2026-11-01T11:20:00", 2_150, "Shwapno Gulshan"],
+  ["groceries", "2026-11-03T18:05:00", 1_870, "Agora Dhanmondi"],
+  ["groceries", "2026-11-04T19:40:00", 1_600, "Meena Bazar"],
+  ["groceries", "2026-11-06T10:15:00", 1_200, "Shwapno Gulshan"],
+  ["transport", "2026-11-01T08:30:00", 950, "Pathao"],
+  ["transport", "2026-11-02T09:10:00", 800, "Pathao"],
+  ["transport", "2026-11-04T08:45:00", 750, "Uber"],
+  ["transport", "2026-11-05T18:20:00", 650, "Rickshaw and CNG"],
+  ["eating-out", "2026-11-02T13:30:00", 1_100, "Takeout Banani"],
+  ["eating-out", "2026-11-03T21:00:00", 720, "Foodpanda"],
+  ["eating-out", "2026-11-05T13:15:00", 620, "Foodpanda"],
+  ["eating-out", "2026-11-06T16:40:00", 500, "Takeout Banani"],
+  ["uncategorized", "2026-11-02T20:10:00", 2_500, "Daraz"],
+  ["other", "2026-11-03T12:00:00", 1_480, null],
+  ["other", "2026-11-04T15:30:00", 1_000, "Aarong"],
+  ["other", "2026-11-06T12:25:00", 750, null],
   // October, for the dashboard's month-to-month comparison: 16,900 by 6 Oct, 52,300 in all.
-  ["groceries", "2026-10-03T10:00:00", 6_100],
-  ["other", "2026-10-04T10:00:00", 5_200],
-  ["transport", "2026-10-05T10:00:00", 2_950],
-  ["eating-out", "2026-10-06T10:00:00", 2_650],
-  ["groceries", "2026-10-20T10:00:00", 12_800],
-  ["other", "2026-10-21T10:00:00", 10_400],
-  ["transport", "2026-10-22T10:00:00", 6_750],
-  ["eating-out", "2026-10-23T10:00:00", 5_450],
+  ["groceries", "2026-10-03T10:00:00", 6_100, "Shwapno Gulshan"],
+  ["other", "2026-10-04T10:00:00", 5_200, "Aarong"],
+  ["transport", "2026-10-05T10:00:00", 2_950, "Pathao"],
+  ["eating-out", "2026-10-06T10:00:00", 2_650, "Foodpanda"],
+  ["groceries", "2026-10-20T10:00:00", 12_800, "Meena Bazar"],
+  ["other", "2026-10-21T10:00:00", 10_400, null],
+  ["transport", "2026-10-22T10:00:00", 6_750, "Uber"],
+  ["eating-out", "2026-10-23T10:00:00", 5_450, "Takeout Banani"],
+  // June to September, for the six-month chart.
+  ["groceries", "2026-06-08T10:00:00", 17_200, "Shwapno Gulshan"],
+  ["transport", "2026-06-12T10:00:00", 8_400, "Pathao"],
+  ["eating-out", "2026-06-15T10:00:00", 6_900, "Foodpanda"],
+  ["other", "2026-06-20T10:00:00", 9_800, null],
+  ["groceries", "2026-07-08T10:00:00", 18_100, "Meena Bazar"],
+  ["transport", "2026-07-12T10:00:00", 9_100, "Uber"],
+  ["eating-out", "2026-07-15T10:00:00", 8_200, "Takeout Banani"],
+  ["other", "2026-07-20T10:00:00", 21_500, "Aarong"],
+  ["groceries", "2026-08-08T10:00:00", 16_400, "Shwapno Gulshan"],
+  ["transport", "2026-08-12T10:00:00", 7_800, "Pathao"],
+  ["eating-out", "2026-08-15T10:00:00", 7_300, "Foodpanda"],
+  ["other", "2026-08-20T10:00:00", 11_200, null],
+  ["groceries", "2026-09-08T10:00:00", 19_600, "Agora Dhanmondi"],
+  ["transport", "2026-09-12T10:00:00", 8_900, "Pathao"],
+  ["eating-out", "2026-09-15T10:00:00", 9_400, "Takeout Banani"],
+  ["other", "2026-09-20T10:00:00", 14_700, "Daraz"],
 ];
 
 export const FIXTURE_EXPENSE_ENTRIES: ExpenseEntryRow[] = EXPENSES.map(([category, iso, amount], index) => ({
@@ -92,7 +113,42 @@ export const FIXTURE_EXPENSE_ENTRIES: ExpenseEntryRow[] = EXPENSES.map(([categor
   occurredAtMs: at(iso),
 }));
 
+/** The demo's merchant key: what `normalizeMerchant` makes of these simple names. */
+const keyOf = (merchant: string): string => merchant.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const spendTx = (id: string, category: string, atMs: number, merchant: string | null): TransactionRow => ({
+  id,
+  state: "posted",
+  intentType: "purchase",
+  occurredAtMs: atMs,
+  currency: "BDT",
+  sourceEventIds: [],
+  actor: "pipeline",
+  category,
+  ...(merchant === null ? {} : { merchant, merchantKey: keyOf(merchant) }),
+  committedAtMs: atMs,
+});
+
+/** Salary in earlier months, for the six-month chart; November's is below. */
+const EARLIER_INCOME: [iso: string, amountTaka: number][] = [
+  ["2026-06-01T10:00:00", 82_000],
+  ["2026-07-01T10:00:00", 82_000],
+  ["2026-08-01T10:00:00", 85_000],
+  ["2026-09-01T10:00:00", 85_000],
+  ["2026-10-01T10:00:00", 85_000],
+];
+
 export const FIXTURE_INCOME_ENTRIES: LedgerEntryRow[] = [
+  ...EARLIER_INCOME.map(([iso, amount], index): LedgerEntryRow => ({
+    id: `tx-salary-${String(index)}:2`,
+    transactionId: `tx-salary-${String(index)}`,
+    accountId: "income-salary",
+    accountKind: "income",
+    side: "credit",
+    amountMinor: taka(amount),
+    currency: "BDT",
+    occurredAtMs: at(iso),
+  })),
   {
     id: "tx-salary-nov:2",
     transactionId: "tx-salary-nov",
@@ -205,7 +261,7 @@ const EVENT_SEEDS: EventSeed[] = [
     status: "posted",
     receivedIso: "2026-11-02T20:11:00",
     text: "A/C **3307 debited BDT 2,500.00 for DARAZ on 02-Nov-26. Bal BDT 31,500.00",
-    candidate: candidate("purchase", 2_500, "2026-11-02T20:10:00", { provider: "city", instrumentMask: "3307", counterparty: "Daraz", category: "other", balanceAfterMinor: taka(31_500) }),
+    candidate: candidate("purchase", 2_500, "2026-11-02T20:10:00", { provider: "city", instrumentMask: "3307", counterparty: "Daraz", balanceAfterMinor: taka(31_500) }),
     account: "bank-city",
   },
   {
@@ -372,4 +428,18 @@ export const FIXTURE_FOLLOW_UPS: FollowUpRow[] = [
     createdAtMs: at("2026-11-04T21:00:00"),
     resolvedAtMs: null,
   },
+];
+
+const SPENDING_KINDS = new Set(["purchase", "cardPurchase", "cardTransaction", "unclassifiedDebit"]);
+
+/**
+ * Each spend's sector and shop: the demo's spending, plus the record of each posted spending
+ * message (`txn-<event id>`), as the pipeline would write them.
+ */
+export const FIXTURE_TRANSACTIONS: TransactionRow[] = [
+  ...EXPENSES.map(([category, iso, , merchant], index) => spendTx(`tx-exp-${String(index + 1)}`, category, at(iso), merchant)),
+  ...EVENT_SEEDS.filter((seed) => seed.status === "posted" && seed.candidate !== null && SPENDING_KINDS.has(seed.candidate.kind)).map((seed) => {
+    const c = seed.candidate as Candidate;
+    return spendTx(`txn-${seed.id}`, c.category ?? "uncategorized", c.occurredAtMs ?? at(seed.receivedIso), c.counterparty ?? null);
+  }),
 ];
