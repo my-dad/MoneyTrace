@@ -83,7 +83,8 @@ describe("buildDashboard", () => {
   it("a past month compares whole months", () => {
     const v = view(-1);
     expect(v.spentMinor).toBe(5_230_000);
-    expect(v.comparison).toBeNull();
+    // September in the demo: ৳52,600 in all.
+    expect(v.comparison).toBe("৳300 less than September");
   });
 
   it("says less and same for the current month", () => {

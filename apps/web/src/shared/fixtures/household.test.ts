@@ -86,7 +86,9 @@ describe("fixture household", () => {
     expect(debits(dhaka("2026-11-01T00:00:00"), FIXTURE_NOW_MS)).toBe(1_864_000);
     expect(debits(dhaka("2026-10-01T00:00:00"), dhaka("2026-10-06T20:00:00"))).toBe(1_690_000);
     expect(debits(dhaka("2026-10-01T00:00:00"), dhaka("2026-10-31T23:59:59"))).toBe(5_230_000);
-    expect(sum(FIXTURE_INCOME_ENTRIES.map((e) => e.amountMinor))).toBe(8_500_000);
+    // November's salary, plus June–October's for the six-month chart.
+    expect(sum(FIXTURE_INCOME_ENTRIES.filter((e) => e.occurredAtMs >= dhaka("2026-11-01T00:00:00")).map((e) => e.amountMinor))).toBe(8_500_000);
+    expect(sum(FIXTURE_INCOME_ENTRIES.map((e) => e.amountMinor))).toBe(50_400_000);
     expect(sum(FIXTURE_AI_USAGE.map((u) => u.actualMicroUsd ?? u.estimatedMicroUsd))).toBe(1_430_000);
     FIXTURE_INCOME_ENTRIES.forEach((row) => OWNER_COLLECTIONS.ledgerEntries.parse(row));
     FIXTURE_AI_USAGE.forEach((row) => OWNER_COLLECTIONS.aiUsage.parse(row));

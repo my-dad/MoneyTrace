@@ -47,7 +47,7 @@ describe("DashboardScreen", () => {
     const note = screen.getByRole("note", { name: "Cash not yet explained" });
     expect(note.textContent).toContain("৳5,000");
     expect(note.textContent).toContain("not counted as spending");
-    expect(screen.getByText("৳1,740 more than this time last month")).toBeTruthy();
+    expect(screen.getByText(/৳1,740 more than this time last month/)).toBeTruthy();
     expect(figure("Money tracked")).toContain("৳1,25,630");
   });
 
@@ -96,7 +96,7 @@ describe("DashboardScreen", () => {
   it("a Not sorted yet spend in Recent can be sorted, and says what moved", async () => {
     const tagMerchant = vi.fn(() => Promise.resolve({ resorted: 1, more: false }));
     render(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} tagMerchant={tagMerchant} />);
-    fireEvent.click(screen.getByRole("button", { name: "Sort Daraz into a sector" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Recent" })).getByRole("button", { name: "Sort Daraz into a sector" }));
     const dialog = screen.getByRole("dialog", { name: "Sort Daraz" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Shopping" }));
     await screen.findByText("Sorted 1 spend from Daraz as Shopping.");
@@ -168,9 +168,9 @@ describe("DashboardScreen", () => {
 
   it("a month with nothing recorded says so", () => {
     open();
-    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
-    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
-    expect(screen.getByText("Nothing recorded in September 2026")).toBeTruthy();
+    // The demo has spending from June: May is empty.
+    for (let i = 0; i < 6; i++) fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+    expect(screen.getByText("Nothing recorded in May 2026")).toBeTruthy();
   });
 
   it("recent marks only what needs attention, not every recorded message", () => {

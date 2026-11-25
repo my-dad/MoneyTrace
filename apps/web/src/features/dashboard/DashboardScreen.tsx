@@ -4,16 +4,22 @@ import { foldSector, formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
+import { dhakaDate } from "../../shared/dhaka-date";
 import type { TransactionRow, AccountRow, AiUsageRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
-import { aiSpendLabel, buildDashboard, monthRange } from "./dashboard-view-model";
+import { aiSpendLabel, buildDashboard, merchantsOf, monthRange } from "./dashboard-view-model";
 import { MonthSwitch } from "./MonthSwitch";
 import { toRecentItems, type RecentItem } from "./recent-items";
 import { RecentList, type Editable, type Sortable } from "./RecentList";
 import { CashIncomeForm, type CashIncomeCommands, type CashIncomeMode } from "./CashIncomeForm";
 import { manualIncomes } from "./manual-income";
+import { dailyCumulative, monthlyTotals, sectorSlices, topMerchants, type DayPoint } from "./chart-models";
+import { shortMonth } from "./chart-format";
+import { DailyLine } from "./DailyLine";
+import { MonthlyBars } from "./MonthlyBars";
+import { TopMerchants } from "./TopMerchants";
 import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
 import styles from "./dashboard.module.css";
@@ -59,9 +65,14 @@ export function DashboardScreen({
   const [sorting, setSorting] = useState<Sortable | null>(null);
   const [recentIncome, setRecentIncome] = useState<LedgerEntryRow[]>([]);
   const [incomeForm, setIncomeForm] = useState<CashIncomeMode | null>(null);
+  const [sixExpenses, setSixExpenses] = useState<LedgerEntryRow[]>([]);
+  const [sixIncome, setSixIncome] = useState<LedgerEntryRow[]>([]);
+  const [monthTransactions, setMonthTransactions] = useState<TransactionRow[]>([]);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
+  /** The six months ending with the one shown, oldest first, for Came in vs Spent. */
+  const sixMonths = useMemo(() => [5, 4, 3, 2, 1, 0].map((back) => monthRange(nowMs, offset - back)), [nowMs, offset]);
 
   useEffect(() => {
     const onError = () => { setFailed(true); };
@@ -90,9 +101,21 @@ export function DashboardScreen({
       gateway.watchExpenseEntries(month.fromMs, month.toMs, setExpenses, onError),
       gateway.watchExpenseEntries(prior.fromMs, prior.toMs, setPrevious, onError),
       gateway.watchIncomeEntries(month.fromMs, month.toMs, setIncome, onError),
+      // Each spend's shop, for Top shops.
+      gateway.watchTransactions(month.fromMs, month.toMs, setMonthTransactions, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, month, prior]);
+
+  useEffect(() => {
+    const onError = () => { setFailed(true); };
+    const from = sixMonths[0]?.fromMs ?? month.fromMs;
+    const stops = [
+      gateway.watchExpenseEntries(from, month.toMs, setSixExpenses, onError),
+      gateway.watchIncomeEntries(from, month.toMs, setSixIncome, onError),
+    ];
+    return () => { stops.forEach((stop) => { stop(); }); };
+  }, [gateway, month, sixMonths]);
 
   const loading = balances === null || events === null || expenses === null || previous === null || income === null || sourceEntries === null;
   const view = loading
@@ -188,9 +211,24 @@ export function DashboardScreen({
               )}
             </div>
           )}
-          {view.hasActivity && view.categories.length > 0 && <CategoryChart rows={view.categories} comparison={view.comparison} />}
+          {view.hasActivity && (
+            <>
+              <CategoryChart rows={view.categories} slices={sectorSlices(expenses ?? [])} comparison={null} />
+              <DailyLine
+                points={dailyCumulative(expenses ?? [], month, nowMs)}
+                previous={dailyCumulative(previous ?? [], prior, nowMs)}
+                monthShort={shortMonth(month.label)}
+                daysInMonth={Number(dhakaDate(month.toMs).slice(8, 10))}
+                summary={dailySummary(dailyCumulative(expenses ?? [], month, nowMs), month.label, view.comparison, offset === 0)}
+              />
+            </>
+          )}
+          <MonthlyBars rows={monthlyTotals(sixExpenses, sixIncome, sixMonths)} />
         </div>
         <div>
+          {view.hasActivity && (
+            <TopMerchants rows={topMerchants(merchantsOf(expenses ?? [], monthTransactions))} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
+          )}
           <SourcesList netMoneyMinor={view.netMoneyMinor} sources={view.sources} />
           {recent.length > 0 && (
             <RecentList
@@ -247,4 +285,12 @@ export function DashboardScreen({
       <section aria-hidden="true" className={styles.tips} />
     </main>
   );
+}
+
+/** "৳18,640 by 6 Nov · ৳1,740 more than this time last month", or "৳52,300 in October 2026". */
+function dailySummary(points: DayPoint[], monthLabel: string, comparison: string | null, current: boolean): string {
+  const last = points[points.length - 1];
+  const total = formatBdt(last?.minor ?? 0);
+  const head = current ? `${total} by ${String(last?.day ?? 1)} ${shortMonth(monthLabel)}` : `${total} in ${monthLabel}`;
+  return comparison === null ? head : `${head} · ${comparison}`;
 }

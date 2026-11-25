@@ -83,6 +83,23 @@ const EXPENSES: [category: string, iso: string, amountTaka: number, merchant: st
   ["other", "2026-10-21T10:00:00", 10_400, null],
   ["transport", "2026-10-22T10:00:00", 6_750, "Uber"],
   ["eating-out", "2026-10-23T10:00:00", 5_450, "Takeout Banani"],
+  // June to September, for the six-month chart.
+  ["groceries", "2026-06-08T10:00:00", 17_200, "Shwapno Gulshan"],
+  ["transport", "2026-06-12T10:00:00", 8_400, "Pathao"],
+  ["eating-out", "2026-06-15T10:00:00", 6_900, "Foodpanda"],
+  ["other", "2026-06-20T10:00:00", 9_800, null],
+  ["groceries", "2026-07-08T10:00:00", 18_100, "Meena Bazar"],
+  ["transport", "2026-07-12T10:00:00", 9_100, "Uber"],
+  ["eating-out", "2026-07-15T10:00:00", 8_200, "Takeout Banani"],
+  ["other", "2026-07-20T10:00:00", 21_500, "Aarong"],
+  ["groceries", "2026-08-08T10:00:00", 16_400, "Shwapno Gulshan"],
+  ["transport", "2026-08-12T10:00:00", 7_800, "Pathao"],
+  ["eating-out", "2026-08-15T10:00:00", 7_300, "Foodpanda"],
+  ["other", "2026-08-20T10:00:00", 11_200, null],
+  ["groceries", "2026-09-08T10:00:00", 19_600, "Agora Dhanmondi"],
+  ["transport", "2026-09-12T10:00:00", 8_900, "Pathao"],
+  ["eating-out", "2026-09-15T10:00:00", 9_400, "Takeout Banani"],
+  ["other", "2026-09-20T10:00:00", 14_700, "Daraz"],
 ];
 
 export const FIXTURE_EXPENSE_ENTRIES: ExpenseEntryRow[] = EXPENSES.map(([category, iso, amount], index) => ({
@@ -112,7 +129,26 @@ const spendTx = (id: string, category: string, atMs: number, merchant: string | 
   committedAtMs: atMs,
 });
 
+/** Salary in earlier months, for the six-month chart; November's is below. */
+const EARLIER_INCOME: [iso: string, amountTaka: number][] = [
+  ["2026-06-01T10:00:00", 82_000],
+  ["2026-07-01T10:00:00", 82_000],
+  ["2026-08-01T10:00:00", 85_000],
+  ["2026-09-01T10:00:00", 85_000],
+  ["2026-10-01T10:00:00", 85_000],
+];
+
 export const FIXTURE_INCOME_ENTRIES: LedgerEntryRow[] = [
+  ...EARLIER_INCOME.map(([iso, amount], index): LedgerEntryRow => ({
+    id: `tx-salary-${String(index)}:2`,
+    transactionId: `tx-salary-${String(index)}`,
+    accountId: "income-salary",
+    accountKind: "income",
+    side: "credit",
+    amountMinor: taka(amount),
+    currency: "BDT",
+    occurredAtMs: at(iso),
+  })),
   {
     id: "tx-salary-nov:2",
     transactionId: "tx-salary-nov",
