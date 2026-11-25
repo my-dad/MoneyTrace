@@ -11,6 +11,8 @@ export * from "./use-cases/create-account";
 export * from "./use-cases/post-transaction";
 export * from "./use-cases/reverse-and-replace";
 export * from "./use-cases/tag-merchant";
+export * from "./use-cases/record-cash-income";
+export * from "./use-cases/edit-manual-income";
 export * from "./use-cases/answer-question";
 export * from "./use-cases/record-opening-balance";
 export * from "./ports/source-event-repository";

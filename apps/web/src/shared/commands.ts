@@ -19,6 +19,8 @@ export const PHASE_ONE_COMMANDS = [
   "recordAdjustment",
   "splitTransfer",
   "tagMerchant",
+  "recordCashIncome",
+  "editManualIncome",
   "requestAccountDeletion",
 ] as const satisfies readonly CommandName[];
 

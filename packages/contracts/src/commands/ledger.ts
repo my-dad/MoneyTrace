@@ -6,7 +6,7 @@ import {
   nonNegativeMinorAmount,
   positiveMinorAmount,
 } from "../primitives";
-import { sectorSchema } from "../sectors";
+import { incomeSourceSchema, sectorSchema } from "../sectors";
 import { accountName, shortText, strictObject } from "./shared";
 
 const postingStatus = z.enum(["recorded", "alreadyRecorded"]);
@@ -99,3 +99,40 @@ export const tagMerchantResponse = strictObject({
   resorted: z.number().int().nonnegative(),
   more: z.boolean(),
 });
+
+const sourceEventStatusOut = z.enum([
+  "received",
+  "normalized",
+  "interpreted",
+  "matched",
+  "decided",
+  "posted",
+  "linkedAsDuplicate",
+  "rejected",
+  "cancelled",
+  "pending",
+  "deadLetter",
+]);
+
+/** Cash income typed in by the user (house rent paid in cash), recorded into cash in hand. */
+export const recordCashIncomeRequest = strictObject({
+  idempotencyKey: documentId,
+  amountMinor: positiveMinorAmount,
+  from: incomeSourceSchema,
+  note: shortText.optional(),
+  /** A Dhaka calendar day, today or earlier. */
+  occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+export const recordCashIncomeResponse = strictObject({
+  sourceEventId: documentId,
+  status: sourceEventStatusOut,
+});
+
+/** Fixes cash income the user added: reversed and replaced, audited. */
+export const editManualIncomeRequest = strictObject({
+  idempotencyKey: documentId,
+  sourceEventId: documentId,
+  amountMinor: positiveMinorAmount,
+  from: incomeSourceSchema,
+});
+export const editManualIncomeResponse = strictObject({ status: postingStatus });

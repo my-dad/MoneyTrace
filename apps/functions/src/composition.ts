@@ -36,6 +36,8 @@ import {
   type PipelineLease,
   type RateLimiter,
   TagMerchant,
+  RecordCashIncome,
+  EditManualIncome,
 } from "@moneytrace/application";
 import {
   CryptoIdGenerator,
@@ -90,6 +92,8 @@ export type Deps = {
   recordCashAdjustment: RecordCashAdjustment;
   splitTransfer: SplitTransfer;
   tagMerchant: TagMerchant;
+  recordCashIncome: RecordCashIncome;
+  editManualIncome: EditManualIncome;
   updateSettings: UpdateSettings;
   advanceSourceEvent: AdvanceSourceEvent;
   recoverExpiredClaims: RecoverExpiredClaims;
@@ -249,6 +253,8 @@ export function composeDeps(
     recordCashAdjustment: new RecordCashAdjustment({ reconciliations, followUps, accounts, reader, post, clock }),
     splitTransfer: new SplitTransfer({ sourceEvents, reader, writer, accounts, hasher, clock, merchantSectors }),
     tagMerchant: new TagMerchant({ merchantSectors, reader, writer, accounts, hasher, clock }),
+    recordCashIncome: new RecordCashIncome({ sourceEvents, hasher, ids, clock }),
+    editManualIncome: new EditManualIncome({ sourceEvents, reader, writer, accounts, hasher, clock }),
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

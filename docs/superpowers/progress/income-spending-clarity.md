@@ -10,7 +10,7 @@ Spec: `docs/superpowers/specs/2026-11-25-income-spending-clarity-design.md`
 | 3 Sector at posting | 2 | done |
 | 4 tagMerchant | 2 | done |
 | 5 Dashboard merchants + sorting | 2 | done |
-| 6 Cash income commands | 3 | not started |
+| 6 Cash income commands | 3 | done |
 | 7 Cash income form | 3 | not started |
 | 8 Chart models | 4 | not started |
 | 9 Live charts | 4 | not started |

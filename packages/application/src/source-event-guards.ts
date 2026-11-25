@@ -29,7 +29,11 @@ export function stageOutputId(sourceEventId: string, stage: PipelineStage, kind:
 export const isLeaseExpired = (leaseExpiresAtMs: number, nowMs: number): boolean =>
   leaseExpiresAtMs <= nowMs;
 
+/** The parser name that marks evidence the user entered in a form; it is never parsed or matched. */
+export const MANUAL_ENTRY_PARSER = { name: "manualEntry", version: "1" } as const;
+
 export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
+  const { preset } = input;
   return {
     id: input.sourceEventId,
     sourceType: input.sourceType,
@@ -44,16 +48,20 @@ export function newSourceEvent(input: SourceEventInput): SourceEventRecord {
     terminalAtMs: null,
     providerResultsPurged: false,
     retainedText: input.retainedText ?? "",
-    candidate: null,
-    extraction: null,
+    candidate: preset?.candidate ?? null,
+    extraction: preset === undefined ? null : { source: "deterministicParser", parser: { ...MANUAL_ENTRY_PARSER }, confidenceBp: 10_000 },
     matchedTransactionId: null,
     matchKind: null,
-    resolvedAccountId: null,
+    resolvedAccountId: preset?.resolvedAccountId ?? null,
     resolvedDestinationAccountId: null,
-    userConfirmed: false,
+    userConfirmed: preset !== undefined,
     clarifications: [],
   };
 }
+
+/** Whether the event is something the user entered in a form, not evidence to read. */
+export const isManualEntry = (event: Pick<SourceEventRecord, "extraction">): boolean =>
+  event.extraction?.parser?.name === MANUAL_ENTRY_PARSER.name;
 
 export type ClaimDecision =
   | { ok: true; event: SourceEventRecord; claim: StageClaim }
