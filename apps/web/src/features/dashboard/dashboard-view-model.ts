@@ -60,7 +60,7 @@ const net = (rows: LedgerEntryRow[], positive: "debit" | "credit"): number =>
   rows.reduce((sum, row) => sum + (row.side === positive ? row.amountMinor : -row.amountMinor), 0);
 
 /** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo, as a sector. */
-const categoryOf = (accountId: string): SectorId =>
+export const categoryOf = (accountId: string): SectorId =>
   foldSector(/^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, ""));
 
 function categoriesOf(expenses: LedgerEntryRow[]): CategoryRow[] {

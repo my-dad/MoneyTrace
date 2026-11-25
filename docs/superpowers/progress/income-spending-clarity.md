@@ -12,5 +12,5 @@ Spec: `docs/superpowers/specs/2026-11-25-income-spending-clarity-design.md`
 | 5 Dashboard merchants + sorting | 2 | done |
 | 6 Cash income commands | 3 | done |
 | 7 Cash income form | 3 | done |
-| 8 Chart models | 4 | not started |
+| 8 Chart models | 4 | done |
 | 9 Live charts | 4 | not started |
