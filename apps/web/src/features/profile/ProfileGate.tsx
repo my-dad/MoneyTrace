@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { PROFILE_COPY } from "../../shared/copy";
 import type { ProfileRow, ReadModelGateway } from "../../shared/read-model-gateway";
 import type { AuthUser } from "../auth/auth-gateway";
+import { SettingUp } from "../shell/SettingUp";
 import { ProfileScreen, type UpdateProfile } from "./ProfileScreen";
 
 /**
@@ -26,7 +26,7 @@ export function ProfileGate({
   const [justSaved, setJustSaved] = useState(false);
   useEffect(() => gateway.watchProfile(setProfile, () => { setProfile(null); }), [gateway]);
 
-  if (profile === undefined || profile === null) return <main><p role="status">{PROFILE_COPY.settingUp}</p></main>;
+  if (profile === undefined || profile === null) return <SettingUp />;
   if (profile.profileCompletedAtMs === undefined && !justSaved) {
     return <ProfileScreen mode="setup" user={user} profile={profile} updateProfile={updateProfile} onDone={() => { setJustSaved(true); }} />;
   }

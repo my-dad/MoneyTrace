@@ -1,0 +1,41 @@
+.page { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px 16px; box-sizing:border-box; }
+.card { position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; text-align:center; width:100%; max-width:440px; box-sizing:border-box; padding:32px 24px 28px; background:var(--mt-surface); border-radius:28px; box-shadow:var(--mt-shadow-lift); }
+.card::before { content:""; position:absolute; inset:0 0 auto; height:6px; background:linear-gradient(90deg,var(--mt-cat-1),var(--mt-cat-5),var(--mt-cat-2),var(--mt-cat-3),var(--mt-cat-4)); }
+
+.art { width:160px; height:150px; margin-bottom:12px; overflow:visible; }
+.shadow { fill:var(--mt-border); }
+.glass { fill:#F0FDFA; stroke:#0F766E; stroke-width:3; }
+.lid { fill:#0F766E; }
+.slot { fill:#134E4A; }
+.fill { fill:#CCFBF1; }
+.pile { fill:#CA8A04; stroke:#A16207; stroke-width:1.5; }
+.shine { stroke:#fff; stroke-width:4; stroke-linecap:round; opacity:.8; }
+.coin circle { fill:#EAB308; stroke:#A16207; stroke-width:2; }
+.coin text { font-size:12px; font-weight:800; fill:#713F12; text-anchor:middle; }
+
+/* Each coin falls into the slot in the lid and slips through; the jar gives a small bounce as it lands. */
+.coin { opacity:0; transform-box:fill-box; transform-origin:center; animation:drop 2.4s var(--mt-ease-in) infinite; }
+.coin:nth-child(2) { animation-delay:.8s; }
+.coin:nth-child(3) { animation-delay:1.6s; }
+.jar { transform-origin:80px 136px; animation:bounce 0.8s ease-in-out infinite; }
+@keyframes drop {
+  0% { opacity:0; transform:translateY(-14px); }
+  15% { opacity:1; }
+  55% { opacity:1; transform:translateY(26px) scaleX(1); }
+  68%, 100% { opacity:0; transform:translateY(32px) scaleX(.3); }
+}
+@keyframes bounce { 0%, 60%, 100% { transform:scaleY(1); } 75% { transform:scaleY(.97); } }
+
+.progress { display:flex; align-items:center; gap:10px; }
+.spinner { width:18px; height:18px; flex:none; box-sizing:border-box; border-radius:50%; border:3px solid var(--mt-border); border-top-color:var(--mt-cat-4); animation:spin .9s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.status { margin:0; font-size:17px; font-weight:800; color:var(--mt-ink); }
+
+.quote { min-height:3em; max-width:320px; margin:14px 0 0; font-size:14px; line-height:1.5; font-style:italic; color:var(--mt-body); animation:fade var(--mt-motion-slow) var(--mt-ease-out) both; }
+@keyframes fade { from { opacity:0; transform:translateY(4px); } }
+
+/* Less motion: still coins in the jar, a still ring, and quotes that simply change. */
+@media (prefers-reduced-motion: reduce) {
+  .coin, .jar, .spinner, .quote { animation:none; }
+  .coin:nth-child(3) { opacity:1; }
+}

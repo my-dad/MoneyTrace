@@ -9,3 +9,5 @@ Requested 2026-11-26 (Mabrur: "Dive in"). Calls made: picture = Google photo or 
 | 3 Web: profile page, first-sign-in routing, menu, header avatar | done |
 | 4 Web: welcome back pop-up | done |
 | 5 e2e, screenshots, PR | done |
+| 6 Fix: live `/api` was older than the branch (`updateProfile` not-found); redeployed 2026-11-26 (v6) | done |
+| 7 Web: "Setting up your account" gets a coin-jar illustration, spinner and rotating money quotes | done |
