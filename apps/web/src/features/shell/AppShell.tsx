@@ -6,6 +6,7 @@ import { AuthGate } from "../auth/AuthGate";
 import { ChatLauncher } from "../chat/ChatLauncher";
 import { DemoMarker } from "./DemoMarker";
 import { OfflineBanner } from "./OfflineBanner";
+import { ServerBehindBanner } from "./ServerBehindBanner";
 import styles from "./shell.module.css";
 
 export function AppShell({ children, services }: { children: ReactNode; services?: AppServices }) {
@@ -17,6 +18,7 @@ export function AppShell({ children, services }: { children: ReactNode; services
     <AppServicesProvider services={resolved}>
       {resolved.fixture && <DemoMarker />}
       <OfflineBanner />
+      <ServerBehindBanner />
       <AuthGate gateway={resolved.auth}>
         <ChatLauncher gateway={resolved.readModels} commands={resolved.commands} nowMs={resolved.nowMs()}>
           <div className={styles.content}>{children}</div>

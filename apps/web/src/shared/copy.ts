@@ -17,6 +17,7 @@ export const COPY = {
   demoUnavailable: "Not available yet — demo · nothing was saved",
   notAvailableYet: "Not available yet",
   demoData: "Demo data — nothing here is real or saved",
+  serverBehind: "This app is newer than the server, so that couldn't be done · nothing was saved. Try again in a few minutes.",
 } as const;
 
 export const CHAT_COPY = {

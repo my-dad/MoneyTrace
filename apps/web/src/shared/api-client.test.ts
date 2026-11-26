@@ -3,8 +3,14 @@ import { createApiCall } from "./api-client";
 
 const reply = (status: number, body: unknown) => () => Promise.resolve(new Response(JSON.stringify(body), { status }));
 
-function call(fetchImpl: typeof fetch, token: string | null = "jwt") {
-  return createApiCall({ url: "https://p.supabase.co/functions/v1/api", anonKey: "anon", accessToken: () => Promise.resolve(token), fetchImpl });
+function call(fetchImpl: typeof fetch, token: string | null = "jwt", onServerBehind?: () => void) {
+  return createApiCall({
+    url: "https://p.supabase.co/functions/v1/api",
+    anonKey: "anon",
+    accessToken: () => Promise.resolve(token),
+    fetchImpl,
+    ...(onServerBehind === undefined ? {} : { onServerBehind }),
+  });
 }
 
 describe("createApiCall", () => {
@@ -36,5 +42,23 @@ describe("createApiCall", () => {
     await expect(call(() => Promise.resolve(new Response("<html>bad gateway</html>", { status: 502 })))("x", {})).rejects.toMatchObject({
       code: "functions/internal",
     });
+  });
+
+  it("says when the server doesn't know the command yet (the app is newer than the server)", async () => {
+    let behind = 0;
+    const noted = () => { behind += 1; };
+    await expect(call(reply(404, { error: { code: "not-found", message: "not-found" } }), "jwt", noted)("updateProfile", {})).rejects.toMatchObject({
+      code: "functions/not-found",
+    });
+    expect(behind).toBe(1);
+  });
+
+  it("a missing record is not mistaken for an older server", async () => {
+    let behind = 0;
+    const noted = () => { behind += 1; };
+    await expect(call(reply(404, { error: { code: "not-found", message: "resourceNotFound" } }), "jwt", noted)("x", {})).rejects.toMatchObject({
+      code: "functions/not-found",
+    });
+    expect(behind).toBe(0);
   });
 });

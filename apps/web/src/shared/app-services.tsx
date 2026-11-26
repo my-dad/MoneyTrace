@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { AuthGateway } from "../features/auth/auth-gateway";
 import { createFixtureAuthGateway } from "../features/auth/fixture-auth-gateway";
 import { createSupabaseAuthGateway } from "../features/auth/supabase-auth-gateway";
+import { noteServerBehind } from "../features/shell/ServerBehindBanner";
 import { createApiCall } from "./api-client";
 import { createCommands, type Commands } from "./commands";
 import { isFixtureMode } from "./data-source";
@@ -47,6 +48,7 @@ export function createAppServices(): AppServices {
     anonKey: resolveSupabaseConfig(env).anonKey,
     accessToken: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
     fetchImpl: (input, init) => fetch(input, init),
+    onServerBehind: noteServerBehind,
   });
   return {
     auth: createSupabaseAuthGateway(client.auth, call, () => window.location.origin, {

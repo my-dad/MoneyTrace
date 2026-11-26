@@ -18,6 +18,12 @@ export function createApiCall(options: {
   anonKey: string;
   accessToken: () => Promise<string | null>;
   fetchImpl: typeof fetch;
+  /**
+   * Called when the server doesn't know the command at all: the app was deployed ahead of `/api`.
+   * `/api` answers an unknown command with exactly `not-found`/`not-found`; a missing record
+   * carries its reason (`resourceNotFound`) instead, so the two can't be confused.
+   */
+  onServerBehind?: () => void;
 }): ApiCall {
   return async (command, data) => {
     const token = await options.accessToken();
@@ -41,6 +47,7 @@ export function createApiCall(options: {
     if (res.ok && body.result !== undefined) return body.result;
     const code = typeof body.error?.code === "string" ? body.error.code : res.status >= 500 ? "internal" : "unknown";
     const message = typeof body.error?.message === "string" ? body.error.message : `http ${String(res.status)}`;
+    if (code === "not-found" && message === "not-found") options.onServerBehind?.();
     throw new ApiError(code, message);
   };
 }

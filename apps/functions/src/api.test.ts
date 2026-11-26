@@ -64,7 +64,8 @@ describe("/api gate", () => {
     const { send, call } = api();
     expect(await send({ command: "bootstrapUser", data: {} })).toEqual({ status: 401, body: { error: { code: "unauthenticated", message: "unauthenticated" } } });
     expect((await send({ command: "bootstrapUser", data: {} }, { authorization: "Bearer forged" })).status).toBe(401);
-    expect((await call("alice", "dropDatabase")).body.error?.code).toBe("not-found");
+    // The web app reads exactly this pair as "the server is older than the app" (api-client.ts).
+    expect((await call("alice", "dropDatabase")).body.error).toEqual({ code: "not-found", message: "not-found" });
     expect((await call("alice", "toString")).body.error?.code).toBe("not-found");
   });
 
