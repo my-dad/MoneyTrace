@@ -106,7 +106,7 @@ describe("DashboardScreen", () => {
 
   it("adds cash income from the dashboard", () => {
     render(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} cashIncome={incomeCommands()} />);
-    fireEvent.click(screen.getByRole("button", { name: "+ Add cash income" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add cash income" }));
     expect(screen.getByRole("dialog", { name: "Add cash income" })).toBeTruthy();
   });
 
