@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@moneytrace/ui-kit";
 import type { AuthGateway, AuthUser } from "./auth-gateway";
+import { SettingUp } from "../shell/SettingUp";
 import styles from "./auth.module.css";
 
 /** Closing or replacing the Google pop-up is the user's choice, not a failure. */
@@ -98,7 +99,7 @@ export function AuthGate({ gateway, children }: { gateway: AuthGateway; children
     );
   }
 
-  if (state.kind === "bootstrapping") return <main className={styles.gate}><p role="status">Setting up your account</p></main>;
+  if (state.kind === "bootstrapping") return <SettingUp />;
 
   if (state.kind === "bootstrapFailed") {
     return (

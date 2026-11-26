@@ -257,3 +257,17 @@ export const WELCOME_COPY = {
   paste: "Paste",
   gotIt: "Got it",
 } as const;
+
+/** Shown one at a time while a new account is made. Our own words, so nothing is misattributed. */
+export const SETTING_UP_QUOTES = [
+  "Small amounts add up: ৳50 a day is ৳18,250 a year.",
+  "Know where it goes, then decide where it should go.",
+  "Spending on what you love is fine. Spending without noticing is what hurts.",
+  "A budget isn't a cage. It's permission to spend without guilt.",
+  "Pay yourself first: put a little aside the day your salary lands.",
+  "The cheapest taka is the one you meant to spend.",
+  "Cash in a pocket is still your money. Count it now and then.",
+  "Good habits beat big resolutions. One SMS at a time.",
+  "Wait a day before a big purchase. If you still want it, enjoy it.",
+  "Saving isn't about having less. It's about choosing more on purpose.",
+] as const;
