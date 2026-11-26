@@ -68,7 +68,7 @@ test("sorting a shop in the demo says nothing was saved", async ({ page }) => {
 
 test("adding cash income in the demo says nothing was saved", async ({ page }) => {
   await open(page);
-  await page.getByRole("button", { name: "+ Add cash income" }).click();
+  await page.getByRole("button", { name: "Add cash income" }).click();
   const form = page.getByRole("dialog", { name: "Add cash income" });
   await form.getByLabel("Amount (৳)").fill("20000");
   await form.getByRole("radio", { name: "House rent" }).check();

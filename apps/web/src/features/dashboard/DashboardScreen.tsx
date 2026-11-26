@@ -269,15 +269,17 @@ export function DashboardScreen({
           <span aria-hidden="true">›</span>
         </button>
       )}
-      {cashIncome !== undefined && (
-        <button type="button" className={styles.addIncome} onClick={() => { setIncomeForm({ kind: "add" }); }}>
-          {DASHBOARD_COPY.addIncomeButton}
-        </button>
-      )}
       {!newUser && (
         <MonthSwitch label={month.label} canGoNext={offset < 0} onPrevious={() => { setOffset((n) => n - 1); }} onNext={() => { setOffset((n) => Math.min(0, n + 1)); }} />
       )}
       {body}
+      {/* Floats just above the chat button, so both actions sit under the thumb. */}
+      {cashIncome !== undefined && (
+        <button type="button" className={styles.addIncome} aria-label={DASHBOARD_COPY.addIncomeLabel} onClick={() => { setIncomeForm({ kind: "add" }); }}>
+          <span className={styles.addIncomeIcon} aria-hidden="true">+</span>
+          {DASHBOARD_COPY.addIncomeButton}
+        </button>
+      )}
       {incomeForm !== null && cashIncome !== undefined && (
         <CashIncomeForm mode={incomeForm} nowMs={nowMs} commands={cashIncome} onClose={() => { setIncomeForm(null); }} />
       )}
