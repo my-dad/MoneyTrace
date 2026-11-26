@@ -2,6 +2,7 @@
   "enabledPlugins": {
     "frontend-design@anthropic-plugin-directory": true,
     "superpowers@anthropic-plugin-directory": true,
-    "mattpocock-skills@claude-plugins-official": true
+    "mattpocock-skills@claude-plugins-official": true,
+    "design-skills@anthropic-plugin-directory": true
   }
 }
