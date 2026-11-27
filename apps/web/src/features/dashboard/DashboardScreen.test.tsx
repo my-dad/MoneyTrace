@@ -36,6 +36,7 @@ const silent: ReadModelGateway = {
   watchAiUsage: () => () => undefined,
   watchSourceEntries: () => () => undefined,
   watchProfile: () => () => undefined,
+  watchTips: () => () => undefined,
   watchTransactions: () => () => undefined,
 };
 

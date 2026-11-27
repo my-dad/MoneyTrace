@@ -313,6 +313,7 @@ describe("reads", () => {
       watchAiUsage: () => () => undefined,
       watchSourceEntries: () => () => undefined,
       watchProfile: () => () => undefined,
+      watchTips: () => () => undefined,
       watchTransactions: () => () => undefined,
       watchSourceEvents: (_limit, _onValue, onError) => {
         onError?.(new Error("denied"));
@@ -335,6 +336,7 @@ describe("reads", () => {
       watchAiUsage: () => () => undefined,
       watchSourceEntries: () => () => undefined,
       watchProfile: () => () => undefined,
+      watchTips: () => () => undefined,
       watchTransactions: () => () => undefined,
       watchSourceEvents: () => unsubscribe,
     };

@@ -23,6 +23,7 @@ export const PHASE_ONE_COMMANDS = [
   "editManualIncome",
   "updateProfile",
   "recordVisit",
+  "refreshTips",
   "requestAccountDeletion",
 ] as const satisfies readonly CommandName[];
 

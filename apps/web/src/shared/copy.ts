@@ -273,3 +273,18 @@ export const SETTING_UP_QUOTES = [
   "Wait a day before a big purchase. If you still want it, enjoy it.",
   "Saving isn't about having less. It's about choosing more on purpose.",
 ] as const;
+
+/** The tips card (CR-007 piece 3). The figures come from our code; only the advice is DeepSeek's. */
+export const TIPS_COPY = {
+  heading: "Tips to spend less",
+  newTips: "New tips",
+  making: "Making new tips…",
+  failed: "Couldn't make new tips; showing the last ones",
+  limitReached: "You've had today's fresh tips. More tomorrow.",
+  unavailable: "Advice is unavailable right now; these figures are up to date.",
+  notEnoughData: "Tips appear once there's a couple of weeks of spending",
+  nothingStandsOut: "Nothing stands out so far this month.",
+  sort: "Sort",
+  countCash: "Count my cash",
+  madeAgo: (days: number) => (days <= 0 ? "Made today" : days === 1 ? "Made 1 day ago" : `Made ${String(days)} days ago`),
+} as const;

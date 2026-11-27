@@ -9,6 +9,7 @@ import type {
   SourceEventRow,
   TransactionRow,
   ProfileRow,
+  TipsRow,
 } from "./read-model-gateway";
 
 type Listener<T> = (rows: T[]) => void;
@@ -32,6 +33,8 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
   private readonly transactions = new RangeStore<TransactionRow>((row) => row.occurredAtMs);
   private profile: ProfileRow | null = null;
   private readonly profileListeners = new Set<(profile: ProfileRow | null) => void>();
+  private tips: TipsRow | null = null;
+  private readonly tipsListeners = new Set<(tips: TipsRow | null) => void>();
 
   private watchError(kind: string, onError?: ErrorListener): void {
     if (onError === undefined) return;
@@ -139,6 +142,20 @@ export class InMemoryReadModelGateway implements ReadModelGateway {
     return () => {
       this.profileListeners.delete(onValue);
     };
+  }
+
+  watchTips(onValue: (tips: TipsRow | null) => void, onError?: ErrorListener): () => void {
+    this.watchError("tips", onError);
+    this.tipsListeners.add(onValue);
+    onValue(this.tips);
+    return () => {
+      this.tipsListeners.delete(onValue);
+    };
+  }
+
+  setTips(tips: TipsRow | null): void {
+    this.tips = tips;
+    this.tipsListeners.forEach((listener) => { listener(tips); });
   }
 
   setProfile(profile: ProfileRow | null): void {

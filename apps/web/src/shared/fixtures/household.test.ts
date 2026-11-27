@@ -1,4 +1,4 @@
-import { OWNER_COLLECTIONS } from "@moneytrace/contracts";
+import { categoryOf, OWNER_COLLECTIONS } from "@moneytrace/contracts";
 import { describe, expect, it } from "vitest";
 import { createFixtureReadModels } from "./fixture-read-models";
 import {
@@ -10,6 +10,7 @@ import {
   FIXTURE_INCOME_ENTRIES,
   FIXTURE_NOW_MS,
   FIXTURE_SOURCE_EVENTS,
+  FIXTURE_TIPS,
 } from "./household";
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
@@ -92,5 +93,24 @@ describe("fixture household", () => {
     expect(sum(FIXTURE_AI_USAGE.map((u) => u.actualMicroUsd ?? u.estimatedMicroUsd))).toBe(1_430_000);
     FIXTURE_INCOME_ENTRIES.forEach((row) => OWNER_COLLECTIONS.ledgerEntries.parse(row));
     FIXTURE_AI_USAGE.forEach((row) => OWNER_COLLECTIONS.aiUsage.parse(row));
+  });
+
+  it("has demo tips whose figures are the demo's own", () => {
+    const tips = OWNER_COLLECTIONS.tips.parse(FIXTURE_TIPS);
+    expect(tips.facts.map((f) => f.id)).toEqual(["unsorted", "unexplainedCash", "topSector:groceries"]);
+    const dhaka = (iso: string) => Date.parse(`${iso}+06:00`);
+    const month = (sectorId?: string) =>
+      sum(
+        FIXTURE_EXPENSE_ENTRIES.filter((e) => (sectorId === undefined || categoryOf(e.accountId) === sectorId) && e.occurredAtMs >= dhaka("2026-11-01T00:00:00") && e.occurredAtMs <= FIXTURE_NOW_MS).map((e) =>
+          e.side === "debit" ? e.amountMinor : -e.amountMinor,
+        ),
+      );
+    expect(tips.facts[0]?.amountMinor).toBe(month("uncategorized"));
+    expect(tips.facts[1]?.amountMinor).toBe(FIXTURE_BALANCES.find((b) => b.accountId === "cash-unassigned")?.debitMinusCreditMinor);
+    expect(tips.facts[2]?.amountMinor).toBe(month("groceries"));
+    expect(tips.facts[2]?.compareMinor).toBe(month());
+    let seen: unknown = "unset";
+    createFixtureReadModels().watchTips((doc) => (seen = doc));
+    expect(seen).toEqual(FIXTURE_TIPS);
   });
 });

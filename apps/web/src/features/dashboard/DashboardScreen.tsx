@@ -5,7 +5,7 @@ import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
 import { dhakaDate } from "../../shared/dhaka-date";
-import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow, TipsRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
@@ -22,6 +22,8 @@ import { MonthlyBars } from "./MonthlyBars";
 import { TopMerchants } from "./TopMerchants";
 import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
+import { TipsCard } from "./TipsCard";
+import { tipsView } from "./tips-view";
 import styles from "./dashboard.module.css";
 
 const RECENT_LIMIT = 10;
@@ -72,6 +74,7 @@ export function DashboardScreen({
   const [sixExpenses, setSixExpenses] = useState<LedgerEntryRow[]>([]);
   const [sixIncome, setSixIncome] = useState<LedgerEntryRow[]>([]);
   const [monthTransactions, setMonthTransactions] = useState<TransactionRow[]>([]);
+  const [tips, setTips] = useState<TipsRow | null>(null);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
@@ -88,6 +91,7 @@ export function DashboardScreen({
       gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
       // Income behind Recent, so cash income shows at its amount after any edit.
       gateway.watchIncomeEntries(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentIncome, onError),
+      gateway.watchTips(setTips, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -228,6 +232,7 @@ export function DashboardScreen({
           <MonthlyBars rows={monthlyTotals(sixExpenses, sixIncome, sixMonths)} />
         </div>
         <div>
+          {offset === 0 && <TipsCard view={tipsView(tips, nowMs)} busy={false} failed={false} limitReached={false} />}
           {view.hasActivity && (
             <TopMerchants rows={topMerchants(merchantsOf(expenses ?? [], monthTransactions))} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
           )}
@@ -286,8 +291,6 @@ export function DashboardScreen({
       {sorting !== null && tagMerchant !== undefined && (
         <SectorPicker merchantName={sorting.name} merchantKey={sorting.key} tagMerchant={tagMerchant} onClose={() => { setSorting(null); }} />
       )}
-      {/* Piece 3 puts tips here. */}
-      <section aria-hidden="true" className={styles.tips} />
     </main>
   );
 }

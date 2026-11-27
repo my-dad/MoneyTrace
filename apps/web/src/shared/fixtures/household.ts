@@ -8,6 +8,7 @@ import type {
   SourceEventRow,
   TransactionRow,
   ProfileRow,
+  TipsRow,
 } from "../read-model-gateway";
 
 /**
@@ -457,4 +458,29 @@ export const FIXTURE_PROFILE: ProfileRow = {
   avatar: { kind: "initials", color: "teal" },
   profileCompletedAtMs: at("2026-10-01T09:05:00"),
   lastSeenAtMs: at("2026-11-03T21:00:00"),
+};
+
+/** The demo's tips: the three facts its figures give, with advice on two (the third shows figures only). */
+export const FIXTURE_TIPS: TipsRow = {
+  id: "current",
+  month: "2026-11",
+  status: "ready",
+  facts: [
+    { id: "unsorted", kind: "unsorted", amountMinor: 250_000, headline: "৳2,500 isn't sorted yet", detail: "Sorting it shows where it went" },
+    { id: "unexplainedCash", kind: "unexplainedCash", amountMinor: 500_000, headline: "৳5,000 cash isn't explained yet", detail: "Counting your cash keeps the picture right" },
+    { id: "topSector:groceries", kind: "topSector", sector: "groceries", amountMinor: 682_000, compareMinor: 1_864_000, headline: "Groceries took 37% of spending", detail: "৳6,820 of ৳18,640 this month" },
+  ],
+  advice: {
+    unsorted: "Sorting a shop once sorts its later spending too.",
+    "topSector:groceries": "A weekly list and one big shop can trim the extra trips.",
+  },
+  factsHash: "demo",
+  generatedAtMs: at("2026-11-06T19:00:00"),
+  aiDay: "2026-11-06",
+  aiFactsHash: "demo",
+  adviceAtMs: at("2026-11-06T09:00:00"),
+  model: "demo",
+  promptVersion: "tips-v1",
+  forcedDay: null,
+  forcedToday: 0,
 };

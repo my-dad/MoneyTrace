@@ -121,6 +121,9 @@ export function createDocsReadModelGateway(source: DocsSource, timers: Pick<type
         if (settle !== undefined) timers.clearTimeout(settle);
       };
     },
+    watchTips: (onValue, onError) =>
+      // The collection holds one document, `current` (the schema allows no other id).
+      watch({ collection: "tips" }, (v) => OWNER_COLLECTIONS.tips.parse(v), (rows) => { onValue(rows[0] ?? null); }, onError),
     watchTransactions: (fromMs, toMs, onValue, onError) =>
       watch(
         { collection: "transactions", range: { field: "occurredAtMs", fromMs, toMs }, order: { field: "occurredAtMs", desc: false } },

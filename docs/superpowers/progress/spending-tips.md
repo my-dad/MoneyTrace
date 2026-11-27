@@ -12,5 +12,5 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
 | 5 Tips repository | done |
 | 6 `RefreshTips` use case | done |
 | 7 `/api` command and wiring | done |
-| 8 Tips card and demo tips (mock-up approval) | todo |
+| 8 Tips card and demo tips (mock-up sent for approval 2026-11-27) | done |
 | 9 Dashboard wiring, e2e, docs | todo |
