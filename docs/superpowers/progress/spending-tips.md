@@ -34,3 +34,15 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
 
 This changes `/api` and adds migration `20261127000000_tips_read_policy.sql`, so the backend needs
 `pnpm deploy:supabase` (it runs `db push`) besides the automatic Cloudflare web deploy.
+
+## Deferred minors (fixing on branch `tips-minors`, requested 2026-11-27)
+
+| Minor | State |
+|-------|-------|
+| M13 "e.g." / "Mr." no longer count as sentence ends | todo |
+| M10 New tips hidden when nothing stands out | todo |
+| M8 Long-time users early in the month see "after a few spends this month" | todo |
+| M12 A missing DeepSeek key still saves the figures | todo |
+| M5 Concurrent refreshes never save older facts or drop newer advice | todo |
+| M6 Two tabs opening at once make one AI call, no false "worker died" | todo |
+| M11 A tips call's stored result is cleared once its advice is saved | todo |
