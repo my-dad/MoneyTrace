@@ -38,3 +38,10 @@ GitHub, DeepSeek) and release-checklist C3, D5, D6, B2 are Mabrur's.
   Postgres error can quote the failing row). `createApiHandler` now catches everything, logs
   `api.unhandled` with the error name only, and answers `internal`. Evidence: `pnpm verify` 2134
   passed; `pnpm smoke:supabase` loads the bundle under Deno.
+
+## Branch check (2026-11-28)
+
+`pnpm verify` 2134 passed; `pnpm test:e2e:fixture` 12 passed; `pnpm test:e2e` 3 passed with the
+CSP enforced and no violations; `pnpm smoke:supabase` OK. Merging deploys the CSP to production
+through Cloudflare Pages: after merge, sign in on the live site and check the dashboard, chat and
+Google photo load (browser console shows no "Content Security Policy" errors).
