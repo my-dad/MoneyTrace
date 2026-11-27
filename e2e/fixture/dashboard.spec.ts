@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../csp-guard";
 
 const demoMarker = (page: import("@playwright/test").Page) => page.getByRole("note").filter({ hasText: "Demo data" });
 
@@ -113,4 +114,13 @@ test("the demo shows tips, and New tips saves nothing", async ({ page }) => {
   await tips.getByRole("button", { name: "New tips" }).click();
   await expect(tips.getByText("Not available yet — demo · nothing was saved")).toBeVisible();
   await expect(tips.getByText("Groceries took 37% of spending")).toBeVisible();
+});
+
+test("every page carries the Content-Security-Policy and the security headers", async ({ page }) => {
+  const response = await page.goto("/");
+  const headers = response?.headers() ?? {};
+  expect(headers["content-security-policy"]).toMatch(/script-src 'self' 'sha256-/);
+  expect(headers["content-security-policy"]).not.toContain("unsafe-eval");
+  expect(headers["strict-transport-security"]).toContain("max-age=");
+  await expect(demoMarker(page)).toBeVisible();
 });

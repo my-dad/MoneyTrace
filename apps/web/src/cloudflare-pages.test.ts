@@ -40,6 +40,13 @@ describe("web hosting on Cloudflare Pages (CR-010; release blocker B1)", () => {
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
       "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Cross-Origin-Opener-Policy": "same-origin",
     });
+  });
+
+  it("adds the Content-Security-Policy after every build (scripts/write-csp.mjs)", () => {
+    const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "../package.json"), "utf8")) as { scripts: { build: string } };
+    expect(pkg.scripts.build).toMatch(/next build && node scripts\/write-csp\.mjs$/);
   });
 });
