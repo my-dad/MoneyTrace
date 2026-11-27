@@ -11,6 +11,6 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
 | 4 Advice validator, `writeTips`, DeepSeek prompt `tips-v1` | done |
 | 5 Tips repository | done |
 | 6 `RefreshTips` use case | done |
-| 7 `/api` command and wiring | todo |
+| 7 `/api` command and wiring | done |
 | 8 Tips card and demo tips (mock-up approval) | todo |
 | 9 Dashboard wiring, e2e, docs | todo |
