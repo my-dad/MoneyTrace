@@ -40,7 +40,7 @@ This changes `/api` and adds migration `20261127000000_tips_read_policy.sql`, so
 | Minor | State |
 |-------|-------|
 | M13 "e.g." / "Mr." no longer count as sentence ends | done |
-| M10 New tips hidden when nothing stands out | todo |
+| M10 New tips hidden when nothing stands out | done |
 | M8 Long-time users early in the month see "after a few spends this month" | todo |
 | M12 A missing DeepSeek key still saves the figures | todo |
 | M5 Concurrent refreshes never save older facts or drop newer advice | todo |

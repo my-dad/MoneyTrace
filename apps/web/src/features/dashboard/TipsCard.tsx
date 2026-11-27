@@ -70,7 +70,7 @@ export function TipsCard({
       )}
       <div className={styles.tipFooter}>
         <p role="status" className={styles.tipStatus}>{status ?? ""}</p>
-        {view.kind === "tips" && onNewTips !== undefined && (
+        {view.kind === "tips" && view.items.length > 0 && onNewTips !== undefined && (
           <button type="button" className={styles.newTips} disabled={busy} onClick={onNewTips}>{TIPS_COPY.newTips}</button>
         )}
       </div>

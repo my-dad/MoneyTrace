@@ -84,9 +84,10 @@ describe("TipsCard", () => {
     expect(screen.queryByRole("button", { name: "New tips" })).toBeNull();
   });
 
-  it("nothing stands out", () => {
-    render(<TipsCard {...base} view={{ ...tips, items: [] }} />);
+  it("nothing stands out: no New tips, since there is nothing to advise on", () => {
+    render(<TipsCard {...base} view={{ ...tips, items: [] }} onNewTips={vi.fn()} />);
     expect(screen.getByText("Nothing stands out so far this month.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New tips" })).toBeNull();
   });
 
   it("no tips yet: nothing, unless they are being made", () => {
