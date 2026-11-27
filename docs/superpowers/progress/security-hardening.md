@@ -21,5 +21,14 @@ GitHub, DeepSeek) and release-checklist C3, D5, D6, B2 are Mabrur's.
   secret scanning and push protection are on; Dependabot alerts off and `master` unprotected
   (Mabrur's settings, B2). Evidence: `pnpm verify` 2117 passed; a real build prints
   `check-bundle-secrets: … no secrets`.
-- [ ] 3. Identifier masking: full account/card numbers never stored or sent to DeepSeek.
+- [x] 3. Identifier masking. Already sound: OTP, PIN, password and full (Luhn) card numbers are
+  refused; 8+ digit runs are masked before storage and before any AI call (`ai-gateway.ts`,
+  `intake-evidence.ts`, `answer-question.ts`). Gaps fixed in `maskIdentifiers`
+  (`packages/domain/src/evidence/sensitive.ts`): numbers in groups ("1234-5678-9012",
+  "017-1234-5678", 9+ digits so dates stay) and digits glued to an account label or placeholder
+  ("A/C1234567890", "XXXX1234567890"). Transaction IDs (`BK00000003`), dates, amounts stay
+  readable. Side effect: the source hash is taken over masked text, so an SMS in one of these
+  formats pasted before and again after this change is not caught by the hash; matching still
+  marks it a duplicate by reference or asks the user (same amount, account, time). Evidence:
+  `pnpm verify` 2132 passed (parser corpus included).
 - [ ] 4. Logs: `/api` never logs raw SMS text, tokens or identifiers.

@@ -49,6 +49,33 @@ describe("maskIdentifiers", () => {
   it("keeps alphanumeric transaction IDs whole", () => {
     expect(maskIdentifiers("TrxID: BK00000001 at")).toBe("TrxID: BK00000001 at");
   });
+  it.each([
+    ["debited from A/C1234567890 on", "debited from A/C**7890 on"],
+    ["acct no.0123456789012 debited", "acct no.**9012 debited"],
+    ["Account#1234567890", "Account#**7890"],
+    ["A/C:XXXX1234567890 credited", "A/C:XXXX**7890 credited"],
+    ["card ****12345678 used", "card ******5678 used"],
+  ])("masks an account number glued to its label or to a placeholder: %s", (input, masked) => {
+    expect(maskIdentifiers(input)).toBe(masked);
+  });
+  it.each([
+    ["credited to A/C 1234-5678-9012 ref", "credited to A/C **9012 ref"],
+    ["A/C No: 0123 4567 8901 23 debited", "A/C No: **0123 debited"],
+    ["call 017-1234-5678 now", "call **5678 now"],
+    ["from 01712-345678 received", "from **5678 received"],
+  ])("masks numbers split by spaces or dashes: %s", (input, masked) => {
+    expect(maskIdentifiers(input)).toBe(masked);
+  });
+  it.each([
+    "on 12-11-2026 10:30",
+    "on 2026-11-12 at",
+    "Tk 1,25,630.00 balance",
+    "BDT 15,000 and 2,500",
+    "TrxID BK00000003 at 12/11/2026",
+    "Ref 882193 time 10 30",
+  ])("leaves dates, amounts, times and transaction IDs readable: %s", (input) => {
+    expect(maskIdentifiers(input)).toBe(input);
+  });
   it("leaves amounts readable", () => {
     expect(maskIdentifiers("Avl Bal:90000.40")).toBe("Avl Bal:90000.40");
   });
