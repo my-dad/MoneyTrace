@@ -138,7 +138,7 @@ Fields: id (the merchant key: lowercase letters and digits, from `normalizeMerch
 
 Path: `users/{ownerId}/tips/current`
 
-Fields: id (`current`), month (`YYYY-MM`, Dhaka), status (`ready`, `factsOnly`, `notEnoughData`), facts (up to 3 `TipFact`: id, kind, sector?, amountMinor, compareMinor?, headline, detail, all worked out by our code), advice (fact id → advice, at most 200 characters, no digits), factsHash, generatedAtMs, aiDay and aiFactsHash (the last AI call), adviceAtMs, model?, promptVersion?, forcedDay and forcedToday (the "New tips" count). Written only by `refreshTips`. The client reads it.
+Fields: id (`current`), month (`YYYY-MM`, Dhaka), status (`ready`, `factsOnly`, `notEnoughData`), waitingFor? (`twoWeeks` or `moreSpends`, with notEnoughData), facts (up to 3 `TipFact`: id, kind, sector?, amountMinor, compareMinor?, headline, detail, all worked out by our code), advice (fact id → advice, at most 200 characters, no digits), factsHash, generatedAtMs, aiDay and aiFactsHash (the last AI call), aiCallUntilMs? (an automatic AI call is running until then, so another tab waits), adviceAtMs, model?, promptVersion?, forcedDay and forcedToday (the "New tips" count). Written only by `refreshTips`. The client reads it.
 
 ## Balance projection
 

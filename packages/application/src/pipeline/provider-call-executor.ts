@@ -8,12 +8,13 @@ import {
 import type { AIUsageRecord, AIUsageRecorder } from "../ports/ai-usage-recorder";
 import type { Clock } from "../ports/clock";
 import type { Logger } from "../ports/logger";
-import type { ProviderCallRecord, ProviderCallRepository } from "../ports/provider-call-repository";
+import type { ProviderCallKey, ProviderCallRecord, ProviderCallRepository } from "../ports/provider-call-repository";
 import { DEFAULT_QUOTA_LIMITS, type QuotaLedger, type QuotaLimits } from "../ports/quota-ledger";
 import {
   assertStorableResult,
   hasResult,
   isUnattempted,
+  providerCallId,
   safeErrorCode,
   workerDiedUsage,
 } from "../provider-call-guards";
@@ -170,6 +171,11 @@ export class ProviderCallExecutor {
     if (next === "reuseResult") return this.reuse(record);
     if (next === "invoke") return { kind: "retryLater" };
     return { kind: next };
+  }
+
+  /** Clears a stored tips result once what it said is kept elsewhere (the tips document). */
+  async purgeTipsResult(ownerId: OwnerId, key: ProviderCallKey): Promise<void> {
+    await this.deps.providerCalls.purgeTipsResult(ownerId, providerCallId(key), this.deps.clock.nowMs());
   }
 
   /** A died attempt's row. It never replaces a real row; a late worker's own row replaces it. */

@@ -239,6 +239,23 @@ export function describeProviderCallContract(
       expect(await calls.listForStage(bob, evt, "interpret")).toEqual([]);
     });
 
+    it("purges a tips call's result (no event behind it), and only a tips call's", async () => {
+      const tipsKey = asSourceEventId("tips-2026-11-27-auto");
+      const tips = await calls.getOrCreate(alice, { sourceEventId: tipsKey, stage: "tips", providerId: "deepseek" }, "none");
+      await calls.beginAttempt(alice, tips.id, {}, T0);
+      await calls.markSucceeded(alice, tips.id, 1, { tips: [] }, T0);
+      expect(await calls.purgeTipsResult(alice, tips.id, T0)).toBe("purged");
+      expect((await calls.listForStage(alice, tipsKey, "tips"))[0]).toMatchObject({ state: "purged" });
+      expect((await calls.listForStage(alice, tipsKey, "tips"))[0]?.result).toBeUndefined();
+      expect(await calls.purgeTipsResult(alice, tips.id, T0)).toBe("purged");
+
+      const sms = await calls.getOrCreate(alice, key(), "none");
+      await calls.beginAttempt(alice, sms.id, {}, T0);
+      await calls.markSucceeded(alice, sms.id, 1, "ok", T0);
+      expect(await calls.purgeTipsResult(alice, sms.id, T0)).toBe("notTips");
+      expect((await calls.listForStage(alice, evt, "interpret"))[0]).toMatchObject({ state: "succeeded", result: "ok" });
+    });
+
     it("refuses to purge a result while the event is not terminal", async () => {
       const r = await calls.getOrCreate(alice, key(), "none");
       await calls.beginAttempt(alice, r.id, {}, T0);

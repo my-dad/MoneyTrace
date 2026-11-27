@@ -91,6 +91,11 @@ export type ProviderCallRepository = {
     id: string,
     nowMs: number,
   ): Promise<"purged" | "blockedNotTerminal">;
+  /**
+   * Clears a tips call's stored result (tips have no source event, so `purgeResult` never reaches
+   * them). Refuses any other stage. Idempotent.
+   */
+  purgeTipsResult(ownerId: OwnerId, id: string, nowMs: number): Promise<"purged" | "notTips">;
   /** Terminal events past `terminalAtOrBeforeMs` that are not yet flagged, oldest first. */
   listPurgeCandidates(terminalAtOrBeforeMs: number, limit: number): Promise<PurgeCandidate[]>;
   /** Flags the event `providerResultsPurged` once it is terminal and no call holds a result. */

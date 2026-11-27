@@ -6,7 +6,7 @@ import { ownerPath } from "./paths";
 
 const MAX_ATTEMPTS = 10;
 
-/** `users/{uid}/tips/current`. Saves and New tips claims are transactions, so neither loses the other. */
+/** `users/{uid}/tips/current`. Updates and New tips claims are transactions, so none loses another. */
 export class FirestoreTipsRepository implements TipsRepository {
   private readonly db: DocStore;
 
@@ -23,13 +23,17 @@ export class FirestoreTipsRepository implements TipsRepository {
     return snap.exists ? OWNER_COLLECTIONS.tips.parse(snap.data()) : null;
   }
 
-  async save(ownerId: OwnerId, fields: TipsFields): Promise<void> {
+  async update(ownerId: OwnerId, next: (current: TipsDoc | null) => TipsFields | null): Promise<TipsDoc | null> {
     const ref = this.ref(ownerId);
-    await this.db.runTransaction(
+    return this.db.runTransaction(
       async (t) => {
         const snap = await t.get(ref);
         const current = snap.exists ? OWNER_COLLECTIONS.tips.parse(snap.data()) : null;
-        t.set(ref, OWNER_COLLECTIONS.tips.parse({ ...fields, id: "current", forcedDay: current?.forcedDay ?? null, forcedToday: current?.forcedToday ?? 0 }));
+        const fields = next(current);
+        if (fields === null) return current;
+        const stored = OWNER_COLLECTIONS.tips.parse({ ...fields, id: "current", forcedDay: current?.forcedDay ?? null, forcedToday: current?.forcedToday ?? 0 });
+        t.set(ref, stored);
+        return stored;
       },
       { maxAttempts: MAX_ATTEMPTS },
     );

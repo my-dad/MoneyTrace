@@ -79,14 +79,17 @@ describe("TipsCard", () => {
   });
 
   it("not enough spending yet", () => {
-    render(<TipsCard {...base} view={{ kind: "notEnoughData" }} onNewTips={vi.fn()} />);
+    const { rerender } = render(<TipsCard {...base} view={{ kind: "notEnoughData", waitingFor: "twoWeeks" }} onNewTips={vi.fn()} />);
     expect(screen.getByText("Tips appear once there's a couple of weeks of spending")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New tips" })).toBeNull();
+    rerender(<TipsCard {...base} view={{ kind: "notEnoughData", waitingFor: "moreSpends" }} />);
+    expect(screen.getByText("Tips appear after a few spends this month")).toBeTruthy();
   });
 
-  it("nothing stands out", () => {
-    render(<TipsCard {...base} view={{ ...tips, items: [] }} />);
+  it("nothing stands out: no New tips, since there is nothing to advise on", () => {
+    render(<TipsCard {...base} view={{ ...tips, items: [] }} onNewTips={vi.fn()} />);
     expect(screen.getByText("Nothing stands out so far this month.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New tips" })).toBeNull();
   });
 
   it("no tips yet: nothing, unless they are being made", () => {

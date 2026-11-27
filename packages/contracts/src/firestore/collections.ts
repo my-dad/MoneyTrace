@@ -495,6 +495,8 @@ const tips = z
     /** The Dhaka month the facts describe, `YYYY-MM`. */
     month: z.string().regex(/^\d{4}-\d{2}$/),
     status: z.enum(["ready", "factsOnly", "notEnoughData"]),
+    /** With notEnoughData: two weeks of spending since the first, or more spends this month. */
+    waitingFor: z.enum(["twoWeeks", "moreSpends"]).optional(),
     facts: z.array(tipFactSchema).max(MAX_TIPS),
     /** Advice by fact id; it holds no numbers, so it stays true while its fact is selected. */
     advice: z.record(z.string().max(64), z.string().min(1).max(TIP_ADVICE_MAX)),
@@ -505,6 +507,8 @@ const tips = z
     aiFactsHash: z.string().min(1).max(128).nullable(),
     /** When the stored advice was made. */
     adviceAtMs: epochMs.nullable(),
+    /** An automatic AI call is running until then: another tab waits rather than calling too. */
+    aiCallUntilMs: epochMs.nullable().optional(),
     model: z.string().min(1).max(128).optional(),
     promptVersion: z.string().min(1).max(64).optional(),
     /** "New tips" attempts on `forcedDay`. */

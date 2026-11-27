@@ -21,8 +21,8 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
   global cap; a refused reservation shows the figures only.
 - Tips provider calls use the request key (`tips-<day>-auto`, `tips-<day>-new-<n>`) in place of a
   source event, with the call stage `tips`. The provider-result purge walks terminal source events,
-  so it never reaches these calls: their stored result is advice text (no digits, no identifiers)
-  and stays until account deletion.
+  so it never reaches these calls; instead `refreshTips` clears a tips call's stored reply
+  (`purgeTipsResult`) as soon as its checked advice is saved in `tips/current` (M11).
 - The validator also rejects Bangla digits and amount words (hundred, thousand, lakh, crore,
   percent, taka, Tk), and, for unexplained cash, spent/wasted/lost.
 - The demo's tips are the facts its own figures give (not sorted, unexplained cash, Groceries 37%),
@@ -34,3 +34,15 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
 
 This changes `/api` and adds migration `20261127000000_tips_read_policy.sql`, so the backend needs
 `pnpm deploy:supabase` (it runs `db push`) besides the automatic Cloudflare web deploy.
+
+## Deferred minors (fixing on branch `tips-minors`, requested 2026-11-27)
+
+| Minor | State |
+|-------|-------|
+| M13 "e.g." / "Mr." no longer count as sentence ends | done |
+| M10 New tips hidden when nothing stands out | done |
+| M8 Long-time users early in the month see "after a few spends this month" | done |
+| M12 A missing DeepSeek key still saves the figures | done |
+| M5 Concurrent refreshes never save older facts or drop newer advice | done |
+| M6 Two tabs opening at once make one AI call, no false "worker died" | done |
+| M11 A tips call's stored result is cleared once its advice is saved | done |

@@ -35,6 +35,11 @@ describe("tips contracts", () => {
     expect(OWNER_COLLECTIONS.tips.safeParse({ ...doc, facts: [fact, fact, fact, fact] }).success).toBe(false);
   });
 
+  it("a not-enough-data document may say what it waits for", () => {
+    expect(OWNER_COLLECTIONS.tips.safeParse({ ...doc, status: "notEnoughData", facts: [], waitingFor: "moreSpends" }).success).toBe(true);
+    expect(OWNER_COLLECTIONS.tips.safeParse({ ...doc, status: "notEnoughData", facts: [], waitingFor: "soon" }).success).toBe(false);
+  });
+
   it("the one document is `current`", () => {
     expect(OWNER_COLLECTIONS.tips.safeParse({ ...doc, id: "other" }).success).toBe(false);
   });

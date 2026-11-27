@@ -47,7 +47,9 @@ export function TipsCard({
   return (
     <section aria-labelledby="tips-heading" className={`${styles.card ?? ""} ${styles.tipsCard ?? ""}`}>
       <h3 id="tips-heading">{TIPS_COPY.heading}</h3>
-      {view.kind === "notEnoughData" && <p className={styles.tipNote}>{TIPS_COPY.notEnoughData}</p>}
+      {view.kind === "notEnoughData" && (
+        <p className={styles.tipNote}>{view.waitingFor === "moreSpends" ? TIPS_COPY.moreSpends : TIPS_COPY.notEnoughData}</p>
+      )}
       {view.kind === "tips" && view.items.length === 0 && <p className={styles.tipNote}>{TIPS_COPY.nothingStandsOut}</p>}
       {view.kind === "tips" && view.items.length > 0 && (
         <ul className={styles.tipList}>
@@ -70,7 +72,7 @@ export function TipsCard({
       )}
       <div className={styles.tipFooter}>
         <p role="status" className={styles.tipStatus}>{status ?? ""}</p>
-        {view.kind === "tips" && onNewTips !== undefined && (
+        {view.kind === "tips" && view.items.length > 0 && onNewTips !== undefined && (
           <button type="button" className={styles.newTips} disabled={busy} onClick={onNewTips}>{TIPS_COPY.newTips}</button>
         )}
       </div>

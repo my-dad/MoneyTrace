@@ -14,7 +14,11 @@ const SAYS_IT_WENT = /\b(spent|spend|spending|wasted|lost|went|gone|used|paid|pa
 const MENTIONS_THAT_CASH = /\b(unexplained|unaccounted|loose cash|missing cash|that cash|this cash|the cash|withdrawn cash)\b/i;
 const MAX_SENTENCES = 2;
 
-const sentences = (text: string): number => text.split(/[.!?]+(?:\s+|$)/).filter((part) => part.trim() !== "").length;
+/** Common abbreviations end in a full stop but don't end a sentence. */
+const ABBREVIATION = /\b(e\.g|i\.e|etc|vs|mr|mrs|ms|dr|st)\./gi;
+
+const sentences = (text: string): number =>
+  text.replace(ABBREVIATION, "$1").split(/[.!?]+(?:\s+|$)/).filter((part) => part.trim() !== "").length;
 
 function acceptable(advice: string, fact: TipFact): boolean {
   if (advice === "" || advice.length > TIP_ADVICE_MAX) return false;

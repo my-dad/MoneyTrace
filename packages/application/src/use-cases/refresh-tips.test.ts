@@ -1,5 +1,5 @@
-import { Money, asAccountId, asIdempotencyKey, asOwnerId, asTransactionId, type PostingIntent } from "@moneytrace/domain";
-import { beforeEach, describe, expect, it } from "vitest";
+import { Money, asAccountId, asIdempotencyKey, asOwnerId, asSourceEventId, asTransactionId, type PostingIntent } from "@moneytrace/domain";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "../pipeline/ai-gateway";
 import { CapturingLogger, FakeClock, TestHasher } from "../testing/fakes";
 import { createProviderWorld } from "../testing/fake-provider";
@@ -86,6 +86,18 @@ describe("RefreshTips", () => {
     });
   });
 
+  it("once the advice is saved, the AI call's stored reply is cleared", async () => {
+    await seedMonth();
+    adviseAll();
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    await new RefreshTips({ reader: ledger, tips, writer: gateway, hasher: new TestHasher(), clock, logger }).execute({ ownerId: alice, force: false });
+    const [call] = await world.calls.listForStage(alice, asSourceEventId("tips-2026-11-06-auto"), "tips");
+    expect(call?.state).toBe("purged");
+    expect(call?.result).toBeUndefined();
+    expect(Object.keys((await tips.get(alice))?.advice ?? {})).toHaveLength(3);
+  });
+
   it("opening again the same day makes no AI call", async () => {
     await seedMonth();
     adviseAll(2);
@@ -122,7 +134,7 @@ describe("RefreshTips", () => {
     await spend("food", 1000, dhaka(2026, 10, 1));
     expect(await run(refresher(), true)).toEqual({ outcome: "notEnoughData" });
     expect(provider.tipsCalls).toBe(0);
-    expect(await tips.get(alice)).toMatchObject({ status: "notEnoughData", facts: [], factsHash: null });
+    expect(await tips.get(alice)).toMatchObject({ status: "notEnoughData", waitingFor: "moreSpends", facts: [], factsHash: null });
   });
 
   it("the AI budget used up: the figures still show, and a later open may try again", async () => {
@@ -137,6 +149,20 @@ describe("RefreshTips", () => {
     provider.scriptTips({ kind: "definiteFailure", code: "http429" });
     expect(await run(refresher())).toEqual({ outcome: "factsOnly" });
     expect(await tips.get(alice)).toMatchObject({ status: "factsOnly", aiDay: "2026-11-06" });
+  });
+
+  it("an AI call that throws (no key configured): the figures still show, and a later open may try again", async () => {
+    await seedMonth();
+    const writer = {
+      tipsIdentity: { model: "m", promptVersion: "v" },
+      writeTips: () => Promise.reject(new Error("DEEPSEEK_API_KEY is not configured")),
+      purgeTipsResult: () => Promise.resolve(),
+    };
+    const r = new RefreshTips({ reader: ledger, tips, writer, hasher: new TestHasher(), clock, logger });
+    expect(await r.execute({ ownerId: alice, force: false })).toEqual({ outcome: "factsOnly" });
+    expect(await tips.get(alice)).toMatchObject({ status: "factsOnly", aiDay: null });
+    expect((await tips.get(alice))?.facts).toHaveLength(3);
+    expect(logger.events.find((e) => e.event === "tips.adviceFailed")?.fields).toEqual({ errorName: "Error" });
   });
 
   it("advice that all fails the checks: the figures still show", async () => {
@@ -161,6 +187,70 @@ describe("RefreshTips", () => {
     doc = await tips.get(alice);
     expect(doc?.facts.map((f) => f.id)).toEqual(["sectorUp:food", "unsorted", "topSector:groceries"]);
     expect(Object.keys(doc?.advice ?? {}).sort()).toEqual(["sectorUp:food", "unsorted"]);
+    expect(doc?.status).toBe("ready");
+  });
+
+  it("two tabs opening at once make one AI call; the second waits for it instead of failing", async () => {
+    await seedMonth();
+    adviseAll();
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    const slowProvider = {
+      tipsIdentity: gateway.tipsIdentity,
+      purgeTipsResult: (...args: Parameters<AIGateway["purgeTipsResult"]>) => gateway.purgeTipsResult(...args),
+      writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
+        const out = gateway.writeTips(...args);
+        await held;
+        return out;
+      },
+    };
+    const tab = () => new RefreshTips({ reader: ledger, tips, writer: slowProvider, hasher: new TestHasher(), clock, logger });
+    const first = tab().execute({ ownerId: alice, force: false });
+    await vi.waitFor(() => { expect(provider.tipsCalls).toBe(1); });
+    expect(await tab().execute({ ownerId: alice, force: false })).toEqual({ outcome: "unchanged" });
+    release();
+    expect(await first).toEqual({ outcome: "made" });
+    expect(provider.tipsCalls).toBe(1);
+    expect(await tips.get(alice)).toMatchObject({ status: "ready" });
+  });
+
+  it("a claim left by a call that never finished expires", async () => {
+    await seedMonth();
+    adviseAll();
+    const stuck = { tipsIdentity: { model: "m", promptVersion: "v" }, writeTips: () => new Promise<never>(() => undefined), purgeTipsResult: () => Promise.resolve() };
+    void new RefreshTips({ reader: ledger, tips, writer: stuck, hasher: new TestHasher(), clock, logger }).execute({ ownerId: alice, force: false });
+    await vi.waitFor(async () => { expect((await tips.get(alice))?.aiCallUntilMs).toBeGreaterThan(NOW); });
+    clock.advance(3 * 60_000);
+    expect(await run(refresher())).toEqual({ outcome: "made" });
+  });
+
+  it("a refresh that finishes while another waits on the AI is never overwritten with older figures", async () => {
+    await seedMonth();
+    adviseAll(2);
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    const other = new RefreshTips({ reader: ledger, tips, writer: gateway, hasher: new TestHasher(), clock, logger });
+    let interleaved = false;
+    const slow = {
+      tipsIdentity: gateway.tipsIdentity,
+      purgeTipsResult: (...args: Parameters<AIGateway["purgeTipsResult"]>) => gateway.purgeTipsResult(...args),
+      writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
+        if (!interleaved) {
+          interleaved = true;
+          // While this New tips waits on DeepSeek, an SMS posts and another tab refreshes.
+          await spend("food", 100000, dhaka(2026, 11, 6, 9));
+          await other.execute({ ownerId: alice, force: false });
+        }
+        return gateway.writeTips(...args);
+      },
+    };
+    const first = new RefreshTips({ reader: ledger, tips, writer: slow, hasher: new TestHasher(), clock, logger });
+    await first.execute({ ownerId: alice, force: true });
+    const doc = await tips.get(alice);
+    expect(doc?.facts.find((f) => f.id === "sectorUp:food")?.amountMinor).toBe(394000);
+    expect(Object.keys(doc?.advice ?? {}).sort()).toEqual([...IDS].sort());
     expect(doc?.status).toBe("ready");
   });
 
