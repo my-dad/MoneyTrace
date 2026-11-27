@@ -105,6 +105,18 @@ describe("tipFacts", () => {
     });
   });
 
+  it("the top sector's percent is the chart's own (largest remainder), not a separate rounding", () => {
+    const month = [
+      spend("groceries", 36495, dhaka(2026, 11, 2)),
+      spend("food", 15876, dhaka(2026, 11, 2)),
+      spend("food", 15876, dhaka(2026, 11, 3)),
+      spend("transport", 15876, dhaka(2026, 11, 4)),
+      spend("transport", 15877, dhaka(2026, 11, 5)),
+      spend("rent", 100, dhaka(2026, 10, 2)),
+    ];
+    expect(find(factsOf(input(month)), "topSector:groceries")?.headline).toBe("Groceries took 37% of spending");
+  });
+
   it("top sector at exactly 30% counts, just under does not", () => {
     const month = (groceries: number, transport: number) => [
       spend("groceries", groceries, dhaka(2026, 11, 2)),

@@ -1,6 +1,6 @@
 "use client";
 
-import { foldSector, formatBdt } from "@moneytrace/contracts";
+import { foldSector, formatBdt, netOf, SYSTEM_CASH_ACCOUNT_ID } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
@@ -32,6 +32,8 @@ const DAY_MS = 86_400_000;
 /** How far back Recent's spends are read for their sector: well past its ten rows. */
 const RECENT_WINDOW_MS = 120 * DAY_MS;
 const EVENT_WINDOW = 50;
+/** Figures often change in bursts (a sort moves several spends): wait for them to settle. */
+const FIGURES_SETTLE_MS = 1500;
 
 /** The only screen after sign-in. Every figure waits for its first snapshot, so loading never reads as ৳0. */
 export function DashboardScreen({
@@ -87,19 +89,28 @@ export function DashboardScreen({
 
   /** One tips refresh; the stored tips keep showing while it runs, and its status is honest. */
   const askTips = useMemo(
-    () => (force: boolean) => {
+    () => (force: boolean, quiet = false) => {
       if (refreshTips === undefined) return;
-      setTipsBusy(true);
-      setTipsFailed(false);
-      setTipsDemo(false);
+      // A quiet refresh only re-saves the figures after they changed: no status, no lost state.
+      if (!quiet) {
+        setTipsBusy(true);
+        setTipsFailed(false);
+        setTipsDemo(false);
+      }
       refreshTips({ force })
-        .then((reply) => { setTipsLimit(reply.outcome === "limitReached"); })
+        .then((reply) => {
+          if (quiet) return;
+          setTipsLimit(reply.outcome === "limitReached");
+          // New tips pressed, but no new advice was stored: say so, never "Made today".
+          if (force && reply.outcome === "factsOnly") setTipsFailed(true);
+        })
         .catch((error: unknown) => {
+          if (quiet) return;
           // The demo saves nothing: silent when the dashboard opens, said when New tips is pressed.
           if (error instanceof DemoUnavailableError) setTipsDemo(force);
           else setTipsFailed(true);
         })
-        .finally(() => { setTipsBusy(false); });
+        .finally(() => { if (!quiet) setTipsBusy(false); });
     },
     [refreshTips],
   );
@@ -157,6 +168,22 @@ export function DashboardScreen({
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, month, sixMonths]);
+
+  // A sort, a cash count or a new SMS changes the figures: re-save the tips' figures so they keep
+  // matching the tiles (cheap: the server makes no AI call unless one is due).
+  const figuresKey =
+    offset !== 0 || balances === null || expenses === null || income === null
+      ? null
+      : [netOf(expenses, "debit"), expenses.length, netOf(income, "credit"), balances.find((b) => b.accountId === SYSTEM_CASH_ACCOUNT_ID)?.debitMinusCreditMinor ?? 0].join("|");
+  const lastFiguresKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (figuresKey === null) return;
+    const before = lastFiguresKey.current;
+    lastFiguresKey.current = figuresKey;
+    if (before === null || before === figuresKey) return;
+    const timer = setTimeout(() => { askTips(false, true); }, FIGURES_SETTLE_MS);
+    return () => { clearTimeout(timer); };
+  }, [figuresKey, askTips]);
 
   const loading = balances === null || events === null || expenses === null || previous === null || income === null || sourceEntries === null;
   const view = loading

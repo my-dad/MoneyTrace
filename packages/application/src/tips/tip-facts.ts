@@ -4,9 +4,11 @@ import {
   MAX_TIPS,
   monthRange,
   netOf,
+  percentFromBp,
   sameTimeLastMonthMs,
   SECTOR_IDS,
   SECTOR_LABELS,
+  sectorShares,
   sectorTotals,
   type FigureEntry,
   type SectorId,
@@ -98,7 +100,8 @@ export function tipFacts(input: TipFactsInput): TipFactsResult {
   const spent = netOf(current, "debit");
   const cameIn = netOf(input.income, "credit");
   const unsortedMinor = now.get("uncategorized") ?? 0;
-  const top = sectorTotals(current).filter((t) => t.sector !== "uncategorized")[0];
+  // The chart's own shares, so the percent here is the one the chart shows.
+  const top = sectorShares(current).filter((t) => t.sector !== "uncategorized")[0];
 
   const up = biggest(moves.filter((m) => m.diff > 0));
   const down = biggest(moves.filter((m) => m.diff < 0));
@@ -133,7 +136,7 @@ export function tipFacts(input: TipFactsInput): TipFactsResult {
           sector: top.sector,
           amountMinor: top.amountMinor,
           compareMinor: spent,
-          headline: `${SECTOR_LABELS[top.sector]} took ${String(percentOf(top.amountMinor, spent))}% of spending`,
+          headline: `${SECTOR_LABELS[top.sector]} took ${String(percentFromBp(top.shareBp))}% of spending`,
           detail: `${formatBdt(top.amountMinor)} of ${formatBdt(spent)} this month`,
         }
       : undefined,

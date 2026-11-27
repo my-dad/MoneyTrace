@@ -54,9 +54,15 @@ describe("TipsCard", () => {
   });
 
   it("figures only: says advice is unavailable, except while new tips are being made", () => {
-    const { rerender } = render(<TipsCard {...base} view={{ ...tips, factsOnly: true }} />);
+    const bare = { ...tips, factsOnly: true, items: tips.items.map((item) => ({ id: item.id, kind: item.kind, headline: item.headline, detail: item.detail })) };
+    const { rerender } = render(<TipsCard {...base} view={bare} />);
     expect(screen.getByText("Advice is unavailable right now; these figures are up to date.")).toBeTruthy();
-    rerender(<TipsCard {...base} busy view={{ ...tips, factsOnly: true }} />);
+    rerender(<TipsCard {...base} busy view={bare} />);
+    expect(screen.queryByText("Advice is unavailable right now; these figures are up to date.")).toBeNull();
+  });
+
+  it("no unavailable note while earlier advice is still shown", () => {
+    render(<TipsCard {...base} view={{ ...tips, factsOnly: true }} />);
     expect(screen.queryByText("Advice is unavailable right now; these figures are up to date.")).toBeNull();
   });
 

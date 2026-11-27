@@ -5,7 +5,7 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
-import { FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
+import { FIXTURE_BALANCES, FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
 
 const createFixtureEvents = () => [...FIXTURE_SOURCE_EVENTS];
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
@@ -347,6 +347,27 @@ describe("DashboardScreen", () => {
       expect(openChat).toHaveBeenCalledWith("cashCount");
       fireEvent.click(within(tipsRegion()).getByRole("button", { name: "Sort" }));
       expect(screen.getByRole("dialog", { name: "Sort Daraz" })).toBeTruthy();
+    });
+
+    it("a New tips that ends with figures only says new tips couldn't be made", async () => {
+      showTips((r) => Promise.resolve({ outcome: r.force ? "factsOnly" : "unchanged" }));
+      await screen.findByText("Made today");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "New tips" }));
+      await within(tipsRegion()).findByText("Couldn't make new tips; showing the last ones");
+    });
+
+    it("refreshes the tip figures, quietly, when the month's figures change", async () => {
+      const gateway = createFixtureReadModels();
+      const refreshTips = vi.fn((): Promise<{ outcome: Outcome }> => Promise.resolve({ outcome: "unchanged" }));
+      render(<DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} refreshTips={refreshTips} />);
+      await screen.findByText("Made today");
+      expect(refreshTips).toHaveBeenCalledTimes(1);
+      act(() => {
+        gateway.setBalances(FIXTURE_BALANCES.map((b) => (b.accountId === "cash-unassigned" ? { ...b, debitMinusCreditMinor: 0 } : b)));
+      });
+      await vi.waitFor(() => { expect(refreshTips).toHaveBeenCalledTimes(2); }, { timeout: 4000 });
+      expect(refreshTips).toHaveBeenLastCalledWith({ force: false });
+      expect(within(tipsRegion()).queryByText("Making new tips…")).toBeNull();
     });
   });
 });

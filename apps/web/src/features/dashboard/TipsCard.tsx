@@ -64,7 +64,10 @@ export function TipsCard({
           ))}
         </ul>
       )}
-      {view.kind === "tips" && view.factsOnly && !busy && <p className={styles.tipNote}>{TIPS_COPY.unavailable}</p>}
+      {/* Only when no advice is shown at all: earlier advice still holds (it has no numbers). */}
+      {view.kind === "tips" && view.factsOnly && !busy && view.items.length > 0 && view.items.every((i) => i.advice === undefined) && (
+        <p className={styles.tipNote}>{TIPS_COPY.unavailable}</p>
+      )}
       <div className={styles.tipFooter}>
         <p role="status" className={styles.tipStatus}>{status ?? ""}</p>
         {view.kind === "tips" && onNewTips !== undefined && (

@@ -78,3 +78,29 @@ export function sectorTotals(expenses: readonly FigureEntry[]): { sector: Sector
     .sort((a, b) => b[1] - a[1])
     .map(([sector, amountMinor]) => ({ sector, amountMinor }));
 }
+
+/**
+ * Each sector's share of spending in basis points, by the largest-remainder method on integers,
+ * so the shares always sum to exactly 10000. The chart and the tips both use it, so a percent
+ * never differs between them.
+ */
+export function sectorShares(expenses: readonly FigureEntry[]): { sector: SectorId; amountMinor: number; shareBp: number }[] {
+  const rows = sectorTotals(expenses);
+  const total = rows.reduce((sum, r) => sum + r.amountMinor, 0);
+  if (total === 0) return [];
+  const exact = rows.map(({ sector, amountMinor }) => {
+    const scaled = amountMinor * 10_000;
+    return { sector, amountMinor, floor: (scaled - (scaled % total)) / total, remainder: scaled % total };
+  });
+  let left = 10_000 - exact.reduce((sum, r) => sum + r.floor, 0);
+  const bonus = new Set<SectorId>();
+  for (const r of [...exact].sort((a, b) => b.remainder - a.remainder)) {
+    if (left <= 0) break;
+    bonus.add(r.sector);
+    left -= 1;
+  }
+  return exact.map((r) => ({ sector: r.sector, amountMinor: r.amountMinor, shareBp: r.floor + (bonus.has(r.sector) ? 1 : 0) }));
+}
+
+/** Basis points as a whole percent, rounded half up, in integers: 3659 → 37. */
+export const percentFromBp = (bp: number): number => (bp + 50 - ((bp + 50) % 100)) / 100;

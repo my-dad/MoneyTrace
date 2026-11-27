@@ -39,6 +39,12 @@ describe("validateAdvice", () => {
     ["taka", "Put aside a few taka."],
     ["Tk", "Keep Tk aside."],
     ["percent", "Cut it by ten percent."],
+    ["tens as words", "Aim for fifty less each week."],
+    ["per cent", "Cut it by a tenth per cent."],
+    ["BDT", "Save a little BDT each day."],
+    ["teens as words", "Try fifteen fewer rides."],
+    ["the percent sign", "Cut it by a fifth %."],
+    ["Bangla script", "পাঁচশো টাকা কম খরচ করুন।"],
   ])("drops advice that states an amount (%s)", (_name, advice) => {
     expect(one(advice)).toBeUndefined();
   });
@@ -47,6 +53,23 @@ describe("validateAdvice", () => {
     expect(one("Count it so you know where it was spent.", cash)).toBeUndefined();
     expect(one("Some of it may be lost in a drawer.", cash)).toBeUndefined();
     expect(one("A quick count keeps your records honest.", cash)).toBe("A quick count keeps your records honest.");
+  });
+
+  it.each([
+    "That cash probably went on small treats.",
+    "It was likely used up on snacks.",
+    "You may have paid for groceries with it.",
+  ])("drops advice that implies unexplained cash went somewhere: %s", (advice) => {
+    expect(one(advice, cash)).toBeUndefined();
+  });
+
+  it("drops advice on any fact that says the unexplained cash was spent", () => {
+    expect(one("Some of your loose cash likely went to food.")).toBeUndefined();
+    expect(one("The unexplained cash was probably spent on meals.")).toBeUndefined();
+  });
+
+  it("keeps small counts in words", () => {
+    expect(one("Try two fewer takeaways a week.")).toBe("Try two fewer takeaways a week.");
   });
 
   it("allows the word spend on other facts", () => {
