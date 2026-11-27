@@ -283,6 +283,7 @@ export const TIPS_COPY = {
   limitReached: "You've had today's fresh tips. More tomorrow.",
   unavailable: "Advice is unavailable right now; these figures are up to date.",
   notEnoughData: "Tips appear once there's a couple of weeks of spending",
+  moreSpends: "Tips appear after a few spends this month",
   nothingStandsOut: "Nothing stands out so far this month.",
   sort: "Sort",
   countCash: "Count my cash",

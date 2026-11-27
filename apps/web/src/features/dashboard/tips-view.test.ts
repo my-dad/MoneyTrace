@@ -32,8 +32,9 @@ describe("tipsView", () => {
     expect(tipsView({ ...doc, month: "2026-10" }, NOW)).toEqual({ kind: "none" });
   });
 
-  it("not enough data", () => {
-    expect(tipsView({ ...doc, status: "notEnoughData", facts: [] }, NOW)).toEqual({ kind: "notEnoughData" });
+  it("not enough data, and what it waits for (older documents: two weeks)", () => {
+    expect(tipsView({ ...doc, status: "notEnoughData", facts: [] }, NOW)).toEqual({ kind: "notEnoughData", waitingFor: "twoWeeks" });
+    expect(tipsView({ ...doc, status: "notEnoughData", waitingFor: "moreSpends", facts: [] }, NOW)).toEqual({ kind: "notEnoughData", waitingFor: "moreSpends" });
   });
 
   it("tips with their advice where there is some", () => {

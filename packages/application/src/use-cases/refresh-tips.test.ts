@@ -122,7 +122,7 @@ describe("RefreshTips", () => {
     await spend("food", 1000, dhaka(2026, 10, 1));
     expect(await run(refresher(), true)).toEqual({ outcome: "notEnoughData" });
     expect(provider.tipsCalls).toBe(0);
-    expect(await tips.get(alice)).toMatchObject({ status: "notEnoughData", facts: [], factsHash: null });
+    expect(await tips.get(alice)).toMatchObject({ status: "notEnoughData", waitingFor: "moreSpends", facts: [], factsHash: null });
   });
 
   it("the AI budget used up: the figures still show, and a later open may try again", async () => {

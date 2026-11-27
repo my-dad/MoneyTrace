@@ -56,7 +56,7 @@ export class RefreshTips {
     };
 
     if (result.status === "notEnoughData") {
-      await tips.save(ownerId, { ...base, status: "notEnoughData", facts: [], advice: {}, factsHash: null });
+      await tips.save(ownerId, { ...base, status: "notEnoughData", waitingFor: result.waitingFor, facts: [], advice: {}, factsHash: null });
       return this.done("notEnoughData", 0);
     }
 

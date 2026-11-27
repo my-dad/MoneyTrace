@@ -31,7 +31,9 @@ export type TipFactsInput = {
   unexplainedCashMinor: number;
 };
 
-export type TipFactsResult = { status: "notEnoughData" } | { status: "ready"; facts: TipFact[] };
+export type TipFactsResult =
+  | { status: "notEnoughData"; waitingFor: "twoWeeks" | "moreSpends" }
+  | { status: "ready"; facts: TipFact[] };
 
 /** A whole percentage, rounded half up, from integers only. */
 export function percentOf(part: number, whole: number): number {
@@ -70,7 +72,9 @@ export function tipFacts(input: TipFactsInput): TipFactsResult {
   const standing = standingSpends(input.expenses);
   const spendsThisMonth = new Set(standing.filter((e) => e.occurredAtMs >= month.fromMs && e.occurredAtMs <= nowMs).map((e) => e.transactionId)).size;
   const firstSpendMs = Math.min(...standing.map((e) => e.occurredAtMs));
-  if (spendsThisMonth < MIN_SPENDS || nowMs - firstSpendMs < MIN_DAYS_TRACKED * DAY_MS) return { status: "notEnoughData" };
+  // A long-time user early in the month waits for spends, not for two weeks of history.
+  if (!(nowMs - firstSpendMs >= MIN_DAYS_TRACKED * DAY_MS)) return { status: "notEnoughData", waitingFor: "twoWeeks" };
+  if (spendsThisMonth < MIN_SPENDS) return { status: "notEnoughData", waitingFor: "moreSpends" };
 
   const today = dhakaDay(nowMs);
   const by = `by ${String(Number(today.slice(8, 10)))} ${month.label.slice(0, 3)}`;

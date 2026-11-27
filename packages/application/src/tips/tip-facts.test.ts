@@ -195,8 +195,14 @@ describe("tipFacts", () => {
     expect(tipFacts(input([...recent, spend("other", 100, NOW - 14 * DAY_MS)])).status).toBe("ready");
   });
 
-  it("an empty month has not enough data", () => {
-    expect(tipFacts(input([]))).toEqual({ status: "notEnoughData" });
+  it("an empty month has not enough data, waiting for two weeks of spending", () => {
+    expect(tipFacts(input([]))).toEqual({ status: "notEnoughData", waitingFor: "twoWeeks" });
+  });
+
+  it("says what it is waiting for: two weeks of spending, or more spends this month", () => {
+    const recent = Array.from({ length: 5 }, (_, i) => spend("other", 100, NOW - (i + 1) * 3_600_000));
+    expect(tipFacts(input([...recent, spend("other", 100, NOW - 13 * DAY_MS)]))).toEqual({ status: "notEnoughData", waitingFor: "twoWeeks" });
+    expect(tipFacts(input(filler(4)))).toEqual({ status: "notEnoughData", waitingFor: "moreSpends" });
   });
 
   it("a corrected spend counts once, at the replacement's amount", () => {
