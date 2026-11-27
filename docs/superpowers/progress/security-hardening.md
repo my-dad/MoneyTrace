@@ -13,6 +13,13 @@ GitHub, DeepSeek) and release-checklist C3, D5, D6, B2 are Mabrur's.
   browser test in which the CSP blocked something (checked: it fails when the hashes are removed).
   Evidence: `pnpm verify` 2112 passed; `pnpm test:e2e:fixture` 12 passed; `pnpm test:e2e` 3 passed
   (a first run lost the local Edge Runtime container, exit 137, unrelated; rerun passed).
-- [ ] 2. Secret audit: git history, built bundle (no `service_role`, no DeepSeek key), repo settings.
+- [x] 2. Secret audit. Git history (all branches): no keys, only local `postgres:postgres` test
+  URLs; `sms-pattern.md` (real SMS) never committed. Built bundle: only the public anon key.
+  New `apps/web/scripts/check-bundle-secrets.mjs` runs after every build and fails it on a
+  service_role or other non-anon Supabase JWT, `sb_secret_`, `sk-` keys, the age backup key, a
+  database URL with a password, or a private key. `.gitignore` adds `*.key`, `*.age`. GitHub:
+  secret scanning and push protection are on; Dependabot alerts off and `master` unprotected
+  (Mabrur's settings, B2). Evidence: `pnpm verify` 2117 passed; a real build prints
+  `check-bundle-secrets: … no secrets`.
 - [ ] 3. Identifier masking: full account/card numbers never stored or sent to DeepSeek.
 - [ ] 4. Logs: `/api` never logs raw SMS text, tokens or identifiers.

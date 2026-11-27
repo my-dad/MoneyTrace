@@ -45,8 +45,8 @@ describe("web hosting on Cloudflare Pages (CR-010; release blocker B1)", () => {
     });
   });
 
-  it("adds the Content-Security-Policy after every build (scripts/write-csp.mjs)", () => {
+  it("checks the build for secrets, then adds the Content-Security-Policy (scripts/)", () => {
     const pkg = JSON.parse(readFileSync(join(import.meta.dirname, "../package.json"), "utf8")) as { scripts: { build: string } };
-    expect(pkg.scripts.build).toMatch(/next build && node scripts\/write-csp\.mjs$/);
+    expect(pkg.scripts.build).toMatch(/next build && node scripts\/check-bundle-secrets\.mjs && node scripts\/write-csp\.mjs$/);
   });
 });
