@@ -35,7 +35,7 @@ questions about an SMS it can't read clearly. Release gate 32 (count my cash, wi
 audited Adjust) and the "Not a transfer" undo are built (see
 [`docs/superpowers/progress/cash-count-undo.md`](docs/superpowers/progress/cash-count-undo.md)).
 CR-009 (open sign-up for friends and family: global AI cap, data notice, account
-deletion) is built. Next: going live on Supabase (piece 4), then piece 3 (tips from DeepSeek).
+deletion) is built. Live on Supabase and Cloudflare Pages since 2026-11-25 (piece 4). Next: piece 3 (tips from DeepSeek; design draft in `docs/superpowers/specs/2026-11-26-spending-tips-design.md`).
 
 ## What it is
 
