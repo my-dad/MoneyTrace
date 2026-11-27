@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { TIPS_COPY } from "../../shared/copy";
+import { COPY, TIPS_COPY } from "../../shared/copy";
 import type { TipItem, TipsViewModel } from "./tips-view";
 import styles from "./dashboard.module.css";
 
@@ -12,6 +12,7 @@ export function TipsCard({
   busy,
   failed,
   limitReached,
+  demo = false,
   onNewTips,
   onSort,
   onCountCash,
@@ -20,6 +21,8 @@ export function TipsCard({
   busy: boolean;
   failed: boolean;
   limitReached: boolean;
+  /** New tips was pressed in the demo: nothing was saved. */
+  demo?: boolean;
   onNewTips?: () => void;
   /** Opens sorting for the biggest unsorted shop; absent when there is none to sort. */
   onSort?: () => void;
@@ -28,6 +31,7 @@ export function TipsCard({
   if (view.kind === "none" && !busy) return null;
   let status: string | null = null;
   if (busy) status = TIPS_COPY.making;
+  else if (demo) status = COPY.demoUnavailable;
   else if (failed) status = TIPS_COPY.failed;
   else if (limitReached) status = TIPS_COPY.limitReached;
   else if (view.kind === "tips") status = view.age;

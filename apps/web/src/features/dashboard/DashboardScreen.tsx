@@ -2,8 +2,9 @@
 
 import { foldSector, formatBdt } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
+import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { dhakaDate } from "../../shared/dhaka-date";
 import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow, TipsRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
@@ -43,6 +44,7 @@ export function DashboardScreen({
   cashIncome,
   avatar,
   onEditProfile,
+  refreshTips,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
@@ -56,6 +58,8 @@ export function DashboardScreen({
   /** The user's picture beside their name. */
   avatar?: ReactNode;
   onEditProfile?: () => void;
+  /** Saves this month's tip figures and asks for advice when due; without it, tips are only read. */
+  refreshTips?: (request: { force: boolean }) => Promise<{ outcome: "made" | "unchanged" | "factsOnly" | "notEnoughData" | "limitReached" }>;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -75,6 +79,37 @@ export function DashboardScreen({
   const [sixIncome, setSixIncome] = useState<LedgerEntryRow[]>([]);
   const [monthTransactions, setMonthTransactions] = useState<TransactionRow[]>([]);
   const [tips, setTips] = useState<TipsRow | null>(null);
+  const [tipsBusy, setTipsBusy] = useState(false);
+  const [tipsFailed, setTipsFailed] = useState(false);
+  const [tipsLimit, setTipsLimit] = useState(false);
+  const [tipsDemo, setTipsDemo] = useState(false);
+  const askedForTips = useRef(false);
+
+  /** One tips refresh; the stored tips keep showing while it runs, and its status is honest. */
+  const askTips = useMemo(
+    () => (force: boolean) => {
+      if (refreshTips === undefined) return;
+      setTipsBusy(true);
+      setTipsFailed(false);
+      setTipsDemo(false);
+      refreshTips({ force })
+        .then((reply) => { setTipsLimit(reply.outcome === "limitReached"); })
+        .catch((error: unknown) => {
+          // The demo saves nothing: silent when the dashboard opens, said when New tips is pressed.
+          if (error instanceof DemoUnavailableError) setTipsDemo(force);
+          else setTipsFailed(true);
+        })
+        .finally(() => { setTipsBusy(false); });
+    },
+    [refreshTips],
+  );
+
+  // Once per visit, in the background, and only for the current month (which a visit opens on).
+  useEffect(() => {
+    if (askedForTips.current) return;
+    askedForTips.current = true;
+    askTips(false);
+  }, [askTips]);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
@@ -141,6 +176,9 @@ export function DashboardScreen({
     return income === undefined ? item : { ...item, amountMinor: income.amountMinor };
   });
   const editOf = (item: RecentItem): Editable | null => manual.get(item.id) ?? null;
+  /** The unsorted tip sorts the biggest unsorted shop this month, when there is a named one. */
+  const unsortedShop = tagMerchant === undefined ? undefined : merchantsOf(expenses ?? [], monthTransactions).find((m) => m.sector === "uncategorized" && m.key !== "");
+  const sortTip: Sortable | undefined = unsortedShop === undefined ? undefined : { key: unsortedShop.key, name: unsortedShop.name };
 
   let body;
   if (newUser) {
@@ -232,7 +270,18 @@ export function DashboardScreen({
           <MonthlyBars rows={monthlyTotals(sixExpenses, sixIncome, sixMonths)} />
         </div>
         <div>
-          {offset === 0 && <TipsCard view={tipsView(tips, nowMs)} busy={false} failed={false} limitReached={false} />}
+          {offset === 0 && (
+            <TipsCard
+              view={tipsView(tips, nowMs)}
+              busy={tipsBusy}
+              failed={tipsFailed}
+              limitReached={tipsLimit}
+              demo={tipsDemo}
+              {...(refreshTips === undefined ? {} : { onNewTips: () => { askTips(true); } })}
+              {...(sortTip === undefined ? {} : { onSort: () => { setSorting(sortTip); } })}
+              {...(chat === null ? {} : { onCountCash: () => { chat.openChat("cashCount"); } })}
+            />
+          )}
           {view.hasActivity && (
             <TopMerchants rows={topMerchants(merchantsOf(expenses ?? [], monthTransactions))} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
           )}

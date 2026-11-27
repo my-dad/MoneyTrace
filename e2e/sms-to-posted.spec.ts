@@ -84,3 +84,20 @@ test("a cash count shows the gap without changing anything, and Adjust needs a r
   await chat.getByRole("button", { name: "Adjust", exact: true }).click();
   await expect(chat.getByText("Recorded · Cash now matches your count of ৳500. The ৳500 adjustment is saved with your reason.")).toBeVisible({ timeout: 45_000 });
 });
+
+const spendAt = (d: Date, taka: number) =>
+  `BDT ${taka.toLocaleString("en-US")} transacted at EXAMPLE PHARMA on ${ddmmyy(d, "/")} [${twelve(d).replace(" ", ":00 ")} BST] using Card#***9999. Available balance: BDT 60,000.5. Helpline 16221`;
+
+test("tips appear once there are two weeks of spending, with the AI's advice beside our figures", async ({ page }) => {
+  test.setTimeout(240_000);
+  await signUp(page);
+  // One spend 20 days ago and five today: enough spending for tips (spec: 5 this month, 14 days since the first).
+  await paste(page, spendAt(dhaka(20 * 24 * 60), 700), 1);
+  for (const [i, taka] of [810, 920, 1030, 1140, 1250].entries()) await paste(page, spendAt(dhaka(50 - i * 5), taka), i + 2);
+  // Tips are asked for when the dashboard opens: open it again.
+  await page.reload();
+  const tips = page.getByRole("region", { name: "Tips to spend less" });
+  await expect(tips.getByText("A small, steady change here adds up over the month.").first()).toBeVisible({ timeout: 45_000 });
+  await expect(tips.getByText("Made today")).toBeVisible();
+  await expect(tips.getByRole("button", { name: "New tips" })).toBeVisible();
+});

@@ -67,6 +67,11 @@ describe("TipsCard", () => {
     expect(screen.getByText("You've had today's fresh tips. More tomorrow.")).toBeTruthy();
   });
 
+  it("a demo New tips says nothing was saved", () => {
+    render(<TipsCard {...base} demo />);
+    expect(screen.getByText("Not available yet — demo · nothing was saved")).toBeTruthy();
+  });
+
   it("not enough spending yet", () => {
     render(<TipsCard {...base} view={{ kind: "notEnoughData" }} onNewTips={vi.fn()} />);
     expect(screen.getByText("Tips appear once there's a couple of weeks of spending")).toBeTruthy();
