@@ -1,8 +1,9 @@
+import { dhakaDay } from "@moneytrace/contracts";
+
 const TIMEZONE = "Asia/Dhaka";
 
-/** The calendar date in Dhaka, as `YYYY-MM-DD`. */
-export const dhakaDate = (ms: number): string =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date(ms));
+/** The calendar date in Dhaka, as `YYYY-MM-DD` (the rule shared with the server). */
+export const dhakaDate = (ms: number): string => dhakaDay(ms);
 
 /** The instant a `YYYY-MM-DD` date starts in Dhaka. Bangladesh has one fixed offset. */
 export const dhakaDayStartMs = (date: string): number => Date.parse(`${date}T00:00:00+06:00`);

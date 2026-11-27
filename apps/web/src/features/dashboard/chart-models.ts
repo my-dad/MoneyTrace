@@ -1,7 +1,7 @@
-import type { SectorId } from "@moneytrace/contracts";
+import { sectorTotals, type SectorId } from "@moneytrace/contracts";
 import { dhakaDate } from "../../shared/dhaka-date";
 import type { LedgerEntryRow } from "../../shared/read-model-gateway";
-import { categoryOf, type MerchantRow } from "./dashboard-view-model";
+import type { MerchantRow } from "./dashboard-view-model";
 
 export type SectorSlice = { sector: SectorId; amountMinor: number; shareBp: number };
 export type DayPoint = { day: number; minor: number };
@@ -16,9 +16,7 @@ const signed = (row: LedgerEntryRow, positive: "debit" | "credit"): number => (r
  * below (refunds covering spending) are left out: a chart never shows a negative slice.
  */
 export function sectorSlices(expenses: LedgerEntryRow[]): SectorSlice[] {
-  const totals = new Map<SectorId, number>();
-  for (const row of expenses) totals.set(categoryOf(row.accountId), (totals.get(categoryOf(row.accountId)) ?? 0) + signed(row, "debit"));
-  const rows = [...totals].filter(([, minor]) => minor > 0).sort((a, b) => b[1] - a[1]);
+  const rows = sectorTotals(expenses).map(({ sector, amountMinor }): [SectorId, number] => [sector, amountMinor]);
   const total = rows.reduce((sum, [, minor]) => sum + minor, 0);
   if (total === 0) return [];
   const exact = rows.map(([sector, minor]) => {

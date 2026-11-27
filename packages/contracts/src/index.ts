@@ -16,3 +16,4 @@ export * from "./ai-interpretation";
 export * from "./format-money";
 export * from "./sectors";
 export * from "./zoned-time";
+export * from "./figures";
