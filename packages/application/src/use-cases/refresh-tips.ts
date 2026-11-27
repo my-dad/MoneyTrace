@@ -77,7 +77,15 @@ export class RefreshTips {
       return this.done("unchanged", facts.length);
     }
 
-    const call = await this.deps.writer.writeTips(ownerId, requestKey, tipsInput(facts, nowMs));
+    let call: Awaited<ReturnType<TipsWriter["writeTips"]>>;
+    try {
+      call = await this.deps.writer.writeTips(ownerId, requestKey, tipsInput(facts, nowMs));
+    } catch (error) {
+      // No AI (no key, a store error around the call): the saved figures stand; a later open retries.
+      this.deps.logger.error("tips.adviceFailed", { errorName: error instanceof Error ? error.name : "unknown" });
+      await tips.save(ownerId, { ...saved, status: "factsOnly" });
+      return this.done("factsOnly", facts.length);
+    }
     const afterCall: TipsFields = call.kind === "quotaExhausted" ? saved : { ...saved, aiDay: today, aiFactsHash: factsHash };
     const advice = call.kind === "result" ? validateAdvice(call.value, facts) : {};
     if (Object.keys(advice).length === 0) {

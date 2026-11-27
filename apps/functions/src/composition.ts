@@ -264,7 +264,20 @@ export function composeDeps(
     updateProfile: new UpdateProfile({ profiles, clock }),
     recordVisit: new RecordVisit({ profiles, clock }),
     get refreshTips() {
-      refreshTips ??= new RefreshTips({ reader, tips: new FirestoreTipsRepository(db), writer: aiGateway(), hasher, clock, logger });
+      // The AI provider is chosen only when advice is due, so the figures never need the AI key.
+      refreshTips ??= new RefreshTips({
+        reader,
+        tips: new FirestoreTipsRepository(db),
+        writer: {
+          writeTips: (...args: Parameters<AIGateway["writeTips"]>) => aiGateway().writeTips(...args),
+          get tipsIdentity() {
+            return aiGateway().tipsIdentity;
+          },
+        },
+        hasher,
+        clock,
+        logger,
+      });
       return refreshTips;
     },
     updateSettings: new UpdateSettings({ profiles }),

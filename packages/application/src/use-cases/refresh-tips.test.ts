@@ -139,6 +139,19 @@ describe("RefreshTips", () => {
     expect(await tips.get(alice)).toMatchObject({ status: "factsOnly", aiDay: "2026-11-06" });
   });
 
+  it("an AI call that throws (no key configured): the figures still show, and a later open may try again", async () => {
+    await seedMonth();
+    const writer = {
+      tipsIdentity: { model: "m", promptVersion: "v" },
+      writeTips: () => Promise.reject(new Error("DEEPSEEK_API_KEY is not configured")),
+    };
+    const r = new RefreshTips({ reader: ledger, tips, writer, hasher: new TestHasher(), clock, logger });
+    expect(await r.execute({ ownerId: alice, force: false })).toEqual({ outcome: "factsOnly" });
+    expect(await tips.get(alice)).toMatchObject({ status: "factsOnly", aiDay: null });
+    expect((await tips.get(alice))?.facts).toHaveLength(3);
+    expect(logger.events.find((e) => e.event === "tips.adviceFailed")?.fields).toEqual({ errorName: "Error" });
+  });
+
   it("advice that all fails the checks: the figures still show", async () => {
     await seedMonth();
     provider.scriptTips({ kind: "success", value: { tips: IDS.map((factId) => ({ factId, advice: "Save 500 a week." })) } });

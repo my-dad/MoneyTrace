@@ -120,6 +120,12 @@ describe("refreshTips", () => {
     expect(await ok("alice", "refreshTips", { force: false })).toEqual({ outcome: "notEnoughData" });
   });
 
+  it("works without an AI key: the figures never need one", async () => {
+    const { ok } = api({ FUNCTIONS_EMULATOR: "true" });
+    await ok("alice", "bootstrapUser");
+    expect(await ok("alice", "refreshTips", { force: false })).toEqual({ outcome: "notEnoughData" });
+  });
+
   it("refuses a request that isn't the contract", async () => {
     const { ok, call } = api();
     await ok("alice", "bootstrapUser");
