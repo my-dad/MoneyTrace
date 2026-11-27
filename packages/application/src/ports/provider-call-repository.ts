@@ -1,6 +1,5 @@
 import type {
   OwnerId,
-  PipelineStage,
   ProviderCallStage,
   ProviderCallState,
   RetrySafety,
@@ -84,7 +83,7 @@ export type ProviderCallRepository = {
   listForStage(
     ownerId: OwnerId,
     sourceEventId: SourceEventId,
-    stage: PipelineStage,
+    stage: ProviderCallStage,
   ): Promise<ProviderCallRecord[]>;
   /** Re-reads the owning event in its transaction: a non-terminal event blocks the purge. */
   purgeResult(

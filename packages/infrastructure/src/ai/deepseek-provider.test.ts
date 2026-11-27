@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DeepSeekProvider } from "./deepseek-provider";
 import { FakeAIProvider } from "./fake-ai-provider";
 import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v2";
+import { TIPS_PROMPT_VERSION, buildTipsMessages } from "./prompts/tips-v1";
 
 const context = { allowedCategories: ["groceries"], nowMs: Date.parse("2026-03-10T00:00:00Z"), clarifications: [] };
 
@@ -227,5 +228,54 @@ describe("FakeAIProvider", () => {
       kind: "success",
       value: { kind: "unusable" },
     });
+  });
+});
+
+describe("DeepSeekProvider.writeTips", () => {
+  const input = {
+    facts: [
+      { id: "sectorUp:food", kind: "sectorUp" as const, sectorLabel: "Food", headline: "Food is up on last month", detail: "৳2,940 by 6 Nov, against ৳2,130 by this time in October" },
+      { id: "unexplainedCash", kind: "unexplainedCash" as const, headline: "৳5,000 cash isn't explained yet", detail: "Counting your cash keeps the picture right" },
+    ],
+    dayOfMonth: 6,
+    daysInMonth: 30,
+  };
+  const write = (p: DeepSeekProvider) => p.writeTips(input, "tips-key", liveSignal());
+  const advice = JSON.stringify({ tips: [{ factId: "sectorUp:food", advice: "A few more home-cooked dinners would bring it back in line." }] });
+
+  it("sends only the facts' ids, kinds, labels, headlines and details, in JSON mode", async () => {
+    const { fetchImpl, calls } = fakeFetch(() => reply(advice));
+    await write(provider(fetchImpl));
+    const body = JSON.parse(calls[0]?.init.body as string) as Body & { max_tokens: number };
+    expect(body.model).toBe("deepseek-flash");
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.max_tokens).toBe(400);
+    const user = body.messages.find((m) => m.role === "user")?.content ?? "";
+    const data = JSON.parse(user.slice(user.indexOf("{"), user.lastIndexOf("}") + 1)) as Record<string, unknown>;
+    expect(data).toEqual(input);
+  });
+
+  it("returns the reply's tips", async () => {
+    expect(await write(provider(fakeFetch(() => reply(advice)).fetchImpl))).toMatchObject({
+      kind: "success",
+      value: { tips: [{ factId: "sectorUp:food", advice: "A few more home-cooked dinners would bring it back in line." }] },
+    });
+  });
+
+  it("a reply that isn't the tips shape is no advice, never a retry", async () => {
+    expect(await write(provider(fakeFetch(() => reply("not json")).fetchImpl))).toMatchObject({ kind: "success", value: { tips: [] } });
+    expect(await write(provider(fakeFetch(() => reply(validContent)).fetchImpl))).toMatchObject({ kind: "success", value: { tips: [] } });
+    expect(await write(provider(fakeFetch(() => reply(advice, "length")).fetchImpl))).toMatchObject({ kind: "success", value: { tips: [] } });
+  });
+
+  it("a refused request is a definite failure", async () => {
+    expect(await write(provider(fakeFetch(() => new Response("", { status: 429 })).fetchImpl))).toEqual({ kind: "definiteFailure", code: "http429" });
+  });
+
+  it("the system prompt forbids numbers and saying cash was spent", () => {
+    const [system] = buildTipsMessages(input);
+    expect(system?.content).toMatch(/no numbers/i);
+    expect(system?.content).toMatch(/never say .*cash .*spent/i);
+    expect(TIPS_PROMPT_VERSION).toBe("tips-v1");
   });
 });

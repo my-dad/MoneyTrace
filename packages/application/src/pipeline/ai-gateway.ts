@@ -1,5 +1,6 @@
-import { maskIdentifiers, type OwnerId, type SourceEventId } from "@moneytrace/domain";
-import type { AIProvider, AiContext, AiInterpretation } from "../ports/ai-provider";
+import type { TipsReply } from "@moneytrace/contracts";
+import { asSourceEventId, maskIdentifiers, type OwnerId, type SourceEventId } from "@moneytrace/domain";
+import type { AIProvider, AiContext, AiInterpretation, TipsInput } from "../ports/ai-provider";
 import type { ExecuteResult, ProviderCallExecutor } from "./provider-call-executor";
 
 /** A conservative quota reservation per call, not a price. Settled when actual cost is known. */
@@ -19,6 +20,25 @@ export class AIGateway {
 
   get identity(): { model: string; promptVersion: string } {
     return { model: this.provider.model, promptVersion: this.provider.promptVersion };
+  }
+
+  get tipsIdentity(): { model: string; promptVersion: string } {
+    return { model: this.provider.model, promptVersion: this.provider.tipsPromptVersion };
+  }
+
+  /**
+   * Tips have no source event: the request key (`tips-<day>-auto`, `tips-<day>-new-<n>`) takes its
+   * place, so each key is one durable, metered call and a repeat reuses its stored result.
+   */
+  writeTips(ownerId: OwnerId, requestKey: string, input: TipsInput): Promise<ExecuteResult<TipsReply>> {
+    return this.executor.execute<TipsReply>({
+      ownerId,
+      sourceEventId: asSourceEventId(requestKey),
+      stage: "tips",
+      provider: { id: this.provider.id, retrySafety: this.provider.retrySafety },
+      estimateMicroUsd: this.estimateMicroUsd,
+      invoke: (key, signal) => this.provider.writeTips(input, key, signal),
+    });
   }
 
   /**

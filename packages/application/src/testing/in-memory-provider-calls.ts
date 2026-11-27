@@ -1,7 +1,7 @@
 import {
   DomainError,
   type OwnerId,
-  type PipelineStage,
+  type ProviderCallStage,
   type RetrySafety,
   type SourceEventId,
   isTerminal,
@@ -152,7 +152,7 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
   listForStage(
     ownerId: OwnerId,
     sourceEventId: SourceEventId,
-    stage: PipelineStage,
+    stage: ProviderCallStage,
   ): Promise<ProviderCallRecord[]> {
     return Promise.resolve(
       [...this.data(ownerId).values()]

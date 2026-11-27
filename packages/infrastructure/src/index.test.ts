@@ -9,6 +9,7 @@ describe("@moneytrace/infrastructure", () => {
       "CryptoIdGenerator",
       "DeepSeekProvider",
       "DocStoreError",
+      "FAKE_TIP_ADVICE",
       "FakeAIProvider",
       "FirestoreAccountRepository",
       "FirestoreAiUsageRecorder",

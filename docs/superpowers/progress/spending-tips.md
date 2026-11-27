@@ -8,7 +8,7 @@ Plan: [`../plans/2026-11-27-spending-tips.md`](../plans/2026-11-27-spending-tips
 | 1 Dashboard figure rules shared from contracts (no figure changed) | done |
 | 2 Tips document, refreshTips contract, `tips` call stage, read policy migration `20261127000000` | done |
 | 3 `tipFacts` | done |
-| 4 Advice validator, `writeTips`, DeepSeek prompt `tips-v1` | todo |
+| 4 Advice validator, `writeTips`, DeepSeek prompt `tips-v1` | done |
 | 5 Tips repository | todo |
 | 6 `RefreshTips` use case | todo |
 | 7 `/api` command and wiring | todo |

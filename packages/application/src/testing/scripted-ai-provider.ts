@@ -1,5 +1,6 @@
 import type { RetrySafety } from "@moneytrace/domain";
-import type { AIProvider, AiContext, AiInterpretation } from "../ports/ai-provider";
+import type { TipsReply } from "@moneytrace/contracts";
+import type { AIProvider, AiContext, AiInterpretation, TipsInput } from "../ports/ai-provider";
 import type { ProviderOutcome } from "../pipeline/provider-call-executor";
 
 /** Plays scripted outcomes and counts calls; the default answer is `unusable`. */
@@ -7,11 +8,15 @@ export class ScriptedAiProvider implements AIProvider {
   readonly id = "scripted";
   readonly model = "scripted-model";
   readonly promptVersion = "scripted-v1";
+  readonly tipsPromptVersion = "scripted-tips-v1";
   readonly retrySafety: RetrySafety;
   calls = 0;
   /** What the last call was sent: the masked text and its context (questions and answers so far). */
   lastInput: { text: string; context: AiContext } | null = null;
   private readonly steps: ProviderOutcome<AiInterpretation>[] = [];
+  tipsCalls = 0;
+  lastTipsInput: TipsInput | null = null;
+  private readonly tipsSteps: ProviderOutcome<TipsReply>[] = [];
 
   constructor(retrySafety: RetrySafety = "none") {
     this.retrySafety = retrySafety;
@@ -29,5 +34,16 @@ export class ScriptedAiProvider implements AIProvider {
     this.calls += 1;
     this.lastInput = input;
     return Promise.resolve(this.steps.shift() ?? { kind: "success", value: { kind: "unusable" } });
+  }
+
+  /** Queues tips outcomes, one per call; the default is no advice. */
+  scriptTips(...steps: ProviderOutcome<TipsReply>[]): void {
+    this.tipsSteps.push(...steps);
+  }
+
+  writeTips(input: TipsInput): Promise<ProviderOutcome<TipsReply>> {
+    this.tipsCalls += 1;
+    this.lastTipsInput = input;
+    return Promise.resolve(this.tipsSteps.shift() ?? { kind: "success", value: { tips: [] } });
   }
 }
