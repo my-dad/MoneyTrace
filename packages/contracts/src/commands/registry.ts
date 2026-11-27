@@ -53,6 +53,7 @@ import {
   requestExportResponse,
 } from "./lifecycle";
 import { recordVisitRequest, recordVisitResponse, updateProfileRequest, updateProfileResponse, updateSettingsRequest, updateSettingsResponse } from "./settings";
+import { refreshTipsRequest, refreshTipsResponse } from "./tips";
 import {
   createUploadSessionRequest,
   createUploadSessionResponse,
@@ -139,6 +140,7 @@ export const COMMANDS = {
   editManualIncome: { phase: 1, request: editManualIncomeRequest, response: editManualIncomeResponse },
   updateProfile: { phase: 1, request: updateProfileRequest, response: updateProfileResponse },
   recordVisit: { phase: 1, request: recordVisitRequest, response: recordVisitResponse },
+  refreshTips: { phase: 1, request: refreshTipsRequest, response: refreshTipsResponse },
   requestExport: { phase: 4, request: requestExportRequest, response: requestExportResponse },
   requestAccountDeletion: {
     phase: 4,

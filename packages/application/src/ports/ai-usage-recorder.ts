@@ -1,4 +1,4 @@
-import type { OwnerId, PipelineStage } from "@moneytrace/domain";
+import type { OwnerId, ProviderCallStage } from "@moneytrace/domain";
 
 /** Mirrors the `aiUsage` document schema. */
 export type AIUsageRecord = {
@@ -13,7 +13,7 @@ export type AIUsageRecord = {
   errorCode?: string;
   userApprovedRetry: boolean;
   sourceEventId: string;
-  stage: PipelineStage;
+  stage: ProviderCallStage;
   attempt: number;
   createdAtMs: number;
 };

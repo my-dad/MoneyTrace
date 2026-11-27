@@ -6,7 +6,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const migration = (name: string) =>
   readFileSync(fileURLToPath(new URL(`../../../../supabase/migrations/${name}`, import.meta.url)), "utf8");
-const POLICY = migration("20261113000100_docs_read_policy.sql");
+/** The newest read policy: each migration that changes it replaces the one before. */
+const POLICY = migration("20261127000000_tips_read_policy.sql");
 
 const ALICE = "00000000-0000-4000-8000-00000000000a";
 const BOB = "00000000-0000-4000-8000-00000000000b";
@@ -26,6 +27,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
   await db.exec(migration("20261113000000_docs.sql"));
+  await db.exec(migration("20261113000100_docs_read_policy.sql"));
   await db.exec(POLICY);
   const put = (path: string, owner: string | null) => {
     const segs = path.split("/");

@@ -185,6 +185,22 @@ const valid = {
     completedAtMs: null,
   },
   merchantSectors: { id: "foodpanda", merchantName: "Foodpanda", sector: "food", updatedAtMs: 1 },
+  tips: {
+    id: "current",
+    month: "2026-11",
+    status: "ready",
+    facts: [{ id: "unsorted", kind: "unsorted", amountMinor: 250000, headline: "৳2,500 isn't sorted yet", detail: "Sorting it shows where it went" }],
+    advice: { unsorted: "Sorting a few shops each week keeps the picture clear." },
+    factsHash: "h1",
+    generatedAtMs: 1,
+    aiDay: "2026-11-27",
+    aiFactsHash: "h1",
+    adviceAtMs: 1,
+    model: "deepseek-flash",
+    promptVersion: "tips-v1",
+    forcedDay: null,
+    forcedToday: 0,
+  },
 } as const;
 
 describe("owner collection schemas", () => {
@@ -276,5 +292,11 @@ describe("owner collection schemas", () => {
     expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, status: "pending", pendingReason: "aiQuestion", clarifications: [q, q, q] }).success).toBe(true);
     expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, clarifications: [q, q, q, q] }).success).toBe(false);
     expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, matchKind: "transferCounterpart" }).success).toBe(true);
+  });
+
+  it("provider calls and AI usage may belong to tips; a source event's stage may not", () => {
+    expect(OWNER_COLLECTIONS.providerCalls.safeParse({ ...valid.providerCalls, stage: "tips", sourceEventId: "tips-2026-11-27-auto" }).success).toBe(true);
+    expect(OWNER_COLLECTIONS.aiUsage.safeParse({ ...valid.aiUsage, stage: "tips" }).success).toBe(true);
+    expect(OWNER_COLLECTIONS.sourceEvents.safeParse({ ...valid.sourceEvents, parkedStage: "tips" }).success).toBe(false);
   });
 });

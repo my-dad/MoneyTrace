@@ -13,6 +13,9 @@ export type SourceEventStatus =
 
 export type PipelineStage = "normalize" | "interpret" | "match" | "decide" | "post";
 
+/** What a provider call belongs to: a pipeline stage, or tips (which have no source event). */
+export type ProviderCallStage = PipelineStage | "tips";
+
 export type PendingReason = "awaitingClarification" | "aiQuotaExhausted" | "providerOutcomeUnknown" | "aiQuestion";
 
 export type DeadLetterReason =

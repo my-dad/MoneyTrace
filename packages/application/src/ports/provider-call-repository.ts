@@ -1,6 +1,7 @@
 import type {
   OwnerId,
   PipelineStage,
+  ProviderCallStage,
   ProviderCallState,
   RetrySafety,
   SourceEventId,
@@ -8,7 +9,7 @@ import type {
 
 export type ProviderCallKey = {
   sourceEventId: SourceEventId;
-  stage: PipelineStage;
+  stage: ProviderCallStage;
   providerId: string;
 };
 
@@ -16,7 +17,7 @@ export type ProviderCallKey = {
 export type ProviderCallRecord = {
   id: string;
   sourceEventId: string;
-  stage: PipelineStage;
+  stage: ProviderCallStage;
   providerId: string;
   retrySafety: RetrySafety;
   state: ProviderCallState;

@@ -134,6 +134,12 @@ Path: `users/{ownerId}/merchantSectors/{merchantKey}`
 
 Fields: id (the merchant key: lowercase letters and digits, from `normalizeMerchant`), merchantName, sector (a sector id from `SECTOR_IDS`), updatedAtMs. The user's own sector for a merchant, read when spending posts and written by `tagMerchant`. Server-only.
 
+### tips
+
+Path: `users/{ownerId}/tips/current`
+
+Fields: id (`current`), month (`YYYY-MM`, Dhaka), status (`ready`, `factsOnly`, `notEnoughData`), facts (up to 3 `TipFact`: id, kind, sector?, amountMinor, compareMinor?, headline, detail, all worked out by our code), advice (fact id → advice, at most 200 characters, no digits), factsHash, generatedAtMs, aiDay and aiFactsHash (the last AI call), adviceAtMs, model?, promptVersion?, forcedDay and forcedToday (the "New tips" count). Written only by `refreshTips`. The client reads it.
+
 ## Balance projection
 
 Balances are written inside the ledger commit transaction. They hold `debitMinusCreditMinor`. They can always be recomputed from `ledgerEntries`, and a test proves this (Task 9).

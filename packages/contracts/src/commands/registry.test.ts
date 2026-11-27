@@ -62,6 +62,7 @@ const EXAMPLES: Record<CommandName, unknown> = {
   editManualIncome: { idempotencyKey: "k2", sourceEventId: "se1", amountMinor: 1800000, from: "rent" },
   updateProfile: { displayName: "Mabrur", avatar: { kind: "initials", color: "teal" } },
   recordVisit: {},
+  refreshTips: { force: false },
   requestExport: {},
   requestAccountDeletion: { confirmation: "DELETE MY ACCOUNT" },
 };
@@ -109,6 +110,7 @@ const RESPONSES: Record<CommandName, Record<string, unknown>> = {
   editManualIncome: { status: "recorded" },
   updateProfile: { updated: true },
   recordVisit: { previousSeenAtMs: null },
+  refreshTips: { outcome: "made" },
   requestExport: { requestId: "r" },
   requestAccountDeletion: { requestId: "r" },
 };
@@ -131,7 +133,7 @@ const names = Object.keys(COMMANDS);
 describe("COMMANDS", () => {
   it("has an example for every command and none extra", () => {
     expect(Object.keys(EXAMPLES).sort()).toEqual([...names].sort());
-    expect(names.length).toBe(29);
+    expect(names.length).toBe(30);
   });
   it.each(names)("%s accepts its valid example", (name) => {
     const c = COMMANDS[name as CommandName];

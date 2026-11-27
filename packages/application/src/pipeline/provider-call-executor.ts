@@ -1,7 +1,7 @@
 import {
   nextProviderAction,
   type OwnerId,
-  type PipelineStage,
+  type ProviderCallStage,
   type RetrySafety,
   type SourceEventId,
 } from "@moneytrace/domain";
@@ -43,7 +43,7 @@ export type ExecuteResult<T> =
 export type ExecuteParams<T> = {
   ownerId: OwnerId;
   sourceEventId: SourceEventId;
-  stage: PipelineStage;
+  stage: ProviderCallStage;
   provider: { id: string; retrySafety: RetrySafety };
   estimateMicroUsd: number;
   /** The adapter call. It receives the stable request key and a signal that aborts at the timeout. */
