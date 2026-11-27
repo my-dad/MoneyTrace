@@ -12,10 +12,13 @@ export class InMemoryTips implements TipsRepository {
     return Promise.resolve(row === undefined ? null : copy(row));
   }
 
-  save(ownerId: OwnerId, fields: TipsFields): Promise<void> {
-    const current = this.rows.get(ownerId);
-    this.rows.set(ownerId, copy({ ...fields, id: "current", forcedDay: current?.forcedDay ?? null, forcedToday: current?.forcedToday ?? 0 }));
-    return Promise.resolve();
+  update(ownerId: OwnerId, next: (current: TipsDoc | null) => TipsFields | null): Promise<TipsDoc | null> {
+    const current = this.rows.get(ownerId) ?? null;
+    const fields = next(current === null ? null : copy(current));
+    if (fields === null) return Promise.resolve(current === null ? null : copy(current));
+    const stored = copy({ ...fields, id: "current", forcedDay: current?.forcedDay ?? null, forcedToday: current?.forcedToday ?? 0 });
+    this.rows.set(ownerId, stored);
+    return Promise.resolve(copy(stored));
   }
 
   claimForced(ownerId: OwnerId, dhakaDay: string, max: number): Promise<number | null> {

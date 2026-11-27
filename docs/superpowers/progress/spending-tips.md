@@ -43,6 +43,6 @@ This changes `/api` and adds migration `20261127000000_tips_read_policy.sql`, so
 | M10 New tips hidden when nothing stands out | done |
 | M8 Long-time users early in the month see "after a few spends this month" | done |
 | M12 A missing DeepSeek key still saves the figures | done |
-| M5 Concurrent refreshes never save older facts or drop newer advice | todo |
+| M5 Concurrent refreshes never save older facts or drop newer advice | done |
 | M6 Two tabs opening at once make one AI call, no false "worker died" | todo |
 | M11 A tips call's stored result is cleared once its advice is saved | todo |

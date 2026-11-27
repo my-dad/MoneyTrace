@@ -177,6 +177,33 @@ describe("RefreshTips", () => {
     expect(doc?.status).toBe("ready");
   });
 
+  it("a refresh that finishes while another waits on the AI is never overwritten with older figures", async () => {
+    await seedMonth();
+    adviseAll(2);
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    const other = new RefreshTips({ reader: ledger, tips, writer: gateway, hasher: new TestHasher(), clock, logger });
+    let interleaved = false;
+    const slow = {
+      tipsIdentity: gateway.tipsIdentity,
+      writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
+        if (!interleaved) {
+          interleaved = true;
+          // While this New tips waits on DeepSeek, an SMS posts and another tab refreshes.
+          await spend("food", 100000, dhaka(2026, 11, 6, 9));
+          await other.execute({ ownerId: alice, force: false });
+        }
+        return gateway.writeTips(...args);
+      },
+    };
+    const first = new RefreshTips({ reader: ledger, tips, writer: slow, hasher: new TestHasher(), clock, logger });
+    await first.execute({ ownerId: alice, force: true });
+    const doc = await tips.get(alice);
+    expect(doc?.facts.find((f) => f.id === "sectorUp:food")?.amountMinor).toBe(394000);
+    expect(Object.keys(doc?.advice ?? {}).sort()).toEqual([...IDS].sort());
+    expect(doc?.status).toBe("ready");
+  });
+
   it("a cash withdrawal is never spending; it shows as unexplained cash", async () => {
     await seedMonth();
     await post({ type: "withdrawal", bank, cash: pocket, amount: Money.ofMinor(500000, "BDT") }, dhaka(2026, 11, 5));
