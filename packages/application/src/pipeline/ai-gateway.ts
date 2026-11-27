@@ -30,6 +30,11 @@ export class AIGateway {
    * Tips have no source event: the request key (`tips-<day>-auto`, `tips-<day>-new-<n>`) takes its
    * place, so each key is one durable, metered call and a repeat reuses its stored result.
    */
+  /** Clears the stored reply of a tips call once its checked advice is saved (data minimization). */
+  purgeTipsResult(ownerId: OwnerId, requestKey: string): Promise<void> {
+    return this.executor.purgeTipsResult(ownerId, { sourceEventId: asSourceEventId(requestKey), stage: "tips", providerId: this.provider.id });
+  }
+
   writeTips(ownerId: OwnerId, requestKey: string, input: TipsInput): Promise<ExecuteResult<TipsReply>> {
     return this.executor.execute<TipsReply>({
       ownerId,

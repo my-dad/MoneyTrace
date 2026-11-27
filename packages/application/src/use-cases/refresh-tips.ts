@@ -14,7 +14,7 @@ import { validateAdvice } from "../tips/validate-advice";
 /** How long an automatic AI call holds its claim: past the function's own time limit, so it has ended. */
 const AI_CALL_CLAIM_MS = PIPELINE_TIMEOUTS.functionExecutionTimeoutMs;
 
-export type TipsWriter = Pick<AIGateway, "writeTips" | "tipsIdentity">;
+export type TipsWriter = Pick<AIGateway, "writeTips" | "tipsIdentity" | "purgeTipsResult">;
 
 export type RefreshTipsOutcome = "made" | "unchanged" | "factsOnly" | "notEnoughData" | "limitReached";
 
@@ -101,9 +101,11 @@ export class RefreshTips {
     const advice = call.kind === "result" ? validateAdvice(call.value, facts) : {};
     if (Object.keys(advice).length === 0) {
       await this.finish(ownerId, claimed, called, {});
+      if (call.kind === "result") await this.forget(ownerId, requestKey);
       return this.done("factsOnly", facts.length);
     }
     await this.finish(ownerId, claimed, called, advice, { adviceAtMs: nowMs, ...this.deps.writer.tipsIdentity });
+    await this.forget(ownerId, requestKey);
     return this.done("made", facts.length);
   }
 
@@ -111,6 +113,15 @@ export class RefreshTips {
    * Stores the AI call's outcome on whatever is stored now: the figures stay the newest saved (a
    * refresh may have finished meanwhile), and new advice is kept for the facts still shown.
    */
+  /** The reply is no longer needed once its checked advice is saved. Best effort: a failure is logged. */
+  private async forget(ownerId: OwnerId, requestKey: string): Promise<void> {
+    try {
+      await this.deps.writer.purgeTipsResult(ownerId, requestKey);
+    } catch (error) {
+      this.deps.logger.error("tips.purgeFailed", { errorName: error instanceof Error ? error.name : "unknown" });
+    }
+  }
+
   /** Claims the day's automatic AI call, unless one is running or today's was already made. */
   private async claimAutoCall(ownerId: OwnerId, nowMs: number, today: string): Promise<boolean> {
     const claim = { ok: false };

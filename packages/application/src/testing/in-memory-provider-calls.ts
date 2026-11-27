@@ -176,6 +176,16 @@ export class InMemoryProviderCalls implements ProviderCallRepository {
     });
   }
 
+  purgeTipsResult(ownerId: OwnerId, id: string, nowMs: number): Promise<"purged" | "notTips"> {
+    return run(() => {
+      const r = this.require(ownerId, id);
+      if (r.stage !== "tips") return "notTips" as const;
+      const next = decidePurgeResult(r, nowMs);
+      if (next !== null) this.update(ownerId, id, next);
+      return "purged" as const;
+    });
+  }
+
   listPurgeCandidates(terminalAtOrBeforeMs: number, limit: number): Promise<PurgeCandidate[]> {
     return Promise.resolve(
       this.events

@@ -270,6 +270,7 @@ export function composeDeps(
         tips: new FirestoreTipsRepository(db),
         writer: {
           writeTips: (...args: Parameters<AIGateway["writeTips"]>) => aiGateway().writeTips(...args),
+          purgeTipsResult: (...args: Parameters<AIGateway["purgeTipsResult"]>) => aiGateway().purgeTipsResult(...args),
           get tipsIdentity() {
             return aiGateway().tipsIdentity;
           },

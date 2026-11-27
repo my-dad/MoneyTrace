@@ -1,4 +1,4 @@
-import { Money, asAccountId, asIdempotencyKey, asOwnerId, asTransactionId, type PostingIntent } from "@moneytrace/domain";
+import { Money, asAccountId, asIdempotencyKey, asOwnerId, asSourceEventId, asTransactionId, type PostingIntent } from "@moneytrace/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "../pipeline/ai-gateway";
 import { CapturingLogger, FakeClock, TestHasher } from "../testing/fakes";
@@ -86,6 +86,18 @@ describe("RefreshTips", () => {
     });
   });
 
+  it("once the advice is saved, the AI call's stored reply is cleared", async () => {
+    await seedMonth();
+    adviseAll();
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    await new RefreshTips({ reader: ledger, tips, writer: gateway, hasher: new TestHasher(), clock, logger }).execute({ ownerId: alice, force: false });
+    const [call] = await world.calls.listForStage(alice, asSourceEventId("tips-2026-11-06-auto"), "tips");
+    expect(call?.state).toBe("purged");
+    expect(call?.result).toBeUndefined();
+    expect(Object.keys((await tips.get(alice))?.advice ?? {})).toHaveLength(3);
+  });
+
   it("opening again the same day makes no AI call", async () => {
     await seedMonth();
     adviseAll(2);
@@ -144,6 +156,7 @@ describe("RefreshTips", () => {
     const writer = {
       tipsIdentity: { model: "m", promptVersion: "v" },
       writeTips: () => Promise.reject(new Error("DEEPSEEK_API_KEY is not configured")),
+      purgeTipsResult: () => Promise.resolve(),
     };
     const r = new RefreshTips({ reader: ledger, tips, writer, hasher: new TestHasher(), clock, logger });
     expect(await r.execute({ ownerId: alice, force: false })).toEqual({ outcome: "factsOnly" });
@@ -186,6 +199,7 @@ describe("RefreshTips", () => {
     const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
     const slowProvider = {
       tipsIdentity: gateway.tipsIdentity,
+      purgeTipsResult: (...args: Parameters<AIGateway["purgeTipsResult"]>) => gateway.purgeTipsResult(...args),
       writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
         const out = gateway.writeTips(...args);
         await held;
@@ -205,7 +219,7 @@ describe("RefreshTips", () => {
   it("a claim left by a call that never finished expires", async () => {
     await seedMonth();
     adviseAll();
-    const stuck = { tipsIdentity: { model: "m", promptVersion: "v" }, writeTips: () => new Promise<never>(() => undefined) };
+    const stuck = { tipsIdentity: { model: "m", promptVersion: "v" }, writeTips: () => new Promise<never>(() => undefined), purgeTipsResult: () => Promise.resolve() };
     void new RefreshTips({ reader: ledger, tips, writer: stuck, hasher: new TestHasher(), clock, logger }).execute({ ownerId: alice, force: false });
     await vi.waitFor(async () => { expect((await tips.get(alice))?.aiCallUntilMs).toBeGreaterThan(NOW); });
     clock.advance(3 * 60_000);
@@ -221,6 +235,7 @@ describe("RefreshTips", () => {
     let interleaved = false;
     const slow = {
       tipsIdentity: gateway.tipsIdentity,
+      purgeTipsResult: (...args: Parameters<AIGateway["purgeTipsResult"]>) => gateway.purgeTipsResult(...args),
       writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
         if (!interleaved) {
           interleaved = true;

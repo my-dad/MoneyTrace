@@ -193,6 +193,19 @@ export class FirestoreProviderCallRepository implements ProviderCallRepository {
     );
   }
 
+  purgeTipsResult(ownerId: OwnerId, id: string, nowMs: number): Promise<"purged" | "notTips"> {
+    return this.db.runTransaction(
+      async (t) => {
+        const call = await this.require(t, ownerId, id);
+        if (call.stage !== "tips") return "notTips" as const;
+        const next = decidePurgeResult(call, nowMs);
+        if (next !== null) t.set(this.callRef(ownerId, id), providerCallToDoc(next));
+        return "purged" as const;
+      },
+      { maxAttempts: MAX_ATTEMPTS },
+    );
+  }
+
   /**
    * Equality on `providerResultsPurged` plus a range on `terminalAtMs` needs the composite index
    * in `firestore.indexes.json`.
