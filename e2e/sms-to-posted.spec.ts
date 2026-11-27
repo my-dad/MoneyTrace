@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./csp-guard";
 
 // SMS in the corpus formats, dated today in Dhaka so they land in the dashboard's current month.
 const dhaka = (offsetMinutes: number) => new Date(Date.now() + 6 * 3_600_000 - offsetMinutes * 60_000);

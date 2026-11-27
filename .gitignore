@@ -53,3 +53,7 @@ apps/web/out/
 supabase/functions/api/bundle.mjs
 supabase-functions.log
 supabase/.temp/
+
+# backup private keys and encrypted dumps (tools/backup), never commit
+*.key
+*.age

@@ -43,9 +43,20 @@ export function detectSensitiveContent(text: string): SensitiveKind | null {
   return null;
 }
 
+const lastFour = (digits: string) => `**${digits.slice(-4)}`;
+/** A number written in groups ("1234-5678-9012", "017 1234 5678"); masked only at 9+ digits, so dates stay. */
+const GROUPED_NUMBER = /(?<![\d.,/:])\d{3,6}(?:[ -]\d{2,6})+(?![\d.,/:]*\d)/g;
+/** Digits glued to an account label or a bank's placeholder: "A/C1234567890", "XXXX1234567890". */
+const LABELLED_NUMBER = /((?<![A-Za-z])(?:a\/c|acc(?:oun)?t|ac)\s*(?:no\.?|number|#|:)?\s*|[X*]{2,})(\d{8,})(?!\d)/gi;
+
 /** Hides account, phone and client numbers before evidence is stored or sent to a provider. */
 export function maskIdentifiers(text: string): string {
   return text
     .replace(/(Client ID\s*#?\s*|CL ID\s*:?\s*|ID#\s*)\d+/gi, "$1**")
-    .replace(/(?<![A-Za-z0-9])\d{8,}(?![A-Za-z0-9])/g, (run) => `**${run.slice(-4)}`);
+    .replace(GROUPED_NUMBER, (run) => {
+      const digits = run.replace(/\D/g, "");
+      return digits.length >= 9 ? lastFour(digits) : run;
+    })
+    .replace(LABELLED_NUMBER, (_, label: string, digits: string) => `${label}${lastFour(digits)}`)
+    .replace(/(?<![A-Za-z0-9])\d{8,}(?![A-Za-z0-9])/g, lastFour);
 }
