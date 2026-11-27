@@ -68,6 +68,11 @@ describe("validateAdvice", () => {
     expect(one("The unexplained cash was probably spent on meals.")).toBeUndefined();
   });
 
+  it("an abbreviation is not a sentence end", () => {
+    expect(one("Cook simple meals at home, e.g. rice and dal. It adds up.")).toBe("Cook simple meals at home, e.g. rice and dal. It adds up.");
+    expect(one("Ask Dr. Rahman about cheaper generics. Compare prices too.")).toBe("Ask Dr. Rahman about cheaper generics. Compare prices too.");
+  });
+
   it("keeps small counts in words", () => {
     expect(one("Try two fewer takeaways a week.")).toBe("Try two fewer takeaways a week.");
   });
