@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import corpus from "../../../fixtures/sms/corpus.json";
 import { pgliteStore } from "../../../packages/infrastructure/test/support/pglite";
 import type { PgDocStore } from "@moneytrace/infrastructure";
@@ -287,6 +287,52 @@ describe("/api runs the SMS pipeline without a trigger", () => {
     expect((await store.doc(`users/alice/sourceEvents/${second}`).get()).get("status")).toBe("received");
     expect((await a.send({ job: "advancePending" }, { "x-cron-secret": CRON })).status).toBe(200);
     expect((await store.doc(`users/alice/sourceEvents/${second}`).get()).get("status")).not.toBe("received");
+  });
+});
+
+describe("/api never lets an unexpected error reach the platform log", () => {
+  // Postgres errors can quote a failing row, SMS text included; the platform prints whatever escapes.
+  const LEAK = 'Failing row contains (users/alice, {"retainedText":"TK 15,000.00 credited to A/C**8888"})';
+  const printed = () =>
+    [console.log, console.error, console.warn, console.info].flatMap((f) => vi.mocked(f).mock.calls.map((c) => c.map(String).join(" ")));
+  beforeEach(() => {
+    for (const m of ["log", "error", "warn", "info"] as const) vi.spyOn(console, m).mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  const handler = (overrides: Partial<Parameters<typeof createApiHandler>[0]>) =>
+    createApiHandler({
+      getDeps: () => composeDeps(store, OPEN_ENV),
+      verifyCaller: () => Promise.resolve(undefined),
+      cronSecret: CRON,
+      allowedOrigins: [ORIGIN],
+      background: () => undefined,
+      nowMs: () => Date.now(),
+      ...overrides,
+    });
+  const post = (handle: ReturnType<typeof createApiHandler>, body: unknown, headers: Record<string, string>) =>
+    handle(new Request("https://x/functions/v1/api", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
+
+  it("when checking the sign-in fails: answers `internal` and logs only the error's name", async () => {
+    const handle = handler({ verifyCaller: () => Promise.reject(new TypeError(LEAK)) });
+    const res = await post(handle, { command: "bootstrapUser", data: {} }, { authorization: "Bearer user:alice" });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: { code: "internal", message: "internal" } });
+    expect(printed().join("\n")).not.toContain("15,000");
+    expect(printed().map((l) => JSON.parse(l) as unknown)).toContainEqual({ level: "error", event: "api.unhandled", errorName: "TypeError" });
+  });
+
+  it("when a scheduled job can't even start: the same", async () => {
+    const handle = handler({
+      getDeps: () => {
+        throw new RangeError(LEAK);
+      },
+    });
+    const res = await post(handle, { job: "recoverExpiredClaims" }, { "x-cron-secret": CRON });
+    expect(res.status).toBe(500);
+    expect(printed().join("\n")).not.toContain("15,000");
+    expect(printed().map((l) => JSON.parse(l) as unknown)).toContainEqual({ level: "error", event: "api.unhandled", errorName: "RangeError" });
   });
 });
 

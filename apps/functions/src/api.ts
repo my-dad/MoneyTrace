@@ -46,19 +46,52 @@ function sameSecret(a: string, b: string): boolean {
   return diff === 0;
 }
 
+function corsHeaders(cfg: ApiConfig, req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  return origin !== null && cfg.allowedOrigins.includes(origin)
+    ? {
+        "access-control-allow-origin": origin,
+        "access-control-allow-headers": "authorization, content-type, apikey, x-client-info",
+        "access-control-allow-methods": "POST, OPTIONS",
+        "access-control-max-age": "600",
+        vary: "origin",
+      }
+    : {};
+}
+
+/**
+ * Logs an error nothing else caught, by its name only. The platform would print the whole error,
+ * and a database error can quote the row it failed on, SMS text included.
+ */
+function logUnhandled(cfg: ApiConfig, e: unknown): void {
+  const name = e instanceof Error ? e.name : "unknown";
+  const errorName = /^[A-Za-z0-9_]{1,64}$/.test(name) ? name : "unknown";
+  try {
+    cfg.getDeps().logger.error("api.unhandled", { errorName });
+  } catch {
+    console.log(JSON.stringify({ level: "error", event: "api.unhandled", errorName }));
+  }
+}
+
+/** Every request ends in a response from us: nothing reaches the platform's own error log. */
 export function createApiHandler(cfg: ApiConfig): (req: Request) => Promise<Response> {
+  const handle = createUnguardedHandler(cfg);
   return async (req) => {
-    const origin = req.headers.get("origin");
-    const cors: Record<string, string> =
-      origin !== null && cfg.allowedOrigins.includes(origin)
-        ? {
-            "access-control-allow-origin": origin,
-            "access-control-allow-headers": "authorization, content-type, apikey, x-client-info",
-            "access-control-allow-methods": "POST, OPTIONS",
-            "access-control-max-age": "600",
-            vary: "origin",
-          }
-        : {};
+    try {
+      return await handle(req);
+    } catch (e) {
+      logUnhandled(cfg, e);
+      return new Response(JSON.stringify({ error: { code: "internal", message: "internal" } }), {
+        status: 500,
+        headers: { ...corsHeaders(cfg, req), "content-type": "application/json" },
+      });
+    }
+  };
+}
+
+function createUnguardedHandler(cfg: ApiConfig): (req: Request) => Promise<Response> {
+  return async (req) => {
+    const cors = corsHeaders(cfg, req);
     const json = (status: number, body: unknown) =>
       new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json" } });
     const refuse = (code: WireCode, message: string) => json(HTTP_STATUS[code], { error: { code, message } });

@@ -31,4 +31,10 @@ GitHub, DeepSeek) and release-checklist C3, D5, D6, B2 are Mabrur's.
   formats pasted before and again after this change is not caught by the hash; matching still
   marks it a duplicate by reference or asks the user (same amount, account, time). Evidence:
   `pnpm verify` 2132 passed (parser corpus included).
-- [ ] 4. Logs: `/api` never logs raw SMS text, tokens or identifiers.
+- [x] 4. Logs. Already sound: `JsonLogger` emits only allowlisted fields whose values are
+  ID-like tokens, so free text can't reach a log line; every call site logs error names, not
+  messages; the web app never logs. Gap fixed: token verification, `getDeps` and scheduled jobs ran
+  outside `/api`'s try, so their errors reached the platform, which prints the whole message (a
+  Postgres error can quote the failing row). `createApiHandler` now catches everything, logs
+  `api.unhandled` with the error name only, and answers `internal`. Evidence: `pnpm verify` 2134
+  passed; `pnpm smoke:supabase` loads the bundle under Deno.
