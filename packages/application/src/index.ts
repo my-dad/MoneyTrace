@@ -62,3 +62,4 @@ export * from "./planned-quota-ledger";
 export * from "./tips/tip-facts";
 export * from "./tips/validate-advice";
 export * from "./ports/tips-repository";
+export * from "./use-cases/refresh-tips";
