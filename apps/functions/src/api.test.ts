@@ -113,6 +113,20 @@ describe("/api gate", () => {
   });
 });
 
+describe("refreshTips", () => {
+  it("a new user has not enough spending for tips yet", async () => {
+    const { ok } = api();
+    await ok("alice", "bootstrapUser");
+    expect(await ok("alice", "refreshTips", { force: false })).toEqual({ outcome: "notEnoughData" });
+  });
+
+  it("refuses a request that isn't the contract", async () => {
+    const { ok, call } = api();
+    await ok("alice", "bootstrapUser");
+    expect(await call("alice", "refreshTips", { force: "yes" })).toEqual({ status: 400, body: { error: { code: "invalid-argument", message: "invalid request" } } });
+  });
+});
+
 describe("AI plans (CR-009)", () => {
   it("the OWNER_EMAIL account becomes the owner at first sign-in; everyone else is a member", async () => {
     const env = { ...OPEN_ENV, OWNER_EMAIL: " Mabrur@Example.com " };

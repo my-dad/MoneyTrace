@@ -4,11 +4,13 @@ import type {
   AiContext,
   AiInterpretation,
   ProviderOutcome,
+  TipsInput,
 } from "@moneytrace/application";
-import { aiInterpretationSchema } from "@moneytrace/contracts";
+import { aiInterpretationSchema, tipsReplySchema, type TipsReply } from "@moneytrace/contracts";
 import { providerSlug, type CandidateTransaction } from "@moneytrace/domain";
 import { z } from "zod";
 import { INTERPRET_PROMPT_VERSION, buildInterpretMessages } from "./prompts/interpret-v2";
+import { TIPS_PROMPT_VERSION, buildTipsMessages } from "./prompts/tips-v1";
 
 export type DeepSeekConfig = {
   apiKey: string;
@@ -20,6 +22,19 @@ export type DeepSeekConfig = {
 
 const MODEL = "deepseek-flash";
 const MAX_OUTPUT_TOKENS = 800;
+const MAX_TIPS_OUTPUT_TOKENS = 400;
+const NO_ADVICE: TipsReply = { tips: [] };
+
+function toTipsReply(content: string): TipsReply {
+  try {
+    const parsed = tipsReplySchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : NO_ADVICE;
+  } catch {
+    return NO_ADVICE;
+  }
+}
+
+type Message = { role: "system" | "user"; content: string };
 /** These responses mean the request was refused rather than processed. */
 const REFUSED = new Set([400, 401, 402, 422, 429]);
 
@@ -74,7 +89,7 @@ function toInterpretation(content: string): AiInterpretation {
   return { kind: "transaction", confidenceBp: output.confidenceBp, candidate: toCandidate(output.candidate) };
 }
 
-function networkOutcome(error: unknown): ProviderOutcome<AiInterpretation> {
+function networkOutcome(error: unknown): ProviderOutcome<never> {
   if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
     return { kind: "unknown", code: "timeout" };
   }
@@ -93,6 +108,7 @@ export class DeepSeekProvider implements AIProvider {
   readonly id = "deepseek";
   readonly model = MODEL;
   readonly promptVersion = INTERPRET_PROMPT_VERSION;
+  readonly tipsPromptVersion = TIPS_PROMPT_VERSION;
   readonly retrySafety = "none" as const;
   private readonly config: DeepSeekConfig;
 
@@ -105,6 +121,21 @@ export class DeepSeekProvider implements AIProvider {
     _requestKey: string,
     signal: AbortSignalLike,
   ): Promise<ProviderOutcome<AiInterpretation>> {
+    return this.complete(buildInterpretMessages(input.text, input.context), MAX_OUTPUT_TOKENS, signal, toInterpretation, UNUSABLE);
+  }
+
+  async writeTips(input: TipsInput, _requestKey: string, signal: AbortSignalLike): Promise<ProviderOutcome<TipsReply>> {
+    return this.complete(buildTipsMessages(input), MAX_TIPS_OUTPUT_TOKENS, signal, toTipsReply, NO_ADVICE);
+  }
+
+  /** One JSON-mode chat completion; any 200 is `success`, with `fallback` when its content is unusable. */
+  private async complete<T>(
+    messages: Message[],
+    maxTokens: number,
+    signal: AbortSignalLike,
+    read: (content: string) => T,
+    fallback: T,
+  ): Promise<ProviderOutcome<T>> {
     let response: Response;
     try {
       response = await this.config.fetchImpl(`${this.config.baseUrl}/chat/completions`, {
@@ -115,9 +146,9 @@ export class DeepSeekProvider implements AIProvider {
         },
         body: JSON.stringify({
           model: MODEL,
-          messages: buildInterpretMessages(input.text, input.context),
+          messages,
           response_format: { type: "json_object" },
-          max_tokens: MAX_OUTPUT_TOKENS,
+          max_tokens: maxTokens,
           stream: false,
         }),
         signal: signal as AbortSignal,
@@ -131,24 +162,17 @@ export class DeepSeekProvider implements AIProvider {
         ? { kind: "definiteFailure", code }
         : { kind: "unknown", code };
     }
-    return this.fromBody(response);
-  }
-
-  private async fromBody(response: Response): Promise<ProviderOutcome<AiInterpretation>> {
     let body: unknown;
     try {
       body = await response.json();
     } catch {
-      return { kind: "success", value: UNUSABLE };
+      return { kind: "success", value: fallback };
     }
     const parsed = responseSchema.safeParse(body);
-    if (!parsed.success) return { kind: "success", value: UNUSABLE };
+    if (!parsed.success) return { kind: "success", value: fallback };
     const [choice] = parsed.data.choices;
     const content = choice?.message.content ?? "";
-    const value =
-      choice?.finish_reason === "stop" && content.trim() !== ""
-        ? toInterpretation(content)
-        : UNUSABLE;
+    const value = choice?.finish_reason === "stop" && content.trim() !== "" ? read(content) : fallback;
     const actualMicroUsd = this.costOf(parsed.data.usage);
     return actualMicroUsd === undefined
       ? { kind: "success", value }

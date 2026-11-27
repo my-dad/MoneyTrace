@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { avatarSchema, sectorSchema } from "../sectors";
+import { MAX_TIPS, TIP_ADVICE_MAX, tipFactSchema } from "../tips";
 import {
   basisPoints,
   currencyCode,
@@ -26,6 +27,8 @@ const ledgerAccountKind = z.enum([
   "equity",
 ]);
 const stage = z.enum(["normalize", "interpret", "match", "decide", "post"]);
+/** A provider call belongs to a pipeline stage, or to tips (no source event behind it). */
+const callStage = z.enum(["normalize", "interpret", "match", "decide", "post", "tips"]);
 
 const intentType = z.enum([
   "withdrawal",
@@ -194,7 +197,7 @@ const providerCalls = z
   .object({
     id: documentId,
     sourceEventId: documentId,
-    stage,
+    stage: callStage,
     providerId: z.string().min(1).max(64),
     retrySafety: z.enum(["idempotentKey", "localPure", "none"]),
     state: z.enum(["started", "succeeded", "failed", "unknown", "purged"]),
@@ -420,7 +423,7 @@ const aiUsage = z
     errorCode: z.string().min(1).max(64).optional(),
     userApprovedRetry: z.boolean(),
     sourceEventId: documentId,
-    stage,
+    stage: callStage,
     attempt: count,
     createdAtMs: epochMs,
   })
@@ -483,6 +486,33 @@ const deletionJobs = z
   })
   .strict();
 
+const dhakaDayText = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** The month's tips, one document `current`. Written only by `/api` (refreshTips). */
+const tips = z
+  .object({
+    id: z.literal("current"),
+    /** The Dhaka month the facts describe, `YYYY-MM`. */
+    month: z.string().regex(/^\d{4}-\d{2}$/),
+    status: z.enum(["ready", "factsOnly", "notEnoughData"]),
+    facts: z.array(tipFactSchema).max(MAX_TIPS),
+    /** Advice by fact id; it holds no numbers, so it stays true while its fact is selected. */
+    advice: z.record(z.string().max(64), z.string().min(1).max(TIP_ADVICE_MAX)),
+    factsHash: z.string().min(1).max(128).nullable(),
+    generatedAtMs: epochMs,
+    /** The Dhaka day and facts hash of the last AI call. */
+    aiDay: dhakaDayText.nullable(),
+    aiFactsHash: z.string().min(1).max(128).nullable(),
+    /** When the stored advice was made. */
+    adviceAtMs: epochMs.nullable(),
+    model: z.string().min(1).max(128).optional(),
+    promptVersion: z.string().min(1).max(64).optional(),
+    /** "New tips" attempts on `forcedDay`. */
+    forcedDay: dhakaDayText.nullable(),
+    forcedToday: count,
+  })
+  .strict();
+
 export const OWNER_COLLECTIONS = {
   accounts,
   paymentInstruments,
@@ -505,9 +535,13 @@ export const OWNER_COLLECTIONS = {
   consents,
   deletionJobs,
   merchantSectors,
+  tips,
 } as const;
 
 export type OwnerCollectionName = keyof typeof OWNER_COLLECTIONS;
+
+/** The stored `tips/current` document. */
+export type TipsDocument = z.output<typeof tips>;
 
 /** The `users/{uid}` document. */
 export const userProfileSchema = z

@@ -1,43 +1,8 @@
-import { foldSector, formatBdt, type SectorId } from "@moneytrace/contracts";
+import { categoryOf, formatBdt, monthRange, netOf, sameTimeLastMonthMs, sectorTotals, SYSTEM_CASH_ACCOUNT_ID, type SectorId } from "@moneytrace/contracts";
 import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow } from "../../shared/read-model-gateway";
 
-/** The system wallet for withdrawn cash with no known place yet. Its balance is never spending. */
-export const SYSTEM_CASH_ACCOUNT_ID = "cash-unassigned";
-
-/** Mirrors the application quota default (packages/application/src/ports/quota-ledger.ts); web can't import application. */
-const HOUR_MS = 3_600_000;
-// Dhaka has no daylight saving: always UTC+6.
-const DHAKA_OFFSET_MS = 6 * HOUR_MS;
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-type DhakaParts = { year: number; month: number; day: number; timeOfDayMs: number };
-
-function dhakaParts(ms: number): DhakaParts {
-  const shifted = new Date(ms + DHAKA_OFFSET_MS);
-  const dayStart = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
-  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth(), day: shifted.getUTCDate(), timeOfDayMs: ms + DHAKA_OFFSET_MS - dayStart };
-}
-
-const monthStartMs = (year: number, month: number): number => Date.UTC(year, month, 1) - DHAKA_OFFSET_MS;
-
-export function monthRange(nowMs: number, offset: number): { fromMs: number; toMs: number; label: string } {
-  const now = dhakaParts(nowMs);
-  const first = new Date(Date.UTC(now.year, now.month + offset, 1));
-  const year = first.getUTCFullYear();
-  const month = first.getUTCMonth();
-  return {
-    fromMs: monthStartMs(year, month),
-    toMs: monthStartMs(year, month + 1) - 1,
-    label: `${MONTH_NAMES[month] ?? ""} ${String(year)}`,
-  };
-}
-
-/** The same day-of-month and time one calendar month earlier, clamped to that month's last day. */
-function oneMonthEarlier(nowMs: number): number {
-  const now = dhakaParts(nowMs);
-  const lastDay = new Date(Date.UTC(now.year, now.month, 0)).getUTCDate();
-  return Date.UTC(now.year, now.month - 1, Math.min(now.day, lastDay)) - DHAKA_OFFSET_MS + now.timeOfDayMs;
-}
+// The figure rules live in contracts, shared with the server's tips; re-exported for this app.
+export { categoryOf, monthRange, SYSTEM_CASH_ACCOUNT_ID };
 
 export type CategoryRow = { category: SectorId; amountMinor: number; percent: number };
 
@@ -56,22 +21,12 @@ export type DashboardView = {
   hasActivity: boolean;
 };
 
-const net = (rows: LedgerEntryRow[], positive: "debit" | "credit"): number =>
-  rows.reduce((sum, row) => sum + (row.side === positive ? row.amountMinor : -row.amountMinor), 0);
-
-/** "nominal:expense:groceries:BDT" in the ledger, "expense-groceries" in the demo, as a sector. */
-export const categoryOf = (accountId: string): SectorId =>
-  foldSector(/^nominal:expense:([^:]+):/.exec(accountId)?.[1] ?? accountId.replace(/^expense-/, ""));
+const net = netOf;
 
 function categoriesOf(expenses: LedgerEntryRow[]): CategoryRow[] {
-  const totals = new Map<SectorId, number>();
-  for (const row of expenses) {
-    const category = categoryOf(row.accountId);
-    totals.set(category, (totals.get(category) ?? 0) + (row.side === "debit" ? row.amountMinor : -row.amountMinor));
-  }
-  const positive = [...totals].filter(([, amount]) => amount > 0).sort((a, b) => b[1] - a[1]);
-  const max = positive[0]?.[1] ?? 0;
-  return positive.map(([category, amountMinor]) => ({ category, amountMinor, percent: Math.round((amountMinor * 100) / max) }));
+  const positive = sectorTotals(expenses);
+  const max = positive[0]?.amountMinor ?? 0;
+  return positive.map(({ sector: category, amountMinor }) => ({ category, amountMinor, percent: Math.round((amountMinor * 100) / max) }));
 }
 
 function comparisonLine(spentMinor: number, previous: LedgerEntryRow[], than: string): string | null {
@@ -97,7 +52,7 @@ export function buildDashboard(input: {
   const unexplained = input.balances.find((b) => b.accountId === SYSTEM_CASH_ACCOUNT_ID)?.debitMinusCreditMinor ?? 0;
   const spentMinor = net(input.expenses, "debit");
   const current = input.offset === 0;
-  const cutoff = oneMonthEarlier(input.nowMs);
+  const cutoff = sameTimeLastMonthMs(input.nowMs);
   const previous = current ? input.previousExpenses.filter((row) => row.occurredAtMs <= cutoff) : input.previousExpenses;
   return {
     spentMinor,

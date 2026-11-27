@@ -23,7 +23,7 @@ import {
   asSourceEventId,
   isTerminal,
   type OwnerId,
-  type PipelineStage,
+  type ProviderCallStage,
   type RetrySafety,
   type SourceEventId,
 } from "@moneytrace/domain";
@@ -160,7 +160,7 @@ export class FirestoreProviderCallRepository implements ProviderCallRepository {
   async listForStage(
     ownerId: OwnerId,
     sourceEventId: SourceEventId,
-    stage: PipelineStage,
+    stage: ProviderCallStage,
   ): Promise<ProviderCallRecord[]> {
     const snap = await this.db
       .collection(ownerPath(ownerId, "providerCalls"))

@@ -3,7 +3,12 @@ import type {
   AiContext,
   AiInterpretation,
   ProviderOutcome,
+  TipsInput,
 } from "@moneytrace/application";
+import type { TipsReply } from "@moneytrace/contracts";
+
+/** The fake's advice for every fact: gentle, no numbers, true of anything. */
+export const FAKE_TIP_ADVICE = "A small, steady change here adds up over the month.";
 
 const CASH_NOTE = /\b(?:paid|spent)\s+(\d+)\b/i;
 
@@ -15,6 +20,7 @@ export class FakeAIProvider implements AIProvider {
   readonly id = "fake";
   readonly model = "fake";
   readonly promptVersion = "fake-v1";
+  readonly tipsPromptVersion = "fake-tips-v1";
   readonly retrySafety = "none" as const;
 
   interpretEvidence(input: {
@@ -38,5 +44,9 @@ export class FakeAIProvider implements AIProvider {
         },
       },
     });
+  }
+
+  writeTips(input: TipsInput): Promise<ProviderOutcome<TipsReply>> {
+    return Promise.resolve({ kind: "success", value: { tips: input.facts.map((f) => ({ factId: f.id, advice: FAKE_TIP_ADVICE })) } });
   }
 }

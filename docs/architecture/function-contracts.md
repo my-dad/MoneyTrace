@@ -343,6 +343,18 @@ Errors: unauthenticated, not-found (no profile yet)
 
 Use case: RecordVisit
 
+### refreshTips
+
+Phase: 1
+
+Request: `{ force: boolean }`. Works out this month's tip figures from the caller's ledger and saves them in `tips/current`. When advice is due it asks DeepSeek, sending totals only, through the AI gateway (quota, metering, durable call), and stores the advice that passes the validator. Without `force` that is at most once per Dhaka day and only if the figures changed since the last AI call. With `force` ("New tips") there are at most 3 attempts per Dhaka day.
+
+Response: `{ outcome: "made" | "unchanged" | "factsOnly" | "notEnoughData" | "limitReached" }`
+
+Errors: unauthenticated, invalid-argument
+
+Use case: RefreshTips
+
 ### requestExport
 
 Phase: 4

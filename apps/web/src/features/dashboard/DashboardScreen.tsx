@@ -1,11 +1,12 @@
 "use client";
 
-import { foldSector, formatBdt } from "@moneytrace/contracts";
+import { foldSector, formatBdt, netOf, SYSTEM_CASH_ACCOUNT_ID } from "@moneytrace/contracts";
 import { Button } from "@moneytrace/ui-kit";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DASHBOARD_COPY } from "../../shared/copy";
+import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { dhakaDate } from "../../shared/dhaka-date";
-import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow } from "../../shared/read-model-gateway";
+import type { TransactionRow, AccountRow, BalanceRow, LedgerEntryRow, ReadModelGateway, SourceEventRow, TipsRow } from "../../shared/read-model-gateway";
 import { useChatOpener } from "../chat/ChatLauncher";
 import { AccountMenu } from "./AccountMenu";
 import { CategoryChart } from "./CategoryChart";
@@ -22,6 +23,8 @@ import { MonthlyBars } from "./MonthlyBars";
 import { TopMerchants } from "./TopMerchants";
 import { SectorPicker, type TagMerchant } from "./SectorPicker";
 import { SourcesList } from "./SourcesList";
+import { TipsCard } from "./TipsCard";
+import { tipsView } from "./tips-view";
 import styles from "./dashboard.module.css";
 
 const RECENT_LIMIT = 10;
@@ -29,6 +32,8 @@ const DAY_MS = 86_400_000;
 /** How far back Recent's spends are read for their sector: well past its ten rows. */
 const RECENT_WINDOW_MS = 120 * DAY_MS;
 const EVENT_WINDOW = 50;
+/** Figures often change in bursts (a sort moves several spends): wait for them to settle. */
+const FIGURES_SETTLE_MS = 1500;
 
 /** The only screen after sign-in. Every figure waits for its first snapshot, so loading never reads as ৳0. */
 export function DashboardScreen({
@@ -41,6 +46,7 @@ export function DashboardScreen({
   cashIncome,
   avatar,
   onEditProfile,
+  refreshTips,
 }: {
   gateway: ReadModelGateway;
   nowMs: number;
@@ -54,6 +60,8 @@ export function DashboardScreen({
   /** The user's picture beside their name. */
   avatar?: ReactNode;
   onEditProfile?: () => void;
+  /** Saves this month's tip figures and asks for advice when due; without it, tips are only read. */
+  refreshTips?: (request: { force: boolean }) => Promise<{ outcome: "made" | "unchanged" | "factsOnly" | "notEnoughData" | "limitReached" }>;
 }) {
   const [offset, setOffset] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -72,6 +80,47 @@ export function DashboardScreen({
   const [sixExpenses, setSixExpenses] = useState<LedgerEntryRow[]>([]);
   const [sixIncome, setSixIncome] = useState<LedgerEntryRow[]>([]);
   const [monthTransactions, setMonthTransactions] = useState<TransactionRow[]>([]);
+  const [tips, setTips] = useState<TipsRow | null>(null);
+  const [tipsBusy, setTipsBusy] = useState(false);
+  const [tipsFailed, setTipsFailed] = useState(false);
+  const [tipsLimit, setTipsLimit] = useState(false);
+  const [tipsDemo, setTipsDemo] = useState(false);
+  const askedForTips = useRef(false);
+
+  /** One tips refresh; the stored tips keep showing while it runs, and its status is honest. */
+  const askTips = useMemo(
+    () => (force: boolean, quiet = false) => {
+      if (refreshTips === undefined) return;
+      // A quiet refresh only re-saves the figures after they changed: no status, no lost state.
+      if (!quiet) {
+        setTipsBusy(true);
+        setTipsFailed(false);
+        setTipsDemo(false);
+      }
+      refreshTips({ force })
+        .then((reply) => {
+          if (quiet) return;
+          setTipsLimit(reply.outcome === "limitReached");
+          // New tips pressed, but no new advice was stored: say so, never "Made today".
+          if (force && reply.outcome === "factsOnly") setTipsFailed(true);
+        })
+        .catch((error: unknown) => {
+          if (quiet) return;
+          // The demo saves nothing: silent when the dashboard opens, said when New tips is pressed.
+          if (error instanceof DemoUnavailableError) setTipsDemo(force);
+          else setTipsFailed(true);
+        })
+        .finally(() => { if (!quiet) setTipsBusy(false); });
+    },
+    [refreshTips],
+  );
+
+  // Once per visit, in the background, and only for the current month (which a visit opens on).
+  useEffect(() => {
+    if (askedForTips.current) return;
+    askedForTips.current = true;
+    askTips(false);
+  }, [askTips]);
 
   const month = useMemo(() => monthRange(nowMs, offset), [nowMs, offset]);
   const prior = useMemo(() => monthRange(nowMs, offset - 1), [nowMs, offset]);
@@ -88,6 +137,7 @@ export function DashboardScreen({
       gateway.watchTransactions(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentTransactions, onError),
       // Income behind Recent, so cash income shows at its amount after any edit.
       gateway.watchIncomeEntries(nowMs - RECENT_WINDOW_MS, nowMs + DAY_MS, setRecentIncome, onError),
+      gateway.watchTips(setTips, onError),
     ];
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, nowMs]);
@@ -119,6 +169,22 @@ export function DashboardScreen({
     return () => { stops.forEach((stop) => { stop(); }); };
   }, [gateway, month, sixMonths]);
 
+  // A sort, a cash count or a new SMS changes the figures: re-save the tips' figures so they keep
+  // matching the tiles (cheap: the server makes no AI call unless one is due).
+  const figuresKey =
+    offset !== 0 || balances === null || expenses === null || income === null
+      ? null
+      : [netOf(expenses, "debit"), expenses.length, netOf(income, "credit"), balances.find((b) => b.accountId === SYSTEM_CASH_ACCOUNT_ID)?.debitMinusCreditMinor ?? 0].join("|");
+  const lastFiguresKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (figuresKey === null) return;
+    const before = lastFiguresKey.current;
+    lastFiguresKey.current = figuresKey;
+    if (before === null || before === figuresKey) return;
+    const timer = setTimeout(() => { askTips(false, true); }, FIGURES_SETTLE_MS);
+    return () => { clearTimeout(timer); };
+  }, [figuresKey, askTips]);
+
   const loading = balances === null || events === null || expenses === null || previous === null || income === null || sourceEntries === null;
   const view = loading
     ? null
@@ -137,6 +203,9 @@ export function DashboardScreen({
     return income === undefined ? item : { ...item, amountMinor: income.amountMinor };
   });
   const editOf = (item: RecentItem): Editable | null => manual.get(item.id) ?? null;
+  /** The unsorted tip sorts the biggest unsorted shop this month, when there is a named one. */
+  const unsortedShop = tagMerchant === undefined ? undefined : merchantsOf(expenses ?? [], monthTransactions).find((m) => m.sector === "uncategorized" && m.key !== "");
+  const sortTip: Sortable | undefined = unsortedShop === undefined ? undefined : { key: unsortedShop.key, name: unsortedShop.name };
 
   let body;
   if (newUser) {
@@ -228,6 +297,18 @@ export function DashboardScreen({
           <MonthlyBars rows={monthlyTotals(sixExpenses, sixIncome, sixMonths)} />
         </div>
         <div>
+          {offset === 0 && (
+            <TipsCard
+              view={tipsView(tips, nowMs)}
+              busy={tipsBusy}
+              failed={tipsFailed}
+              limitReached={tipsLimit}
+              demo={tipsDemo}
+              {...(refreshTips === undefined ? {} : { onNewTips: () => { askTips(true); } })}
+              {...(sortTip === undefined ? {} : { onSort: () => { setSorting(sortTip); } })}
+              {...(chat === null ? {} : { onCountCash: () => { chat.openChat("cashCount"); } })}
+            />
+          )}
           {view.hasActivity && (
             <TopMerchants rows={topMerchants(merchantsOf(expenses ?? [], monthTransactions))} {...(tagMerchant === undefined ? {} : { onSort: setSorting })} />
           )}
@@ -286,8 +367,6 @@ export function DashboardScreen({
       {sorting !== null && tagMerchant !== undefined && (
         <SectorPicker merchantName={sorting.name} merchantKey={sorting.key} tagMerchant={tagMerchant} onClose={() => { setSorting(null); }} />
       )}
-      {/* Piece 3 puts tips here. */}
-      <section aria-hidden="true" className={styles.tips} />
     </main>
   );
 }

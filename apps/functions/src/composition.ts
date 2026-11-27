@@ -28,6 +28,7 @@ import {
   CreateAccount,
   CreatePaymentInstrument,
   RecordOpeningBalance,
+  RefreshTips,
   RecordCashCount,
   RecordCashAdjustment,
   SplitTransfer,
@@ -47,6 +48,7 @@ import {
   FirestoreFollowUpRepository,
   FirestoreReconciliationRepository,
   FirestoreMerchantSectorRepository,
+  FirestoreTipsRepository,
   FirestoreAiUsageRecorder,
   FirestoreLedgerReader,
   FirestoreQuotaLedger,
@@ -98,6 +100,8 @@ export type Deps = {
   editManualIncome: EditManualIncome;
   updateProfile: UpdateProfile;
   recordVisit: RecordVisit;
+  /** Built on first use, like the pipeline: it needs the AI key. */
+  refreshTips: RefreshTips;
   updateSettings: UpdateSettings;
   advanceSourceEvent: AdvanceSourceEvent;
   recoverExpiredClaims: RecoverExpiredClaims;
@@ -142,6 +146,8 @@ export function composeDeps(
   const merchantSectors = new FirestoreMerchantSectorRepository(db);
   const post = new PostTransaction({ writer, accounts, hasher, clock });
   let advance: AdvanceSourceEvent | undefined;
+  let gateway: AIGateway | undefined;
+  let refreshTips: RefreshTips | undefined;
   const plans = new Map<string, AiPlan>();
   const aiPlans: Deps["aiPlans"] = {
     async planOf(ownerId) {
@@ -166,6 +172,13 @@ export function composeDeps(
   });
   const usage = new FirestoreAiUsageRecorder(db);
   const instruments = new FirestorePaymentInstrumentRepository(db);
+  // One gateway for the pipeline and tips: the same quota, metering and durable provider calls.
+  const aiGateway = (): AIGateway =>
+    (gateway ??= new AIGateway(
+      new ProviderCallExecutor({ providerCalls, quota, usage, clock, logger, timeoutSignal: systemTimeoutSignal }),
+      selectAiProvider(env),
+      DEFAULT_AI_ESTIMATE_MICRO_USD,
+    ));
   const deleteAuthUser = platform.deleteAuthUser;
   const accountDeletion: Deps["accountDeletion"] =
     db instanceof PgDocStore && deleteAuthUser !== undefined
@@ -210,18 +223,7 @@ export function composeDeps(
         accounts,
         instruments,
         candidates: new LedgerCandidateReader(reader),
-        gateway: new AIGateway(
-          new ProviderCallExecutor({
-            providerCalls,
-            quota,
-            usage,
-            clock,
-            logger,
-            timeoutSignal: systemTimeoutSignal,
-          }),
-          selectAiProvider(env),
-          DEFAULT_AI_ESTIMATE_MICRO_USD,
-        ),
+        gateway: aiGateway(),
         post,
         correct: new ReverseAndReplace({ writer, reader, accounts, hasher, clock }),
         ledger: reader,
@@ -261,6 +263,10 @@ export function composeDeps(
     editManualIncome: new EditManualIncome({ sourceEvents, reader, writer, accounts, hasher, clock }),
     updateProfile: new UpdateProfile({ profiles, clock }),
     recordVisit: new RecordVisit({ profiles, clock }),
+    get refreshTips() {
+      refreshTips ??= new RefreshTips({ reader, tips: new FirestoreTipsRepository(db), writer: aiGateway(), hasher, clock, logger });
+      return refreshTips;
+    },
     updateSettings: new UpdateSettings({ profiles }),
     intakeEvidence: new IntakeEvidence({ sourceEvents, hasher, ids, clock, logger }),
     confirmCandidate: new ConfirmCandidate({ sourceEvents, accounts, clock }),

@@ -1,3 +1,4 @@
+import type { TipKind, TipsReply } from "@moneytrace/contracts";
 import type { CandidateTransaction, RetrySafety } from "@moneytrace/domain";
 import type { AbortSignalLike, ProviderOutcome } from "../pipeline/provider-call-executor";
 
@@ -16,14 +17,24 @@ export type AiContext = {
   clarifications: readonly { question: string; answer: string }[];
 };
 
+/** What DeepSeek is sent for tips: our worded figures, nothing else (no shop, account or SMS). */
+export type TipsInput = {
+  facts: { id: string; kind: TipKind; sectorLabel?: string; headline: string; detail: string }[];
+  dayOfMonth: number;
+  daysInMonth: number;
+};
+
 export type AIProvider = {
   id: string;
   model: string;
   promptVersion: string;
+  tipsPromptVersion: string;
   retrySafety: RetrySafety;
   interpretEvidence(
     input: { text: string; context: AiContext },
     requestKey: string,
     signal: AbortSignalLike,
   ): Promise<ProviderOutcome<AiInterpretation>>;
+  /** Advice for each fact, checked by shape only; `validateAdvice` rules on what it says. */
+  writeTips(input: TipsInput, requestKey: string, signal: AbortSignalLike): Promise<ProviderOutcome<TipsReply>>;
 };

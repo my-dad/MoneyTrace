@@ -33,5 +33,16 @@ export function describeAiProviderContract(name: string, make: () => AIProvider)
         value: { kind: "transaction", candidate: { amountMinor: 50000, currency: "BDT" } },
       });
     });
+
+    it("writes advice for the facts it is sent", async () => {
+      const outcome = await provider.writeTips(
+        { facts: [{ id: "unsorted", kind: "unsorted", headline: "৳2,500 isn't sorted yet", detail: "Sorting it shows where it went" }], dayOfMonth: 6, daysInMonth: 30 },
+        "tips-key-1",
+        liveSignal(),
+      );
+      expect(outcome.kind).toBe("success");
+      expect(outcome.kind === "success" && Array.isArray(outcome.value.tips)).toBe(true);
+      expect(provider.tipsPromptVersion.length).toBeGreaterThan(0);
+    });
   });
 }

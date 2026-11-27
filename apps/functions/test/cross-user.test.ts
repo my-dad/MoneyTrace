@@ -76,6 +76,8 @@ const OWN_DATA_ONLY: Case[] = [
   { name: "recordCashIncome", data: () => ({ idempotencyKey: key(), amountMinor: 50_000, from: "gift", occurredOn: "2026-01-02" }) },
   { name: "updateProfile", data: () => ({ displayName: "Bob", avatar: { kind: "initials", color: "teal" } }) },
   { name: "recordVisit", data: () => ({}) },
+  // Tips are always the caller's own; Alice's tips/current must stay untouched.
+  { name: "refreshTips", data: () => ({ force: true }) },
   // Last: Bob erases his own account; Alice's tree must still be untouched (CR-009).
   { name: "requestAccountDeletion", data: () => ({ confirmation: "DELETE MY ACCOUNT" }) },
 ];
@@ -128,6 +130,9 @@ describe("cross-user isolation (gate 35)", { timeout: 180_000 }, () => {
     // A cash count that differs, so Alice has an open count Bob can try to adjust.
     const count = unwrap(await call("recordReconciliation", a.user, { idempotencyKey: key(), countedMinor: 1, currency: "BDT" }));
     alice = { ...a, eventId, withdrawalTx, followUpId, reconciliationId: String(count["reconciliationId"]) };
+    // Alice has a tips document, so Bob's refreshTips is checked against a real one.
+    unwrap(await call("refreshTips", a.user, { force: false }));
+    expect((await db.doc(`users/${a.user.uid}/tips/current`).get()).exists).toBe(true);
 
     const b = await setUp("iso-bob");
     const bobWithdrawal = String(unwrap(await call("submitEvidence", b.user, { idempotencyKey: key(), text: WITHDRAWAL_SMS }))["sourceEventId"]);

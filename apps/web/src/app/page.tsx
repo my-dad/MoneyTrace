@@ -31,6 +31,7 @@ export default function HomePage() {
               avatar={<Avatar name={name} avatar={profile.avatar} photoUrl={user.photoUrl} />}
               onEditProfile={() => { setEditing(true); }}
               tagMerchant={(request) => commands.tagMerchant(request)}
+              refreshTips={(request) => commands.refreshTips(request)}
               cashIncome={{ recordCashIncome: (request) => commands.recordCashIncome(request), editManualIncome: (request) => commands.editManualIncome(request) }}
               // The demo can't sign out: say so rather than doing nothing.
               onSignOut={fixture ? () => Promise.reject(new DemoUnavailableError()) : () => auth.signOut()}

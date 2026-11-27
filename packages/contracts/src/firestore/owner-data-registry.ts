@@ -37,4 +37,5 @@ export const OWNER_DATA_REGISTRY: Record<OwnerCollectionName, OwnerDataEntry> = 
   consents: keep(),
   deletionJobs: keep(false),
   merchantSectors: keep(false),
+  tips: keep(),
 };

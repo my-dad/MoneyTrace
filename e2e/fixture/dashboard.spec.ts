@@ -81,7 +81,7 @@ test("the dashboard opens on its charts", async ({ page }) => {
   for (const name of ["Where it went", "Day by day", "Came in vs Spent", "Top shops"]) {
     await expect(page.getByRole("heading", { name })).toBeVisible();
   }
-  await expect(page.getByText("Groceries took 37% of spending")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Where it went" }).getByText("Groceries took 37% of spending")).toBeVisible();
 });
 
 test("the demo welcomes you back with what happened while you were away", async ({ page }) => {
@@ -102,4 +102,15 @@ test("Edit profile opens your name and picture, with the email read-only", async
   await expect(dialog.getByLabel("Email")).toHaveAttribute("readonly", "");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog.getByRole("status").filter({ hasText: "demo" })).toBeVisible();
+});
+
+test("the demo shows tips, and New tips saves nothing", async ({ page }) => {
+  await open(page);
+  const tips = page.getByRole("region", { name: "Tips to spend less" });
+  await expect(tips.getByText("Groceries took 37% of spending")).toBeVisible();
+  await expect(tips.getByText("৳6,820 of ৳18,640 this month")).toBeVisible();
+  await expect(tips.getByText("Made today")).toBeVisible();
+  await tips.getByRole("button", { name: "New tips" }).click();
+  await expect(tips.getByText("Not available yet — demo · nothing was saved")).toBeVisible();
+  await expect(tips.getByText("Groceries took 37% of spending")).toBeVisible();
 });

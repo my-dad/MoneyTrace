@@ -5,7 +5,7 @@ import axe from "axe-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoUnavailableError } from "../../shared/demo-unavailable";
 import { createFixtureReadModels } from "../../shared/fixtures/fixture-read-models";
-import { FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
+import { FIXTURE_BALANCES, FIXTURE_NOW_MS, FIXTURE_SOURCE_EVENTS } from "../../shared/fixtures/household";
 
 const createFixtureEvents = () => [...FIXTURE_SOURCE_EVENTS];
 import { InMemoryReadModelGateway } from "../../shared/in-memory-read-model-gateway";
@@ -36,6 +36,7 @@ const silent: ReadModelGateway = {
   watchAiUsage: () => () => undefined,
   watchSourceEntries: () => () => undefined,
   watchProfile: () => () => undefined,
+  watchTips: () => () => undefined,
   watchTransactions: () => () => undefined,
 };
 
@@ -276,5 +277,97 @@ describe("DashboardScreen", () => {
     cleanup();
     withChat(createFixtureReadModels(), 0);
     expect(screen.queryByRole("button", { name: /need/ })).toBeNull();
+  });
+
+  describe("tips", () => {
+    type Outcome = "made" | "unchanged" | "factsOnly" | "notEnoughData" | "limitReached";
+    const showTips = (refreshTips: (r: { force: boolean }) => Promise<{ outcome: Outcome }>, extra: Partial<Parameters<typeof DashboardScreen>[0]> = {}) =>
+      render(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} refreshTips={refreshTips} {...extra} />);
+    const tipsRegion = () => screen.getByRole("region", { name: "Tips to spend less" });
+
+    it("asks for tips once when the dashboard opens, in the background", async () => {
+      const refreshTips = vi.fn(() => Promise.resolve({ outcome: "unchanged" as const }));
+      const view = showTips(refreshTips);
+      expect(within(tipsRegion()).getByText("Making new tips…")).toBeTruthy();
+      await screen.findByText("Made today");
+      view.rerender(<DashboardScreen gateway={createFixtureReadModels()} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} refreshTips={refreshTips} />);
+      expect(refreshTips).toHaveBeenCalledTimes(1);
+      expect(refreshTips).toHaveBeenCalledWith({ force: false });
+    });
+
+    it("past months show no tips and ask for none", async () => {
+      const refreshTips = vi.fn(() => Promise.resolve({ outcome: "unchanged" as const }));
+      showTips(refreshTips);
+      await screen.findByText("Made today");
+      fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+      expect(screen.queryByRole("region", { name: "Tips to spend less" })).toBeNull();
+      expect(refreshTips).toHaveBeenCalledTimes(1);
+    });
+
+    it("New tips asks for fresh ones, and says when today's are used up", async () => {
+      const refreshTips = vi.fn((r: { force: boolean }): Promise<{ outcome: Outcome }> => Promise.resolve({ outcome: r.force ? "limitReached" : "unchanged" }));
+      showTips(refreshTips);
+      await screen.findByText("Made today");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "New tips" }));
+      expect(refreshTips).toHaveBeenLastCalledWith({ force: true });
+      await screen.findByText("You've had today's fresh tips. More tomorrow.");
+    });
+
+    it("the demo's automatic refresh is silent; a failed one says so", async () => {
+      showTips(() => Promise.reject(new DemoUnavailableError()));
+      await screen.findByText("Made today");
+      cleanup();
+      showTips(() => Promise.reject(new Error("offline")));
+      await screen.findByText("Couldn't make new tips; showing the last ones");
+    });
+
+    it("a demo New tips says nothing was saved", async () => {
+      showTips(() => Promise.reject(new DemoUnavailableError()));
+      await screen.findByText("Made today");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "New tips" }));
+      await within(tipsRegion()).findByText("Not available yet — demo · nothing was saved");
+    });
+
+    it("Sort opens sorting for the biggest unsorted shop; Count my cash opens the cash count", async () => {
+      const openChat = vi.fn();
+      render(
+        <ChatOpenerContext.Provider value={{ openChat, waiting: 0 }}>
+          <DashboardScreen
+            gateway={createFixtureReadModels()}
+            nowMs={FIXTURE_NOW_MS}
+            displayName="Demo"
+            onSignOut={vi.fn(() => Promise.resolve())}
+            refreshTips={() => Promise.resolve({ outcome: "unchanged" })}
+            tagMerchant={vi.fn(() => Promise.resolve({ resorted: 1, more: false }))}
+          />
+        </ChatOpenerContext.Provider>,
+      );
+      await screen.findByText("Made today");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "Count my cash" }));
+      expect(openChat).toHaveBeenCalledWith("cashCount");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "Sort" }));
+      expect(screen.getByRole("dialog", { name: "Sort Daraz" })).toBeTruthy();
+    });
+
+    it("a New tips that ends with figures only says new tips couldn't be made", async () => {
+      showTips((r) => Promise.resolve({ outcome: r.force ? "factsOnly" : "unchanged" }));
+      await screen.findByText("Made today");
+      fireEvent.click(within(tipsRegion()).getByRole("button", { name: "New tips" }));
+      await within(tipsRegion()).findByText("Couldn't make new tips; showing the last ones");
+    });
+
+    it("refreshes the tip figures, quietly, when the month's figures change", async () => {
+      const gateway = createFixtureReadModels();
+      const refreshTips = vi.fn((): Promise<{ outcome: Outcome }> => Promise.resolve({ outcome: "unchanged" }));
+      render(<DashboardScreen gateway={gateway} nowMs={FIXTURE_NOW_MS} displayName="Demo" onSignOut={vi.fn(() => Promise.resolve())} refreshTips={refreshTips} />);
+      await screen.findByText("Made today");
+      expect(refreshTips).toHaveBeenCalledTimes(1);
+      act(() => {
+        gateway.setBalances(FIXTURE_BALANCES.map((b) => (b.accountId === "cash-unassigned" ? { ...b, debitMinusCreditMinor: 0 } : b)));
+      });
+      await vi.waitFor(() => { expect(refreshTips).toHaveBeenCalledTimes(2); }, { timeout: 4000 });
+      expect(refreshTips).toHaveBeenLastCalledWith({ force: false });
+      expect(within(tipsRegion()).queryByText("Making new tips…")).toBeNull();
+    });
   });
 });

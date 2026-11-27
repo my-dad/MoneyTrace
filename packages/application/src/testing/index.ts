@@ -22,3 +22,5 @@ export * from "./in-memory-merchant-sectors";
 export * from "./merchant-sector-contract";
 export * from "./in-memory-profiles";
 export * from "./profile-contract";
+export * from "./in-memory-tips";
+export * from "./tips-contract";
