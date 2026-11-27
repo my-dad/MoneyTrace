@@ -507,6 +507,8 @@ const tips = z
     aiFactsHash: z.string().min(1).max(128).nullable(),
     /** When the stored advice was made. */
     adviceAtMs: epochMs.nullable(),
+    /** An automatic AI call is running until then: another tab waits rather than calling too. */
+    aiCallUntilMs: epochMs.nullable().optional(),
     model: z.string().min(1).max(128).optional(),
     promptVersion: z.string().min(1).max(64).optional(),
     /** "New tips" attempts on `forcedDay`. */

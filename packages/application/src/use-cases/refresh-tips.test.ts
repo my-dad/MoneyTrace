@@ -1,5 +1,5 @@
 import { Money, asAccountId, asIdempotencyKey, asOwnerId, asTransactionId, type PostingIntent } from "@moneytrace/domain";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIGateway, DEFAULT_AI_ESTIMATE_MICRO_USD } from "../pipeline/ai-gateway";
 import { CapturingLogger, FakeClock, TestHasher } from "../testing/fakes";
 import { createProviderWorld } from "../testing/fake-provider";
@@ -175,6 +175,41 @@ describe("RefreshTips", () => {
     expect(doc?.facts.map((f) => f.id)).toEqual(["sectorUp:food", "unsorted", "topSector:groceries"]);
     expect(Object.keys(doc?.advice ?? {}).sort()).toEqual(["sectorUp:food", "unsorted"]);
     expect(doc?.status).toBe("ready");
+  });
+
+  it("two tabs opening at once make one AI call; the second waits for it instead of failing", async () => {
+    await seedMonth();
+    adviseAll();
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const world = createProviderWorld();
+    const gateway = new AIGateway(world.executor(), provider, DEFAULT_AI_ESTIMATE_MICRO_USD);
+    const slowProvider = {
+      tipsIdentity: gateway.tipsIdentity,
+      writeTips: async (...args: Parameters<AIGateway["writeTips"]>) => {
+        const out = gateway.writeTips(...args);
+        await held;
+        return out;
+      },
+    };
+    const tab = () => new RefreshTips({ reader: ledger, tips, writer: slowProvider, hasher: new TestHasher(), clock, logger });
+    const first = tab().execute({ ownerId: alice, force: false });
+    await vi.waitFor(() => { expect(provider.tipsCalls).toBe(1); });
+    expect(await tab().execute({ ownerId: alice, force: false })).toEqual({ outcome: "unchanged" });
+    release();
+    expect(await first).toEqual({ outcome: "made" });
+    expect(provider.tipsCalls).toBe(1);
+    expect(await tips.get(alice)).toMatchObject({ status: "ready" });
+  });
+
+  it("a claim left by a call that never finished expires", async () => {
+    await seedMonth();
+    adviseAll();
+    const stuck = { tipsIdentity: { model: "m", promptVersion: "v" }, writeTips: () => new Promise<never>(() => undefined) };
+    void new RefreshTips({ reader: ledger, tips, writer: stuck, hasher: new TestHasher(), clock, logger }).execute({ ownerId: alice, force: false });
+    await vi.waitFor(async () => { expect((await tips.get(alice))?.aiCallUntilMs).toBeGreaterThan(NOW); });
+    clock.advance(3 * 60_000);
+    expect(await run(refresher())).toEqual({ outcome: "made" });
   });
 
   it("a refresh that finishes while another waits on the AI is never overwritten with older figures", async () => {

@@ -1,6 +1,7 @@
 import { dhakaDay, FORCED_TIPS_PER_DAY, monthRange, SECTOR_LABELS, SYSTEM_CASH_ACCOUNT_ID, type TipFact } from "@moneytrace/contracts";
 import { asAccountId, type OwnerId } from "@moneytrace/domain";
 import type { AIGateway } from "../pipeline/ai-gateway";
+import { PIPELINE_TIMEOUTS } from "../pipeline/timeouts";
 import type { TipsInput } from "../ports/ai-provider";
 import type { Clock } from "../ports/clock";
 import type { Hasher } from "../ports/hasher";
@@ -9,6 +10,9 @@ import type { Logger } from "../ports/logger";
 import type { TipsDoc, TipsFields, TipsRepository } from "../ports/tips-repository";
 import { tipFacts } from "../tips/tip-facts";
 import { validateAdvice } from "../tips/validate-advice";
+
+/** How long an automatic AI call holds its claim: past the function's own time limit, so it has ended. */
+const AI_CALL_CLAIM_MS = PIPELINE_TIMEOUTS.functionExecutionTimeoutMs;
 
 export type TipsWriter = Pick<AIGateway, "writeTips" | "tipsIdentity">;
 
@@ -78,7 +82,11 @@ export class RefreshTips {
       requestKey = `tips-${today}-new-${String(n)}`;
     } else if (stored.aiDay === today || stored.aiFactsHash === factsHash) {
       return this.done("unchanged", facts.length);
+    } else if (!(await this.claimAutoCall(ownerId, nowMs, today))) {
+      // Another tab is making today's tips (or just made them): it saves them for both.
+      return this.done("unchanged", facts.length);
     }
+    const claimed = !force;
 
     let call: Awaited<ReturnType<TipsWriter["writeTips"]>>;
     try {
@@ -86,16 +94,16 @@ export class RefreshTips {
     } catch (error) {
       // No AI (no key, a store error around the call): the saved figures stand; a later open retries.
       this.deps.logger.error("tips.adviceFailed", { errorName: error instanceof Error ? error.name : "unknown" });
-      await this.finish(ownerId, null, {});
+      await this.finish(ownerId, claimed, null, {});
       return this.done("factsOnly", facts.length);
     }
     const called = call.kind === "quotaExhausted" ? null : { aiDay: today, aiFactsHash: factsHash };
     const advice = call.kind === "result" ? validateAdvice(call.value, facts) : {};
     if (Object.keys(advice).length === 0) {
-      await this.finish(ownerId, called, {});
+      await this.finish(ownerId, claimed, called, {});
       return this.done("factsOnly", facts.length);
     }
-    await this.finish(ownerId, called, advice, { adviceAtMs: nowMs, ...this.deps.writer.tipsIdentity });
+    await this.finish(ownerId, claimed, called, advice, { adviceAtMs: nowMs, ...this.deps.writer.tipsIdentity });
     return this.done("made", facts.length);
   }
 
@@ -103,8 +111,20 @@ export class RefreshTips {
    * Stores the AI call's outcome on whatever is stored now: the figures stay the newest saved (a
    * refresh may have finished meanwhile), and new advice is kept for the facts still shown.
    */
+  /** Claims the day's automatic AI call, unless one is running or today's was already made. */
+  private async claimAutoCall(ownerId: OwnerId, nowMs: number, today: string): Promise<boolean> {
+    const claim = { ok: false };
+    await this.deps.tips.update(ownerId, (current) => {
+      if (current === null || current.aiDay === today || (current.aiCallUntilMs ?? 0) > nowMs) return null;
+      claim.ok = true;
+      return { ...current, aiCallUntilMs: nowMs + AI_CALL_CLAIM_MS };
+    });
+    return claim.ok;
+  }
+
   private async finish(
     ownerId: OwnerId,
+    claimed: boolean,
     called: { aiDay: string; aiFactsHash: string } | null,
     advice: Record<string, string>,
     made?: { adviceAtMs: number; model: string; promptVersion: string },
@@ -114,7 +134,14 @@ export class RefreshTips {
       const merged = adviceFor(current.facts, { ...current.advice, ...advice });
       const fresh = Object.keys(adviceFor(current.facts, advice)).length > 0;
       // The stored id and New tips count are the repository's to keep; it overrides them.
-      return { ...current, ...(called ?? {}), ...(fresh && made !== undefined ? made : {}), advice: merged, status: fresh ? "ready" : "factsOnly" };
+      return {
+        ...current,
+        ...(called ?? {}),
+        ...(fresh && made !== undefined ? made : {}),
+        ...(claimed ? { aiCallUntilMs: null } : {}),
+        advice: merged,
+        status: fresh ? "ready" : "factsOnly",
+      };
     });
   }
 
@@ -126,9 +153,10 @@ export class RefreshTips {
 }
 
 /** What a figures save carries over from the stored document: the last AI call and its advice's origin. */
-function carried(doc: TipsDoc | null): Pick<TipsFields, "aiDay" | "aiFactsHash" | "adviceAtMs" | "model" | "promptVersion"> {
+function carried(doc: TipsDoc | null): Pick<TipsFields, "aiDay" | "aiFactsHash" | "adviceAtMs" | "aiCallUntilMs" | "model" | "promptVersion"> {
   return {
     aiDay: doc?.aiDay ?? null,
+    aiCallUntilMs: doc?.aiCallUntilMs ?? null,
     aiFactsHash: doc?.aiFactsHash ?? null,
     adviceAtMs: doc?.adviceAtMs ?? null,
     ...(doc?.model === undefined ? {} : { model: doc.model }),
