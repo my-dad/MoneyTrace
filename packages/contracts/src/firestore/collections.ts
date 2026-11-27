@@ -540,6 +540,9 @@ export const OWNER_COLLECTIONS = {
 
 export type OwnerCollectionName = keyof typeof OWNER_COLLECTIONS;
 
+/** The stored `tips/current` document. */
+export type TipsDocument = z.output<typeof tips>;
+
 /** The `users/{uid}` document. */
 export const userProfileSchema = z
   .object({
